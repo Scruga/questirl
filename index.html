@@ -8232,9 +8232,9 @@ const DEFAULT_PROFILE = {
   ownedFrames: ['none'],                          // starter pack
   armedItems: [],                                 // item ids armed for next run; consumed at run start
   sfxMuted: false,                                // toggled from settings; respected by sfx.*
-  // Music defaults to OFF for now — re-enable in settings. The Ideas
-  // tab carries a reminder that this exists.
-  musicMuted: true,
+  // Music defaults to ON. Starts on the first user click (autoplay
+  // policies block audio before any gesture).
+  musicMuted: false,
   musicVolume: 0.1,                               // 0.0–1.0, used by the BGM <audio> element
   musicShuffle: true,                             // shuffle is the default play mode (legacy bool, kept for back-compat)
   musicMode: 'shuffle',                           // canonical play mode: 'shuffle' | 'sequential' | 'loop'
@@ -8294,7 +8294,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.12.173';
+const BUILD_VERSION = '2026.05.12.174';
 
 // Server-side Anthropic relay (Cloudflare Worker — see relay/worker.js).
 // When set, every player gets full AI features with no key required —
@@ -8390,6 +8390,14 @@ function anthropicFetchInit(body) {
 }
 
 let profile = loadProfile();
+// One-time migration — flip muted-from-old-default to on. Older profiles
+// have musicMuted = true baked in (the prior default). New default is on.
+// The flag prevents this from re-enabling music after a user mutes it.
+if (!profile.musicAutoEnabledV2) {
+  profile.musicAutoEnabledV2 = true;
+  profile.musicMuted = false;
+  try { saveProfile(); } catch (_) {}
+}
 let state = {
   view: 'home',
   setupStep: 0,

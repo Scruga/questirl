@@ -27,11 +27,16 @@ desktop.ini
 # local working files
 _tools/
 _archive/
-Music/
 *.tmp
 *.tmp.png
 *.bak
 *.orig
+
+# Music folder — only the actual MP3 tracks ship to production.
+# Everything else (source sheets, screen recordings, random downloads,
+# saved chat exports) stays local.
+Music/*
+!Music/*.mp3
 
 # stray screenshots / camera dumps
 Screenshot*.png
