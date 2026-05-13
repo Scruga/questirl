@@ -8294,7 +8294,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.12.174';
+const BUILD_VERSION = '2026.05.12.175';
 
 // Server-side Anthropic relay (Cloudflare Worker — see relay/worker.js).
 // When set, every player gets full AI features with no key required —
@@ -12031,14 +12031,26 @@ const whiteNoise = (() => {
     },
   };
 })();
-// Browsers gate audio playback behind a gesture, so we kick off the
-// BGM on the first user click anywhere on the page.
+// Browsers gate audio playback behind a user gesture, so we kick off
+// the BGM on the FIRST anything — click, tap, or keypress. Whichever
+// fires earliest wins; the others are torn down.
 let _bgmKickoff = false;
-document.addEventListener('click', () => {
+function _kickBgm() {
   if (_bgmKickoff) return;
   _bgmKickoff = true;
-  if (typeof profile !== 'undefined' && !profile.musicMuted) music.start();
-}, { capture: true, once: true });
+  if (typeof profile !== 'undefined' && !profile.musicMuted && typeof music !== 'undefined') {
+    music.start();
+  }
+  // Remove all listeners — already fired.
+  document.removeEventListener('click',      _kickBgm, { capture: true });
+  document.removeEventListener('touchstart', _kickBgm, { capture: true });
+  document.removeEventListener('keydown',    _kickBgm, { capture: true });
+  document.removeEventListener('pointerdown',_kickBgm, { capture: true });
+}
+document.addEventListener('click',       _kickBgm, { capture: true });
+document.addEventListener('touchstart',  _kickBgm, { capture: true, passive: true });
+document.addEventListener('keydown',     _kickBgm, { capture: true });
+document.addEventListener('pointerdown', _kickBgm, { capture: true });
 
 // Global click sound dispatcher. Plays a click for any interactive
 // element the user touches; specific animations layer their own
@@ -25293,34 +25305,16 @@ function render() {
   document.body.classList.toggle('unhinged-run', inUnhingedRun);
   // Music behavior by view:
   //   setup → ducks to 50% (still playing, just quieter)
-  //   generating/boss/quest/etc. → HARD MUTE (profile.musicMuted = true).
-  //     The Settings toggle and the quest-screen FAB now read OFF; the
-  //     player has to press ON to bring music back. Auto-mute is gated
-  //     by state._musicAutoMutedForRun so we don't re-mute after the
-  //     player has explicitly re-enabled it mid-quest.
+  //   everywhere else → 'normal' volume context. Music plays continuously.
+  // We intentionally DON'T auto-mute during runs anymore — that was
+  // overwriting profile.musicMuted = true, which then stuck across runs
+  // and made the FAB read OFF even after the player returned to home.
+  // If a player wants silence during a run, they can tap the music FAB.
   if (typeof music !== 'undefined') {
-    // Anything that's part of an active run — INCLUDING the per-step
-     // vote/judging screens. Without 'vote' here, completing a step
-     // briefly leaves the run-screen list, resets the auto-mute flag,
-     // and re-mutes the music when the player lands back on 'quest'.
-    const runScreens = ['generating','boss','quest','vote','accusation','wheel','roleReveal','mpWin','mpLoss'];
-    const inRun = runScreens.includes(state.view);
-    if (!inRun && state.view !== 'recap') {
-      // Out of the run area — reset the run-mute flag so the next run
-      // can auto-mute again on its own first transition.
-      state._musicAutoMutedForRun = false;
-    }
     if (state.view === 'setup') {
       music.setContext('setup');
     } else {
       music.setContext('normal');
-    }
-    if (inRun && !state._musicAutoMutedForRun && !profile.musicMuted) {
-      // First run-area render this run — silence the music. Settings
-      // will now show OFF; the player can re-enable via the quest FAB
-      // or the settings toggle.
-      music.setMuted(true);
-      state._musicAutoMutedForRun = true;
     }
   }
   // Animate header pill numbers if they changed since last render.
