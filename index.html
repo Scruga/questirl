@@ -25,9 +25,23 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>QuestIRL</title>
+<meta name="description" content="Fight silly fictional bosses with real-world quests. AI hosts, judges, and roasts you the whole way."/>
 <link rel="manifest" href="manifest.webmanifest"/>
 <meta name="theme-color" content="#ff3da6"/>
-<link rel="apple-touch-icon" href="img/avatar_wizard.png"/>
+<link rel="icon" href="img/favicon.png" type="image/png"/>
+<link rel="icon" sizes="32x32" href="img/favicon-32.png" type="image/png"/>
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png"/>
+
+<!-- Open Graph / social-share preview -->
+<meta property="og:type" content="website"/>
+<meta property="og:title" content="QuestIRL"/>
+<meta property="og:description" content="Fight silly fictional bosses with real-world quests. AI hosts, judges, and roasts you the whole way."/>
+<meta property="og:image" content="https://questirl.gg/img/og-image.png"/>
+<meta property="og:url" content="https://questirl.gg"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<meta name="twitter:title" content="QuestIRL"/>
+<meta name="twitter:description" content="Fight silly fictional bosses with real-world quests. AI hosts, judges, and roasts you the whole way."/>
+<meta name="twitter:image" content="https://questirl.gg/img/og-image.png"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="apple-mobile-web-app-title" content="QuestIRL"/>
@@ -8276,7 +8290,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.12.169';
+const BUILD_VERSION = '2026.05.12.172';
 
 // Server-side Anthropic relay (Cloudflare Worker — see relay/worker.js).
 // When set, every player gets full AI features with no key required —
@@ -10169,33 +10183,33 @@ const WELCOME_LINES = [
 // tier maps to wedge fill color via WHEEL_TIER_COLORS.
 const WHEEL_OUTCOMES = [
   // Commons — social shame, no game-state change. The bulk of the wheel.
-  { id: 'complimentstranger', n: 'COMPLIMENT', sub: 'A STRANGER', ic: '💬', tier: 'common', weight: 10,
+  { id: 'complimentstranger', n: 'COMPLIMENT', sub: 'A STRANGER', ic: '💬', img: 'img/wheel_compliment.png', tier: 'common', weight: 10,
     d: 'In the next 60 seconds, walk up to a real stranger and pay them a genuine compliment. Witnesses required.' },
-  { id: 'badaccent', n: 'BAD ACCENT', sub: '5 MIN', ic: '🎭', tier: 'common', weight: 10,
+  { id: 'badaccent', n: 'BAD ACCENT', sub: '5 MIN', ic: '🎭', img: 'img/wheel_badaccent.png', tier: 'common', weight: 10,
     d: 'Speak only in a terrible accent (pirate, Australian, vampire — your pick) for the next 5 minutes. No exceptions.' },
-  { id: 'loudlaugh', n: 'LOUD LAUGH', sub: '10s', ic: '😂', tier: 'common', weight: 10,
+  { id: 'loudlaugh', n: 'LOUD LAUGH', sub: '10s', ic: '😂', img: 'img/wheel_loudlaugh.png', tier: 'common', weight: 10,
     d: 'Fake-laugh hysterically for 10 seconds. On camera. The louder the better.' },
-  { id: 'voicemail', n: 'VOICEMAIL', sub: 'TAX', ic: '📞', tier: 'common', weight: 10,
+  { id: 'voicemail', n: 'VOICEMAIL', sub: 'TAX', ic: '📞', img: 'img/wheel_voicemail.png', tier: 'common', weight: 10,
     d: 'Call any friend right now. If they pick up, hang up. Leave a 15-second voicemail thanking them for nothing in particular.' },
-  { id: 'gremlinmode', n: 'GREMLIN', sub: 'MODE', ic: '🦇', tier: 'common', weight: 10,
+  { id: 'gremlinmode', n: 'GREMLIN', sub: 'MODE', ic: '🦇', img: 'img/wheel_gremlinmode.png', tier: 'common', weight: 10,
     d: 'Only speak in lowercase, broken-cadence gremlin-voice for the next 5 minutes. you know what that means.' },
-  { id: 'confess', n: 'CONFESSION', sub: 'DUMB', ic: '🤐', tier: 'common', weight: 10,
+  { id: 'confess', n: 'CONFESSION', sub: 'DUMB', ic: '🤐', img: 'img/wheel_confess.png', tier: 'common', weight: 10,
     d: 'Admit one stupid thing about yourself on camera. Has to be true. Nothing tragic — only mildly embarrassing.' },
   // Uncommons — body + role-play. Heavier vibe but still social.
-  { id: 'plank', n: 'PLANK', sub: '30s', ic: '🧘', tier: 'uncommon', weight: 8,
+  { id: 'plank', n: 'PLANK', sub: '30s', ic: '🧘', img: 'img/wheel_plank.png', tier: 'uncommon', weight: 8,
     d: 'Whole group planks for 30 seconds. Last one up loses one bonus reward roll.' },
-  { id: 'imitateboss', n: 'IMITATE', sub: 'THE BOSS', ic: '🎬', tier: 'uncommon', weight: 8,
+  { id: 'imitateboss', n: 'IMITATE', sub: 'THE BOSS', ic: '🎬', img: 'img/wheel_imitateboss.png', tier: 'uncommon', weight: 8,
     d: 'Impersonate the boss for 15 seconds. Voice, posture, energy. Commit or take another spin.' },
-  { id: 'phonestack', n: 'PHONE', sub: 'STACK', ic: '📵', tier: 'uncommon', weight: 8,
+  { id: 'phonestack', n: 'PHONE', sub: 'STACK', ic: '📵', img: 'img/wheel_phonestack.png', tier: 'uncommon', weight: 8,
     d: 'Everyone\'s phone goes face-down in a stack for the next step. First to flip it costs the group a reward.' },
   // Rares — heavier social shame. Witnesses recommended.
-  { id: 'serenade', n: 'SERENADE', sub: 'A WALL', ic: '🎤', tier: 'rare', weight: 6,
+  { id: 'serenade', n: 'SERENADE', sub: 'A WALL', ic: '🎤', img: 'img/wheel_serenade.png', tier: 'rare', weight: 6,
     d: 'Sing the chorus of a song you hate. Out loud. Earnestly. Somewhere a stranger or a friend can hear you.' },
-  { id: 'shameselfie', n: 'SHAME', sub: 'SELFIE', ic: '🤳', tier: 'rare', weight: 6,
+  { id: 'shameselfie', n: 'SHAME', sub: 'SELFIE', ic: '🤳', img: 'img/wheel_shameselfie.png', tier: 'rare', weight: 6,
     d: 'Take a selfie pulling the worst face you can. Caption it with one sentence about how you got here. Save it. The arena remembers.' },
   // Legendary — the lucky escape. Narrative only, no mechanical effect
   // (the run already failed before the wheel spun). The relief IS the reward.
-  { id: 'freepass', n: 'FREE PASS', sub: 'LUCKY', ic: '✨', tier: 'legendary', weight: 4,
+  { id: 'freepass', n: 'FREE PASS', sub: 'LUCKY', ic: '✨', img: 'img/wheel_freepass.png', tier: 'legendary', weight: 4,
     d: 'Impossible. The System looks away. No consequence today. Do not get used to this.' },
 ];
 
@@ -17570,8 +17584,9 @@ const ITEM_IMAGES = new Set([
   // Solo
   'focus', 'innerfire', 'mood', 'mainchar', 'grace',
   'sanctuary', 'horizon', 'meditate', 'champion',
+  'lonewolf',
   // Party
-  'doubledmg', 'partypopper', 'kibble',
+  'doubledmg', 'partypopper', 'kibble', 'kraft',
   // Cursed
   'dx', 'contract', 'chaoscoin', 'whisperhex',
   'shadow', 'mirrorcurse', 'overtime',
@@ -18354,10 +18369,16 @@ function screenWheel() {
     const rotDeg = (i * seg) + (seg / 2);
     const fill = WHEEL_TIER_COLORS[o.tier] || '#888';
     const ring = WHEEL_TIER_RING_COLORS[o.tier] || '#000';
+    // Painted icon if we have one, else fall back to the emoji glyph.
+    const iconSvg = o.img
+      ? `<image href="${o.img}" x="${ix - 22}" y="${iy - 22}" width="44" height="44"
+                preserveAspectRatio="xMidYMid meet"
+                transform="rotate(${rotDeg} ${ix} ${iy})"/>`
+      : `<text x="${ix}" y="${iy}" text-anchor="middle" dominant-baseline="middle" font-size="22"
+                transform="rotate(${rotDeg} ${ix} ${iy})">${o.ic || ''}</text>`;
     return `
       <path d="${path}" fill="${fill}" stroke="${ring}" stroke-width="2"/>
-      <text x="${ix}" y="${iy}" text-anchor="middle" dominant-baseline="middle" font-size="22"
-            transform="rotate(${rotDeg} ${ix} ${iy})">${o.ic || ''}</text>
+      ${iconSvg}
       <text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="middle"
             transform="rotate(${rotDeg} ${tx} ${ty})"
             fill="#fff" font-family="Press Start 2P" font-size="9"
@@ -18456,7 +18477,7 @@ function screenWheel() {
       document.getElementById('wheelResult').innerHTML = `
         <div class="wheel-result" style="border-color: ${tierColor}; box-shadow: 0 0 24px ${tierColor}40, 4px 4px 0 #000;">
           <div class="wheel-result-tier" style="background:${tierColor};">${(outcome.tier || '').toUpperCase()}</div>
-          <div class="wheel-result-ic">${outcome.ic || ''}</div>
+          <div class="wheel-result-ic">${outcome.img ? `<img src="${outcome.img}" alt="" style="width:64px;height:64px;image-rendering:pixelated;"/>` : (outcome.ic || '')}</div>
           <div class="wheel-result-name">${outcome.n} <span class="wheel-result-sub">${outcome.sub || ''}</span></div>
           <div class="wheel-result-desc">${outcome.d}</div>
           <div class="wheel-result-quip">${WHEEL_QUIPS[outcome.id] || ''}</div>
@@ -20417,28 +20438,28 @@ const TWIST_CARDS = [
   // Common
   { id: 'mirror',    weight: 3, ic: '🪞', n: 'Mirror Mode',
     d: 'Every remaining photo must include a reflection (window, screen, polished surface, mirror).' },
-  { id: 'narrator',  weight: 3, ic: '🎪', n: 'Narrator',
+  { id: 'narrator',  weight: 3, ic: '🎪', img: 'img/twist_narrator.png', n: 'Narrator',
     d: 'One player must narrate every remaining step out loud, in a dramatic announcer voice.' },
-  { id: 'phoneswap', weight: 3, ic: '🌪️', n: 'Phone Swap', partyOnly: true,
+  { id: 'phoneswap', weight: 3, ic: '🌪️', img: 'img/twist_phoneswap.png', n: 'Phone Swap', partyOnly: true,
     d: 'Trade phones with another player for the next step.' },
-  { id: 'noback',    weight: 3, ic: '🦴', n: 'No Backs',
+  { id: 'noback',    weight: 3, ic: '🦴', img: 'img/twist_noback.png', n: 'No Backs',
     d: "No player's back may face the camera in any remaining photo. Faces or sides only." },
-  { id: 'staredown', weight: 3, ic: '👀', n: 'Stare-Down',
+  { id: 'staredown', weight: 3, ic: '👀', img: 'img/twist_staredown.png', n: 'Stare-Down',
     d: 'In every remaining photo, the player closest to the camera must stare it down. Unblinking.' },
-  { id: 'clown',     weight: 3, ic: '🤡', n: 'Clown Mode',
+  { id: 'clown',     weight: 3, ic: '🤡', img: 'img/twist_clown.png', n: 'Clown Mode',
     d: 'One player must be visibly clowning around (gestures, faces, theatrics) in every remaining photo.' },
   // Rare
-  { id: 'silence',   weight: 1, ic: '🤐', n: 'Vow of Silence',
+  { id: 'silence',   weight: 1, ic: '🤐', img: 'img/twist_silence.png', n: 'Vow of Silence',
     d: 'No spoken words from now until the run ends. Whisperers and gigglers each owe 5 push-ups at recap.' },
   { id: 'bullseye',  weight: 1, ic: '🎯', n: 'Bullseye Object',
     d: 'Pick the nearest small object you can carry. It MUST appear in every remaining photo. Lose it = you owe 10 push-ups.' },
-  { id: 'mascot',    weight: 1, ic: '🧸', n: 'Mascot Mode',
+  { id: 'mascot',    weight: 1, ic: '🧸', img: 'img/twist_mascot.png', n: 'Mascot Mode',
     d: 'Pick a household/nearby object as your team mascot. It must appear in every remaining photo, posed like a member of the team.' },
-  { id: 'mood_panic', weight: 1, ic: '😱', n: 'Mood: PANIC',
+  { id: 'mood_panic', weight: 1, ic: '😱', img: 'img/twist_panic.png', n: 'Mood: PANIC',
     d: 'Every remaining photo must show visible panic on every face. Genuine, theatrical, both.' },
   { id: 'mood_regal', weight: 1, ic: '👑', n: 'Mood: REGAL',
     d: 'Pose like royalty for the rest of the run. Chin up, hands on hips, no peasants in frame.' },
-  { id: 'mood_bored', weight: 1, ic: '😴', n: 'Mood: BORED',
+  { id: 'mood_bored', weight: 1, ic: '😴', img: 'img/twist_bored.png', n: 'Mood: BORED',
     d: 'Every remaining photo: theatrically, performatively bored expressions only. No smiling.' },
 ];
 
@@ -20471,17 +20492,17 @@ function pickTwistCard(excludeIds = []) {
 const SABOTAGES = [
   { id: 'mute',    ic: '🔇', n: 'MUTE',         cost: 1, dur: 5,
     desc: 'Lock target\'s buttons for 5 seconds. They watch helplessly.' },
-  { id: 'blind',   ic: '🌑', n: 'BLIND',        cost: 1, dur: 6,
+  { id: 'blind',   ic: '🌑', img: 'img/sab_blind.png', n: 'BLIND',        cost: 1, dur: 6,
     desc: 'Black out target\'s screen for 6 seconds with your name plastered on it.' },
   { id: 'reroll',  ic: '🎲', n: 'REROLL STEP',  cost: 2,
     desc: 'Force target\'s current step to reroll into a different one.' },
-  { id: 'heal',    ic: '💚', n: 'HEAL THE BOSS',cost: 2, amount: 60,
+  { id: 'heal',    ic: '💚', img: 'img/sab_bossheal.png', n: 'HEAL THE BOSS',cost: 2, amount: 60,
     desc: 'Their boss regenerates +60 HP. Pure spite.' },
   { id: 'time',    ic: '⏰', n: 'TIME STEAL',   cost: 1, amount: 30,
     desc: 'Yank 30 seconds off target\'s timer. Watch the clock bleed.' },
   { id: 'lockitems', ic: '🔒', n: 'LOCK INVENTORY', cost: 1, dur: 12,
     desc: 'Target\'s ⚡ items drawer is locked for 12 seconds.' },
-  { id: 'shaky',   ic: '📳', n: 'SHAKY HANDS',  cost: 1, dur: 8,
+  { id: 'shaky',   ic: '📳', img: 'img/sab_shaky.png', n: 'SHAKY HANDS',  cost: 1, dur: 8,
     desc: 'Target\'s screen shakes for 8 seconds. Try aiming the camera now.' },
 ];
 
@@ -20569,7 +20590,7 @@ function openSabotageModal() {
             ${SABOTAGES.map(s => `
               <div class="sab-row ${myCharges >= s.cost ? '' : 'disabled'}" data-sab="${s.id}">
                 <div class="head">
-                  <span class="ic">${s.ic}</span>
+                  <span class="ic">${s.img ? `<img src="${s.img}" style="width:28px;height:28px;image-rendering:pixelated;vertical-align:middle;" alt=""/>` : s.ic}</span>
                   <span class="nm">${s.n}</span>
                   <span class="cost">⚡ ${s.cost}</span>
                 </div>
@@ -20613,7 +20634,7 @@ function openSabotageTargetPicker(sabId) {
   wrap.innerHTML = `
     <div class="sab-content">
       <div class="sab-head">
-        <h3>${sab.ic} ${sab.n}</h3>
+        <h3>${sab.img ? `<img src="${sab.img}" style="width:32px;height:32px;image-rendering:pixelated;vertical-align:-8px;" alt=""/>` : sab.ic} ${sab.n}</h3>
         <button class="sab-close" id="sabClose">✕</button>
       </div>
       <div style="font-family:var(--term); font-size:14px; color:var(--ink-dim); margin-bottom:10px;">
@@ -20939,7 +20960,7 @@ function runSabotageMiniGame(sab) {
     const myColor = avatarColor(myEmoji);
     wrap.innerHTML = `
       <div class="mg-content">
-        <h3>${sab.ic} ${sab.n}</h3>
+        <h3>${sab.img ? `<img src="${sab.img}" style="width:32px;height:32px;image-rendering:pixelated;vertical-align:-8px;" alt=""/>` : sab.ic} ${sab.n}</h3>
         <p>Tap the squares 1 → ${N} in order. ${TIME_LIMIT}s.</p>
         <div class="mg-timer" id="mgTimer">⏱ ${TIME_LIMIT}.0s</div>
         <div class="mg-grid" id="mgGrid">
@@ -21158,7 +21179,7 @@ function runSabotageMazeGame(sab, targetUid) {
     wrap.className = 'mg-modal';
     wrap.innerHTML = `
       <div class="mg-content">
-        <h3>${sab.ic} ${sab.n}</h3>
+        <h3>${sab.img ? `<img src="${sab.img}" style="width:32px;height:32px;image-rendering:pixelated;vertical-align:-8px;" alt=""/>` : sab.ic} ${sab.n}</h3>
         <p>Sneak past <b>${escapeHtml(targetName)}</b> and reach the exit. Tap an adjacent cell to move.</p>
         <div class="mg-timer" id="mgTimer">⏱ ${TIME_LIMIT.toFixed(1)}s</div>
         <div class="mg-maze" id="mgMaze"></div>
@@ -21560,7 +21581,7 @@ function showTwistCard(twist, fromTransfer) {
   wrap.innerHTML = `
     <div class="twist-card">
       <div class="label"><img src="img/ui_bolt.png?v=2" class="ui-ic"/>TWIST CARD<img src="img/ui_bolt.png?v=2" class="ui-ic"/></div>
-      <div class="ic">${twist.ic}</div>
+      <div class="ic">${twist.img ? `<img src="${twist.img}" style="width:64px;height:64px;image-rendering:pixelated;" alt=""/>` : twist.ic}</div>
       <h3>${twist.n.toUpperCase()}</h3>
       ${passLine ? `<div class="twist-pass-line">${passLine}</div>` : ''}
       <p>${escapeHtml(displayText)}</p>
