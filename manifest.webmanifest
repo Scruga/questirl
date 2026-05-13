@@ -1,7 +1,7 @@
 {
-  "name": "QuestIRL — Magical Arcade",
+  "name": "QuestIRL",
   "short_name": "QuestIRL",
-  "description": "Real-life party game. Silly bosses. Real-life quests.",
+  "description": "Fight silly fictional bosses with real-world quests. AI hosts, judges, and roasts you the whole way.",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -10,16 +10,22 @@
   "categories": ["games", "social", "lifestyle"],
   "icons": [
     {
-      "src": "img/avatar_wizard.png",
+      "src": "img/favicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "img/avatar_wizard.png",
+      "src": "img/favicon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "img/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

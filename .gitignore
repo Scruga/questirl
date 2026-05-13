@@ -51,3 +51,7 @@ img/_sheets/
 # logs
 *.log
 npm-debug.log*
+
+.dev.vars*
+!.dev.vars.example
+!.env.example

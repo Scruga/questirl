@@ -10,7 +10,7 @@ workers_dev = true
 # Allowed origins — comma-separated. For local testing you can set "*"
 # but in production set this to your deploy URL(s).
 [vars]
-ALLOWED_ORIGINS = "*"
+ALLOWED_ORIGINS = "https://questirl.gg,https://sage-crumble-a39c95.netlify.app"
 
 # ANTHROPIC_API_KEY is a SECRET — set it via:
 #   wrangler secret put ANTHROPIC_API_KEY
