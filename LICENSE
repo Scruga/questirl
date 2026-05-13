@@ -1,0 +1,24 @@
+questirl — all rights reserved
+copyright (c) 2026 anton bondar
+
+this source is delivered to your browser as part of the runtime.
+that is the only sanctioned use.
+
+you may not:
+- redistribute or republish the source, in whole or in part
+- modify or create derivative works
+- use the hand-written game content (the hardcoded boss roster, the
+  host personality prompts and offline-fallback lines, the achievement
+  and item names, the wheel-of-consequences wedges, the in-game ui
+  copy) in another product
+- use the painted visual assets (chibi avatars, frames, boss portraits,
+  ui icons, the painted png assets in img/) in another product
+- use the "questirl" name, or the "the system" / "the gremlin"
+  characters, in another product
+- claim authorship, in whole or in part
+
+ai-generated text produced at runtime (per-run boss names, quest
+steps, photo judgments, host chat replies) is the player's session
+content and is not the subject of this license.
+
+licensing inquiries: antonybondar@gmail.com

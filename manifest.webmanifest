@@ -1,0 +1,25 @@
+{
+  "name": "QuestIRL — Magical Arcade",
+  "short_name": "QuestIRL",
+  "description": "Real-life party game. Silly bosses. Real-life quests.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0518",
+  "theme_color": "#ff3da6",
+  "categories": ["games", "social", "lifestyle"],
+  "icons": [
+    {
+      "src": "img/avatar_wizard.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "img/avatar_wizard.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

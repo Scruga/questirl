@@ -1,0 +1,17 @@
+name = "questirl-relay"
+main = "worker.js"
+compatibility_date = "2026-01-01"
+
+# Cloudflare disabled the workers.dev subdomain by default for new
+# workers in 2024 — explicitly opt in so every deploy keeps the public
+# URL alive.
+workers_dev = true
+
+# Allowed origins — comma-separated. For local testing you can set "*"
+# but in production set this to your deploy URL(s).
+[vars]
+ALLOWED_ORIGINS = "*"
+
+# ANTHROPIC_API_KEY is a SECRET — set it via:
+#   wrangler secret put ANTHROPIC_API_KEY
+# Do NOT put it in this file or commit it anywhere.

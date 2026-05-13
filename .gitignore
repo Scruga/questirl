@@ -1,0 +1,53 @@
+# dependencies + build artifacts
+node_modules/
+.wrangler/
+package.json
+package-lock.json
+
+# secrets — never commit
+*.env
+.env.*
+.dev.vars
+**/.dev.vars
+
+# editor / IDE
+.vscode/
+.idea/
+.claude/
+.claude-sessions/
+.cache/
+*.swp
+*.swo
+
+# os
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# local working files
+_tools/
+_archive/
+Music/
+*.tmp
+*.tmp.png
+*.bak
+*.orig
+
+# stray screenshots / camera dumps
+Screenshot*.png
+Screenshot*.jpg
+screen-*.png
+IMG_*.png
+IMG_*.jpg
+
+# backups
+index.backup.*
+index.with-pixelgame.*
+*.backup.*
+
+# sliced source sheets
+img/_sheets/
+
+# logs
+*.log
+npm-debug.log*
