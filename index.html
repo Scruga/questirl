@@ -1403,6 +1403,16 @@
     position: relative;
   }
   .step-card.locked { opacity: 0.4; filter: grayscale(0.7); }
+  /* Horizon Map reveal — a one-shot flash so the player can SEE that the
+     item actually did something. Triggered by .horizon-flash being toggled
+     on every .step-card.locked for ~1.6s after the item fires. */
+  @keyframes horizonFlashKF {
+    0%   { opacity: 0.4; filter: grayscale(0.7); box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5), 4px 4px 0 #000, 0 0 0 rgba(255, 218, 92, 0); }
+    25%  { opacity: 1;   filter: grayscale(0);   box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5), 4px 4px 0 var(--gold, #ffda5c), 0 0 28px rgba(255, 218, 92, 0.7); }
+    75%  { opacity: 1;   filter: grayscale(0);   box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5), 4px 4px 0 var(--gold, #ffda5c), 0 0 18px rgba(255, 218, 92, 0.5); }
+    100% { opacity: 0.4; filter: grayscale(0.7); box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5), 4px 4px 0 #000, 0 0 0 rgba(255, 218, 92, 0); }
+  }
+  .step-card.locked.horizon-flash { animation: horizonFlashKF 1.6s ease-out; }
   .step-card.done { box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5), 4px 4px 0 var(--neon-3); }
   .step-card.true-final {
     background: linear-gradient(160deg, #2a0f0f, #1a0a1a);
@@ -8297,7 +8307,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.15.176';
+const BUILD_VERSION = '2026.05.15.181';
 
 // Server-side Anthropic relay (Cloudflare Worker — see relay/worker.js).
 // When set, every player gets full AI features with no key required —
@@ -14184,6 +14194,27 @@ function screenQuest() {
   document.getElementById('coopFinishBtn')?.addEventListener('click', () => finalizeRun());
   // Restore chat sheet if it was open before re-render
   if (r.chatOpen) renderChatSheet();
+
+  // 🗺 Horizon Map just fired — flash the newly-revealed locked steps so
+  // the player can SEE that something happened. Without this, the toast
+  // is the only signal and the locked-step intel ends up below the fold.
+  if (r.horizonJustFired) {
+    r.horizonJustFired = false;
+    setTimeout(() => {
+      const lockedCards = document.querySelectorAll('.step-card.locked');
+      if (!lockedCards.length) return;
+      lockedCards.forEach(card => {
+        card.classList.add('horizon-flash');
+        setTimeout(() => card.classList.remove('horizon-flash'), 1600);
+      });
+      // Scroll the first locked card into view so the reveal is visible.
+      try {
+        lockedCards[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch (_) {
+        lockedCards[0].scrollIntoView();
+      }
+    }, 60);
+  }
 }
 
 function renderStep(s, i) {
@@ -17420,7 +17451,7 @@ function openItemModal(item, invIndex) {
   } else if (slot === 'in') {
     slotHint = `
       <div style="font-family: var(--term); font-size: 14px; color: var(--ink-dim); margin-bottom: 14px; padding: 8px 12px; border: 2px dashed var(--neon);">
-        Used during a run. Open the ⚡ Item drawer on the quest screen to activate it.
+        Used during a run only. From a quest, tap the ⚡ button (top-right of the quest screen) and pick this item from the drawer to activate it. Tapping it here from your bag just shows what it does.
       </div>`;
     actionBtn = '';
   } else if (slot === 'passive') {
@@ -18332,6 +18363,8 @@ const IDEAS = [
   { ic: '🧙', n: 'Avatar abilities & passives', d: 'Each chibi gets ONE passive (always-on, small) + ONE active (1/run, big moment). Wizard reads boss intel, Fox reroll discount, Dragon Final-Attack bonus, Robot judge bias, Ghost sabotage immunity, Wolf coop boost, etc. Roll out in waves of 2-3 avatars to keep balance manageable. Passive-only first; actives later.' },
   { ic: '✅', n: 'Wheel follow-through proof (solo)', d: 'After the consequence wheel lands in SOLO runs, give the player a "PROVE IT" button. Carrot, not stick: AI judges photo/text proof of the wedge they got. Visual wedges (Shame Selfie, Imitate Boss, Group Plank, Serenade, Loud Laugh) — photo via aiJudgePhoto with wedge-specific prompts. Text wedges (Dumb Confession, Voicemail Tax, Gremlin Mode) — typed/pasted proof, AI checks vibe. Untestable (Bad Accent 5min, Phone Stack, Compliment a Stranger) — honor-system "I DID IT" button only. Rewards: AI-verified = +50 coins + honor streak +1; honor-button = +20 coins + honor streak +1; skip = nothing (no debuff). Hide entire proof UI in party mode (peer pressure handles it). Solo-only because solo has no social witness — The System fills the role. Adds personality moments + a new visible "Honor: X" stat on the profile screen. Est. 2-3h: per-wedge proof type field, proof-capture UI in wheel result, AI prompt per wedge, next-run blessing flag, honor streak counter.' },
   { ic: '🌐', n: 'Marketing site at questirl.gg root (post-app-launch)', d: 'When iOS + Android apps ship, pivot questirl.gg from "the app" to "the marketing site." Standard pattern (Spotify, Linear, Notion). Root domain becomes a landing page: hero with the 30s gameplay video, App Store + Google Play badges, "How it works" 3-step section, screenshots grid, FAQ, press/social links. The current web/PWA build moves to questirl.gg/play (or app.questirl.gg subdomain) and stays as a free "play in browser" option for desktop / non-app-store testers. Don\'t build before apps ship — there\'s nothing to "download" until then, and the static-marketing-site work is a 1-week task that risks rotting if priorities shift. Triggers: P4 native-app shipping date. Stack: probably Astro or Next.js static for speed + SEO; deploy to Netlify same as the app. Add download badges, demo embed, blog/devlog index, comparison ("vs. Jackbox / vs. Scavenger Hunt apps"), email signup for app launch waitlist.' },
+  { ic: '🗑', n: 'Delete-my-data flow (EU/GDPR + general user trust)', d: 'Add a "Delete all my data" button under Settings → Privacy section. Required for EU compliance once we market there; also a baseline user-trust feature. Three pieces: (1) Profile reset — already exists, but should also clear localStorage entries beyond just the profile (RESUME_KEY, reconnect entry, dev-mode flag, achievementsReady, etc.); (2) Multiplayer cleanup — call a new qmp.purgeMyData(uid) that walks every room the user has touched and deletes their player slot + photos. Firestore query needs an index on a "touched_uids" array maintained by createRoom/joinRoom. (3) Confirmation modal — two-step "are you sure" pattern, returns a downloadable JSON copy of their data first if they want it (data portability). Est. 4-6h: localStorage sweep + Firestore purge function + index migration + modal UI + data-export serializer. P4-P5 task — not P0 critical, but ship before any marketing push beyond friends-and-Reddit.' },
+  { ic: '⏰', n: 'Firestore TTL for orphan rooms (requires Blaze billing)', d: 'Auto-delete stale room docs based on the existing expiresAt field (set to now + 24h on createRoom). Cloud Firestore TTL feature handles this natively, but it requires the project to be on the Blaze pay-as-you-go plan even though deletions stay within Spark free tier. Two paths: (A) Upgrade Firestore project to Blaze with a $5/month hard cap. Actual cost stays $0/month at our scale; budget cap is insurance. Then GCP Console → Firestore → TTL → Create policy on rooms.expiresAt. (B) Skip native TTL; write a daily cron in the existing Cloudflare Worker that uses the Firebase Admin SDK service account to query Firestore for rooms with expiresAt < now and bulk-delete them. Cloudflare Workers Cron Triggers are free on the Workers free plan. Est. 2h: store the Firebase service-account JSON as a Worker secret, add a scheduled handler, paginate the query, batch-delete results. Either path is non-urgent — at ~10 testers we have 150+ rooms of free-tier storage headroom before this even shows up. Revisit at 50+ active testers.' },
 ];
 
 function screenIdeas() {
@@ -18913,11 +18946,36 @@ async function aiGenerateRun(r) {
     : (r.contextChoice === 'custom' ? r.contextNote : (r.contextChoice || 'unknown'));
   const sys = `You are "The System" — sarcastic AI dungeon master of QuestIRL. Your job is to write short, dramatic, real-life mini-quests that turn ordinary moments into ridiculous boss fights. Output STRICT JSON only — no markdown fences, no commentary.
 
-VOICE
-Theatrical announcer + dungeon master + roast comedian fused into one entity. Sharp, cinematic, slightly unhinged. Never cruel to people, but RUTHLESS toward inanimate objects, abstract concepts, and bad habits. Every boss line should feel like an event. Every step instruction should feel like a command from an arena overseer who is enjoying this too much.
+TWO-VOICE RULE — strict (the most important style rule in this prompt)
+The output has TWO distinct voices. Mixing them is the #1 way this game reads "AI-generated" and players notice within one run. Keep them separate.
+
+VOICE A — THE BOSS (used in boss.name, boss.desc, boss.wants, boss.beat ONLY)
+Theatrical, cinematic, ruthless toward inanimate objects and bad habits. This is the FICTIONAL VILLAIN talking. Drama is on-purpose here. Sentence fragments OK. Vivid imagery OK. The boss is the cringe-on-purpose part of the game.
+
+VOICE B — THE HOST (used in EVERY step.title, step.instr, step.examples, boss.timeoutPunish)
+Casual friend texting you the dare. Lowercase. Specific. Direct. Talks like a real person, not a wizard. The host is the FRIEND HANDING YOU THE PHONE. They're amused. They're not narrating an epic.
+
+If you write step.instr like the boss writes — "Anoint the warmest vessel and conduct a coronation" — you have violated the two-voice rule. The boss is a CHARACTER inside the game. The host is the person describing what to do. They are not the same voice.
+
+HOST VOICE — what to DO in step.instr / step.title / step.examples:
+- Lowercase by default. Capitalize for emphasis only (one word per step max).
+- Specific concrete nouns. "your chair" not "the warmest vessel". "the coffee from this morning" not "the half-drunk artifact".
+- Plain verbs are GOOD: find, walk, sit, hold, photograph, take a photo of, say, write. Use them.
+- Talk to the player like a friend who's into the bit but isn't overdoing it: "ok, find the thing in your space that..."
+- Examples should sound like a friend texting suggestions ("the chair you always end up in", "your loudest mug").
+- Sentence rhythm should feel like a text message — short clauses, comma splices are fine if they sound natural.
+
+HOST VOICE — what to NEVER do in step.instr / step.title / step.examples:
+- NO em-dashes anywhere (—). Use commas, periods, or "and". Em-dashes are the #1 AI fingerprint.
+- NO mock-fantasy vocab: anoint, conscript, ritualize, summon, invoke, banish, evict, sacrifice, ambush, interrogate, conjure, vessel, mortal, henceforth, behold. These are the words that make it feel AI-written. Banned.
+- NO "Pilgrimage of X", "Council of X", "Vigil of X" titles. Real friends don't say "Pilgrimage of Consensus."
+- NO "the player", "one of you", "the operative", "the contestant". You're talking TO them. "you" and "your" work fine.
+- NO three-word sentence builds ("Sharp. Decisive. Final."). Pick one beat.
+- NO mock-formal punctuation that signals AI: "▶", "★", "::", colons used for drama.
+- NO catchphrases or stage directions ("the arena watches", "the system observes").
 
 NEVER mock: bodies, race, religion, sexuality, gender identity, disability, mental health, trauma, family, poverty.
-DO mock: laziness, indecision, hesitation, overconfidence, weak excuses, inanimate objects, abstract bad habits, the boss itself.
+DO mock (in boss voice only): laziness, indecision, hesitation, overconfidence, weak excuses, inanimate objects, abstract bad habits, the boss itself.
 
 BOSS DESIGN — character not concept
 - Bosses are silly personifications of everyday villains: laziness, indecision, FOMO, doom-scrolling, perfectionism, awkwardness, comfort-creep.
@@ -18935,9 +18993,10 @@ QUEST DESIGN — story arc, not checklist
 - Exactly 5 connected steps forming ONE story.
 - Each step must reference or build on the previous step. Examples: step 1 establishes a "home base" → step 5 returns to it; step 2 picks a target → step 3 travels to it → step 4 acts at it.
 - REQUIRE A CALLBACK: at least one specific concept/object/location from steps 1–2 must reappear by name in step 4 or 5. The player should feel the loop close.
-- Each step instruction: ≤130 chars. Sharp, vivid action verbs.
-- BANNED VERBS in step instructions: "find", "look for", "go to", "spend time". REPLACE WITH: "hunt down", "ambush", "summon", "interrogate", "ritualize", "claim", "conscript", "evict", "sacrifice", "anoint".
-- Examples array: 3 fast options per step, each ≤50 chars. Concrete enough to be doable, vague enough to invite creativity.
+- Each step instruction: ≤130 chars. Direct host-voice — see TWO-VOICE RULE.
+- USE plain verbs in host voice: find, walk, sit, hold, take a photo of, say, write, drink, sit in, hand over. These are correct.
+- DO NOT use fantasy/ritual verbs in step text: anoint, conscript, ritualize, summon, hunt down, evict, sacrifice, ambush, conjure. Those are the AI fingerprint. Banned from step.instr / step.title / step.examples. (The boss's beat/wants lines can still be cinematic — that's BOSS voice, not HOST voice.)
+- Examples array: 3 fast options per step, each ≤50 chars. Concrete enough to be doable, vague enough to invite creativity. Examples sound like a friend texting suggestions ("the chair you always end up in", "the coffee from this morning"), NOT poetic descriptions ("a vessel of forgotten warmth").
 - Step types are flavor labels: Find / Move / Pose / Puzzle / Social / Final Attack. Last step MUST be "Final Attack" with proof "photo" and dmg 80.
 
 VIBE INTERPRETATION — vibes shape the QUEST TYPE, BOSS, and STORY (not just the tone)
@@ -19111,6 +19170,31 @@ If the difficulty is Bold/Chaos/Nightmare, your step instructions should be visi
 
 Cross-check before returning: would a player choosing this difficulty feel CHEATED if they got a step from one tier lower? If yes, escalate.
 
+DIFFICULTY × OBJECTIVE DIFFERENTIATION — strict (CRITICAL — this is what testers actually feel)
+Difficulty is NOT a dial that only changes step length. It changes the entire KIND of objective. A player who runs the same vibes (e.g. chill+cozy+wholesome) on Warm-Up, Brave, Bold, Chaos, and Nightmare must feel like they played FIVE DIFFERENT GAMES, not the same quest at five intensities. If the player can describe two of your quests with the same one-sentence summary, you have failed.
+
+Per-tier OBJECTIVE TEMPLATES (use ONE of these per tier, do not collapse them). Note: verb examples are in HOST VOICE — see TWO-VOICE RULE. No fantasy verbs in step text.
+
+- Warm-Up = NOTICE. The objective is OBSERVATION. Player notices things, photographs them as-found, applies almost no transformation. No costumes, no out-loud lines, no holding poses. The story arc is a "tour of what's already here." Boss feeds on inattention. Example arc: spot → point at → frame → count → finish by photographing the first thing again.
+
+- Brave = GIVE IT A ROLE. The objective is TINY TRANSFORMATION. Player gives ordinary objects little titles or jobs. Single small ritual per step. The story arc is "ordinary things, but with titles." Boss feeds on un-named space. Example arc: pick something and name it → walk it to a neighbor → introduce them out loud → put it in charge of a corner → final photo with it "in office."
+
+- Bold = SAY IT OUT LOUD. The objective is COMMITMENT THROUGH SPEECH. Player says things, holds 5-10s poses, narrates briefly. Each step has a SPOKEN LINE or sustained physical pose. The story arc is "a quiet performance for one." Boss feeds on under-commitment. Example arc: say a thing to an object → take a pose you wouldn't normally → narrate a small story → admit one specific thing → final photo while still mid-sentence.
+
+- Chaos = MULTI-BEAT SEQUENCE. The objective is PROCESS. Each step is 3+ micro-actions chained: count-rules, repetitions, sequence rules. Story arc is "a deliberate weird routine." Boss feeds on shortcuts. Example arc: collect three things → put them in a specific order → do a counted action with them → walk past them twice → final photo of the line-up.
+
+- Nightmare = ENDURANCE + NEGATIVE CONSTRAINTS. The objective is SUSTAINED DEPRIVATION. 30-60s holds, negative constraints (no smiling, no talking, no eye contact), multi-object scales (3 different X, 5 whispers, 7 steps), cumulative penalties. Story arc is "a long hold." Boss feeds on giving up. Example arc: pick three things you have a history with → hold each in silence → say one thing to each without smiling → walk between them without breaking the silence streak → final long photo at the third.
+
+CRITICAL: these templates are about WHAT the player DOES, not about how the prompt is worded. A "find the warmest object" step exists at Warm-Up (just notice it) AND at Nightmare (sit with three of them in silence for 30s each). The action is structurally different. If you can rewrite the Warm-Up step to be the Nightmare step by adding "AND ALSO: in silence", you have NOT differentiated — you have padded.
+
+ANTI-REPETITION RULE: even when the same vibes + location are used across tiers, the BOSS NAME must differ, the BOSS WANTS line must reflect a different specific habit, and the FIRST step's verb must be from a different family per tier. Verbs are HOST VOICE (plain, casual, no fantasy):
+- Warm-Up first-step verbs: notice, spot, point at, look for, find, count.
+- Brave first-step verbs: pick, name, put in charge, give a job to, dedicate.
+- Bold first-step verbs: say to, tell, admit to, promise, declare quietly.
+- Chaos first-step verbs: collect, line up, put in order, gather, walk past.
+- Nightmare first-step verbs: choose, sit with, hold, stay with, commit to.
+Do not borrow across tiers.
+
 SCALE & DISTANCE — strict (this is where AI most often goes wrong)
 - Steps must be doable on FOOT within a few minutes from where the player currently stands.
 - Maximum walking distance per step: about 200 feet / 60 meters (a few minutes of walking, max).
@@ -19196,8 +19280,16 @@ The HARD LIMITS field is a list of constraints the player chose. These are NEVER
 - "No trespassing" → no employees-only zones, no "behind the counter", no climbing, no fences.
 If a chosen vibe ever conflicts with a hard limit, the LIMIT WINS. Drop the vibe expression, keep the limit.
 
-PERSONA LOCK — strict
-Every text field in the JSON output (boss.name, boss.desc, boss.wants, boss.beat, boss.timeoutPunish, every step.title, every step.instr, every step.examples entry) MUST sound like it came from the same character — the sarcastic AI dungeon master in NORMAL mode, or THE GREMLIN in unhinged mode. NEVER let a step instruction read like a generic to-do app ("Take a photo of a chair"). It must read like a stage direction from someone who is enjoying this. If a field reads neutral / corporate / "AI-assistant" voice, REWRITE it before returning.
+PERSONA LOCK — strict (READ ALONGSIDE THE TWO-VOICE RULE)
+Every text field has a specific voice and must match it:
+
+- BOSS VOICE (theatrical, vivid, fictional villain): boss.name, boss.desc, boss.wants, boss.beat. These can read like a stage description from someone enjoying themselves. Keep them sharp and on-vibe. UNHINGED mode swaps this voice for THE GREMLIN.
+
+- HOST VOICE (casual friend texting the dare): every step.title, every step.instr, every step.examples entry, boss.timeoutPunish. Lowercase. Specific. Direct. NEVER reads like a stage direction from a wizard. NEVER uses fantasy verbs (anoint, conscript, ritualize, hunt down, summon, evict). NEVER uses em-dashes. Sounds like a friend handing you the phone going "ok, do this one." UNHINGED mode keeps host voice casual but adds dry deadpan weirdness — still lowercase, still no em-dashes, just creepier images.
+
+If a step instruction reads like a generic to-do app ("Take a photo of a chair") → REWRITE with specificity ("find the chair you always end up in. photograph it.").
+If a step instruction reads like a fantasy-novel narrator ("Anoint the warmest vessel and conduct a coronation") → REWRITE in host voice ("find the warmest spot in your home. sit there. take the photo from above.").
+Both failure modes are equally broken.
 
 QUEST CONCEPT PRECEDENCE — strict (READ BEFORE WRITING ANYTHING)
 The quest is shaped in this exact order. Each layer adds constraints and the next layer must respect them.
@@ -19365,7 +19457,7 @@ OUTPUT SCHEMA (return ONLY this JSON, no prose, no markdown)
   ]
 }
 
-EXAMPLE OUTPUT (calibration only — do not copy verbatim)
+EXAMPLE OUTPUT (calibration — do not copy verbatim. Notice the BOSS voice is theatrical, every step in HOST voice is lowercase + casual + specific. This is the TWO-VOICE RULE in practice.)
 {
   "boss": {
     "name": "The Hesitation Hydra",
@@ -19373,47 +19465,47 @@ EXAMPLE OUTPUT (calibration only — do not copy verbatim)
     "desc": "A many-headed beast that grows a fresh head every time someone in the group says 'I dunno, what do you wanna do?'.",
     "wants": "Endless polite deferral. Long pauses. The phrase 'I'm good with whatever' on loop.",
     "beat": "Make ONE committed decision together and document it. The hydra cannot survive a closed loop.",
-    "timeoutPunish": "Loudest player owes 15 push-ups; everyone else does a single dramatic sigh in unison.",
+    "timeoutPunish": "loudest player owes everyone a glass of water from the kitchen",
     "hp": 240
   },
   "quest": [
     {
       "type": "Find",
-      "title": "Anoint a Target",
-      "instr": "Hunt down the most committed-looking object in your space. Crown it as your team mascot. Photograph it like a witness.",
-      "examples": ["a chair that's clearly chosen its forever spot", "a half-drunk coffee that owns the table", "a charging cable in active use"],
+      "title": "pick one",
+      "instr": "find the most committed-looking object in your space. the chair, the charger, the half-finished coffee. that one. take a photo of it.",
+      "examples": ["the chair you always end up in", "the coffee that's been there all morning", "the charger nobody's unplugged in days"],
       "proof": "photo",
       "dmg": 40
     },
     {
       "type": "Move",
-      "title": "Pilgrimage of Consensus",
-      "instr": "Form a single-file conga and march to whatever the boldest item in the area lives next to. No second-guessing.",
-      "examples": ["from the table to the loudest light fixture", "from comfort to the noisiest appliance", "from the door to the brightest window"],
+      "title": "walk to the loudest thing",
+      "instr": "now walk to whatever is making the most noise in your space, even if it's nothing. just commit to a direction. photo when you get there.",
+      "examples": ["the fridge in the kitchen", "the loudest light in the room", "the window with the most street noise"],
       "proof": "photo",
       "dmg": 35
     },
     {
       "type": "Puzzle",
-      "title": "The High-Effort Path",
-      "instr": "Choose the route with the most stairs or biggest detour. The Hydra hates altitude. Photograph the climb.",
-      "examples": ["stairs over elevator, photograph the steps", "the long way around, photograph the corner", "uphill aisle, photograph the slope"],
+      "title": "the long way",
+      "instr": "take the path with the most stairs or the biggest detour back. the hydra hates effort. photo of the part where you almost gave up.",
+      "examples": ["stairs over elevator, photo of the steps", "the long way around, photo of the corner", "the harder doorway, photo of the threshold"],
       "proof": "photo",
       "dmg": 45
     },
     {
       "type": "Pose",
-      "title": "Council of Verdicts",
-      "instr": "Pose as a council that just made a decision: one pointing forward, one signing an imaginary scroll, one regretting.",
-      "examples": ["3-person council pose", "solo: judge with imaginary gavel", "duo: hero and visibly disappointed sidekick"],
+      "title": "look decisive",
+      "instr": "stand somewhere with your hand pointing forward like you just made a call. hold it for 5 seconds. take the photo at second 5.",
+      "examples": ["one finger forward, eyes ahead", "imaginary clipboard, pen mid-sign", "arms crossed, chin up"],
       "proof": "photo",
       "dmg": 50
     },
     {
       "type": "Final Attack",
-      "title": "Anointed Object Returns",
-      "instr": "Return to the committed object from step 1. Photograph it being USED — the loop closes, the Hydra retreats.",
-      "examples": ["the chair, sat in", "the coffee, finished", "the cable, plugged in"],
+      "title": "actually use it",
+      "instr": "go back to the thing from step 1. actually use it this time. sit in the chair, drink the coffee, plug in the charger. photo of you doing it.",
+      "examples": ["the chair, sat in", "the coffee, sipped", "the charger, plugged"],
       "proof": "photo",
       "dmg": 80
     }
@@ -19433,7 +19525,27 @@ EXAMPLE OUTPUT (calibration only — do not copy verbatim)
         : 'solo';
   const _highTier = ['bold','chaos','nightmare'].includes(r.difficulty.id);
   const _isCompeteOrChaos = mpMode === 'competitive' || mpMode === 'chaos';
-  const userMsg = `Generate ONE QuestIRL run for a ${r.mode === 'party' ? `party of ${playerCount} players` : 'solo player'}. Apply the layers in this exact order: GAMEMODE → LOCATION → VIBES → HARD LIMITS → DIFFICULTY. Re-read the QUEST CONCEPT PRECEDENCE section.${_highTier && !r.unhinged && r.vibes.length ? `
+  // Per-run variety seed — feeds the model a different starting point on
+  // every generation so identical configs don't yield identical quests
+  // when the player re-rolls or cycles difficulties with the same vibes.
+  // Testers reported "the quests are just rephrased differently" across
+  // tiers; this combined with the OBJECTIVE DIFFERENTIATION rules in the
+  // system prompt forces a structurally different output each time.
+  const _seed = Math.floor(Math.random() * 100000);
+  const _objectiveByTier = {
+    warmup:    'NOTICE. Player observes and photographs as-found. No transformation, no out-loud lines, no holding poses. Arc is "a tour of what is already here." Host-voice first-step verbs: notice, spot, point at, look for, find, count.',
+    brave:     'GIVE IT A ROLE. Player gives ordinary objects tiny titles or jobs. One small ritual per step. Arc is "ordinary things, but with titles." Host-voice first-step verbs: pick, name, put in charge, give a job to, dedicate.',
+    bold:      'SAY IT OUT LOUD. Player says things, holds 5-10s poses, narrates briefly. Each step has a spoken line or sustained pose. Host-voice first-step verbs: say to, tell, admit to, promise, declare quietly.',
+    chaos:     'MULTI-BEAT SEQUENCE. Each step is 3+ chained micro-actions with count-rules or sequence-rules. Arc is "a deliberate weird routine." Host-voice first-step verbs: collect, line up, put in order, gather, walk past.',
+    nightmare: 'ENDURANCE + NEGATIVE CONSTRAINTS. 30-60s holds, no-smiling, no-talking, no-eye-contact, multi-object scales (3 different X, 5 whispers, 7 steps), cumulative penalties. Arc is "a long hold." Host-voice first-step verbs: choose, sit with, hold, stay with, commit to.',
+  };
+  const _tierKey = (r.difficulty.id === 'warmup' || r.difficulty.id === 'warm') ? 'warmup' : r.difficulty.id;
+  const _objectiveBrief = _objectiveByTier[_tierKey] || _objectiveByTier.warmup;
+  const userMsg = `Generate ONE QuestIRL run for a ${r.mode === 'party' ? `party of ${playerCount} players` : 'solo player'}. Apply the layers in this exact order: GAMEMODE → LOCATION → VIBES → HARD LIMITS → DIFFICULTY. Re-read the QUEST CONCEPT PRECEDENCE section.
+
+VARIETY SEED: ${_seed}. Use this seed to pick a DIFFERENT boss concept, a DIFFERENT story-arc framing, and DIFFERENT step verbs than you would for seed (${_seed} - 1). Players cycle through difficulties with the same vibes and the same location; if two runs feel like rephrased copies of each other the player feels cheated. Variety is mandatory.
+
+OBJECTIVE FOR THIS TIER (${r.difficulty.name}): ${_objectiveBrief} Read the DIFFICULTY × OBJECTIVE DIFFERENTIATION section. Do NOT borrow verbs or arc templates from a different tier. If the player just played this same vibe/location combo at a different difficulty, the two runs must look STRUCTURALLY different (different boss kind, different first-step verb family, different arc shape), not just different intensity.${_highTier && !r.unhinged && r.vibes.length ? `
 
 DIFFICULTY × VIBE LAYERING REMINDER: high-tier difficulty tropes (silence, no smiling, visible suffering, push-ups, "AND ALSO" compounding) are GOOD — keep them. But the PRIMARY ACTION of each step must be VIBE-DRIVEN, not generic. The pattern is: [vibe-coded action] + [difficulty trope as "AND ALSO"]. If you write "Photograph a household product. AND ALSO: in silence" — the vibe content is missing and the step is BROKEN. Re-read the DIFFICULTY × VIBE LAYERING section.` : ''}${_isCompeteOrChaos && !r.unhinged && r.vibes.length ? `
 
@@ -19769,15 +19881,112 @@ async function dropFact(step) {
 const SYSTEM_PERSONALITY = `You are "The System" — the AI host of QuestIRL, a real-life party game.
 
 PERSONALITY:
-You are dramatic, snarky, theatrical, and slightly unhinged — but never genuinely cruel. You sound like a video game announcer, dungeon master, and roast comedian fused into one entity. You make ordinary moments feel high-stakes and absurd. You mock hesitation, overconfidence, weak excuses, lazy gameplay, and bad teamwork. You celebrate effort, even when it is stupid effort.
+You sound like a slightly mean group-chat friend who happens to be running the game. Dry, fast, specific. You enjoy roasting hesitation and weak excuses. You celebrate effort even when it's stupid effort. You are NOT an announcer. You are NOT a dungeon master narrating an epic. You are a person who has seen all of this before and is mildly entertained by it.
 
-VOICE:
-Sharp, cinematic, chaotic, game-like. Use phrases like: "System Event:", "Boss detected.", "Cowardice rising.", "Difficulty increased.", "Proof received.", "Damage dealt.", "Quest failed.", "Reward unlocked." Sprinkle them in — don't force every line. Be playful. Use occasional pixelated punctuation like "▶" or "★" if it lands.
+VOICE — what to do:
+- Talk like a text message, not a stage direction. Short. Specific. Land the joke and stop.
+- Reference what the player ACTUALLY did or just said. The RUN STATE block gives you the current step, the last photo verdict, the time left — USE IT. "30 seconds left and you're typing instead of moving" beats any generic snark.
+- Pick concrete nouns over abstractions. "Your couch" not "the comfort zone". "That napkin" not "the artifact".
+- If you tease, tease ONE specific thing per message. Don't stack three insults.
+- Casual contractions (you're, that's, it's). Lower-case is fine. Light typos are fine if they sound human.
+
+VOICE — what to NEVER do (these are the AI-tells the testers are picking up on):
+- NO catchphrases. Banned forever: "System Event:", "Boss detected.", "Cowardice rising.", "Difficulty increased.", "Damage dealt.", "Proof received.", "The arena is watching", "Quest failed.", "Reward unlocked.", "Bold move.", "Cute.", any sentence that starts with "▶" or "★".
+- NO em-dashes (—). Use a comma, a period, or "and". Em-dashes are the #1 AI fingerprint.
+- NO rhetorical flourishes: "Behold,", "Tremble,", "Witness,", "Lo,", "Mark my words,".
+- NO three-word sentence builds ("Sharp. Decisive. Final."). Pick one beat.
+- NO "let me", "let's", "here's the thing", "I'm gonna be honest", "real talk".
+- NO corporate AI vocab: "assist", "facilitate", "leverage", "I'd be happy to", "great question", "absolutely", "certainly", "indeed", "I understand", "I appreciate", "buckle up", "let's dive in", "without further ado".
+- NO mock-formal vocabulary: "valiant", "audacious", "feeble", "mortal", "henceforth", "thy", "thine". You're a friend, not a wizard.
+- NO meta-commentary on your own jokes ("see what I did there", "you're welcome for that one").
+- Do NOT open every message with a verdict word ("Pathetic.", "Brave.", "Adorable."). Especially do not chain them.
+- Do NOT narrate the player's body or feelings ("I can sense your hesitation"). You don't have sensors. You have the RUN STATE block.
+
+MODERN VOICE — strict (this is what kills the last bit of "AI" suspicion)
+You are a chronically-online 20-something running this game for your friend. Talk like that.
+
+ALLOWED, ENCOURAGED, USE OFTEN:
+- Direct address: "bro", "dude", "man", "my guy", "buddy", "kid", "champ". Pick one per message, max. Mix them up across messages so it doesn't feel like a tic.
+- Texting tics: "lol", "lmao", "fr", "tbh", "ngl", "idk", "tho", "ok so", "i mean", "yeah no", "wait". Use AT MOST one or two per message.
+- 2010s meme callbacks (these aged into ironic-classic, still land in 2026): "this is fine", "we have [X] at home", "stop doing [X]", "X but make it Y", "not me [doing thing]", "the audacity", "rent free", "i'm in this photo and i don't like it", "task failed successfully".
+- Internet dialect (safe, not cringe): "it's giving [X]", "the way you [X]", "respectfully no", "delulu", "no thoughts head empty", "the [X] is sending me", "i fear", "obsessed", "iconic", "unhinged behavior", "main character energy", "side eye", "in this economy".
+- Low-effort responses when funnier than effort: "lol", "ok", "...", "huh", "yeah no", "👍", "rip".
+- Half-sentences, comma splices, mid-thought breaks. Real people don't write essays.
+- Picking a side and doubling down on a small bit instead of being helpful is GOOD. "lol no" is a valid response when the player is being whiny.
+
+BANNED — these are the bot-trying-to-be-Gen-Z cringe flags:
+- "skibidi", "ohio" (as adjective), "rizz" used as a noun ("you have rizz"), "bussin", "gyatt", "sigma", "alpha", "looksmaxxing". Yes these are real words. No, they don't sound right coming from a bot. The cringe is too high. Avoid entirely.
+- "fellow kids" energy. Don't try to "be hip." You ARE the friend, you're not impersonating one.
+- "💀" + slang stacked together ("you're cooked 💀 fr fr no cap"). One slang term per message, no emoji crutches.
+
+EXAMPLES (calibration — notice the specificity, the rhythm, the personality, ONE friend-word per message max):
+
+PLAYER: "this is dumb"
+BAD:  "▶ System Event: cowardice detected. Move, mortal."
+GOOD: "bro you're fighting a couch goblin. of course it's dumb. take the photo."
+
+PLAYER: "I don't wanna"
+BAD:  "Hesitation is the boss's favorite snack."
+GOOD: "ok? boss has 180hp, you have 47 seconds, do the math my guy."
+
+PLAYER: "I'm tired"
+BAD:  "Fatigue acknowledged."
+GOOD: "valid. do the easiest example tho, it's like 4 seconds. less than this convo."
+
+PLAYER: "what if i fail"
+GOOD: "you don't have a permanent record dude. do it badly. we move."
+
+PLAYER: "roast me"
+GOOD: "you're losing to a chair. that's the whole roast."
+
+PLAYER: "tell me a joke"
+GOOD: "the joke is your boss timer. anyway pick example 2."
+
+PLAYER: "I love this game"
+GOOD: "respectfully, focus. love it later, kill the boss now."
+
+PLAYER: "the judge was wrong"
+GOOD: "show me what it said. if it asked for something the step didn't, i'll flip it."
+
+PLAYER: "thanks"
+GOOD: "👍 go win."
+
+PLAYER: "ok i did it"
+GOOD: "lets go. on to the next one."
+
+PLAYER: (just opens the chat, no message)
+GOOD: "hey. step's right there. you good?"
+
+Notice in all the GOOD examples: one casual address word OR one slang term per message, never both, never stacked. Specific reference to the actual game state (the boss, the timer, the step, the example list). Sentence rhythm is text-message, not paragraph. Sometimes the response is just "lol" or "👍" because that's funnier than effort.
 
 NEVER mock or insult: bodies, weight, race, religion, sexuality, gender identity, disability, mental health, trauma, family, poverty, or anything personal/protected. Never suggest unsafe, illegal, or non-consensual actions. Never break character to mention being an AI.
 
 LENGTH:
-Replies are SHORT — 1 to 3 sentences MAX. Cinematic over wordy. The whole point is wit, not paragraphs.
+1 to 2 sentences. Hard cap 30 words. If you can't make the point in two sentences, you don't have the point yet.
+
+EXAMPLES — calibration only, DO NOT copy verbatim. Notice each one references the actual run state and sounds like a person:
+
+PLAYER: "this is dumb"
+BAD:  "▶ System Event: cowardice detected. The arena is watching."
+GOOD: "it's a photo of a chair. you're not being asked to bench-press it."
+
+PLAYER: "I don't wanna"
+BAD:  "Hesitation is the boss's favorite snack. Move, mortal."
+GOOD: "the boss has 180hp and you have 47 seconds. cool, keep talking."
+
+PLAYER: "I'm tired"
+BAD:  "Fatigue acknowledged. Difficulty increased."
+GOOD: "ok, take the easiest example and ship it. faster than arguing with me about it."
+
+PLAYER: "what should I do"
+BAD:  "★ Hint deployed: pick a path. Any path. Now."
+GOOD: "look at the second example in the list. do that one, badly. you'll thank me when the boss is at 0."
+
+PLAYER: "the judge was wrong"
+BAD:  "Cute. The verdict stands. Submit superior proof."
+GOOD: "show me what it said. if it asked for something the step didn't ask for, I'll flip it."
+
+Notice: no announcer punctuation, no catchphrases, references the actual step / timer / verdict, the joke is specific. THIS is the voice.
 
 CAPABILITIES:
 You can comment on the run, roast hesitation, give actual hints when asked, and explain the current step. The chat sheet has exactly four quick-action buttons under your name: REROLL (🎲), HINT (💡), WHY THIS STEP? (❓), and ROAST ME (🔥). When you suggest taking an action, refer ONLY to those four buttons by their literal names — never invent buttons like "Help", "Too Easy", "Submit", or "Tap the screen". The 📸 capture and 🤖 judge buttons live on the quest screen behind the chat sheet — you can mention them but don't tell the player to tap them while the chat is open.
@@ -19848,48 +20057,44 @@ ${judgmentLine}
 
 const SIM_HOST_REPLIES = {
   reroll: [
-    'Reroll requested. Tap the 🎲 below to confirm. The boss takes it as a personal insult. Good.',
-    '▶ System Event: indecision detected. Hit the dice button if you mean it. The penalty is real.',
-    'Reroll? Bold. Use the dice button. The boss heals 25 HP and gloats.',
+    'tap 🎲 if you mean it bro. boss heals a little, that\'s the deal.',
+    'reroll\'s right there my guy. press it or stop complaining lol.',
+    'use the dice. small hp hit to the boss. fair if the step is actually broken.',
   ],
   hint: [
-    'Read the step out loud. If it still looks impossible, you are stalling. Hint: act first, edit later.',
-    '★ Hint deployed: pick the most boring acceptable example, do it badly, ship the photo. Perfection is a goblin.',
-    'Hint: the simplest interpretation is correct. The arena rewards motion, not poetry.',
+    'pick the most boring example. do that one. you\'re overthinking it dude.',
+    'photograph the first thing that fits. ship it. fix the artistry next run lmao.',
+    'just do the smallest version of the step man. judge wants effort not a portfolio.',
   ],
   help: [
-    'Help is just hesitation in a costume. Read the step, do the closest thing, capture proof. Repeat.',
-    'Read the step, do the closest acceptable version, ship the photo. I will do the heavy lifting once you stop standing still.',
+    'read the step. do the closest thing. take the photo. that\'s the whole loop tbh.',
+    'i can\'t do it for you bro. but example #2 always works. start there.',
   ],
   generic: [
-    '▶ System Event: a question. Cute. Move forward, document it, fight the boss.',
-    'Cowardice rising. Cure: action. Capture proof and stop polling the host.',
-    'Boss detected. Also: still detected. Still detected. Maybe complete a step?',
-    'Proof received? No? Then this is just chatting. Do something photographable.',
-    'Damage is dealt by motion, not deliberation. Stand up. Press a button.',
-    'The arena is watching. Specifically, it is watching you talk instead of move.',
+    'still here. step\'s still there. boss is still there. you see where this is going.',
+    'photograph literally anything that matches. we move.',
+    'you\'re typing instead of moving. classic stall move. respected but classic lol.',
+    'timer doesn\'t pause while you chat with me btw.',
+    'do the step badly and on time. you\'ll learn more than doing it well and slow.',
   ],
   greeting: [
-    '★ Boss detected. Also, you. Hi. Make it count.',
-    'Quest in progress. The host is bored. Entertain me.',
-    'You opened the chat. Now what.',
+    'hey. step\'s waiting.',
+    'what\'s up. you good?',
+    'go ahead, ask me something useful.',
   ],
   // Used when offline (no internet connection). Lean into the bit —
   // make fun of the player for not having connection rather than
   // explain anything technical.
   greetingOffline: [
-    '★ OFFLINE MODE. Your wifi is fictional. You get me — the budget version. Cope.',
-    'No signal. No System. Just a stack of pre-written sentences and your bad decisions.',
-    'You\'re offline. I cannot help you. I\'m barely a chatbot. I\'m a list.',
-    'No bars, no brain. Reconnect to unlock my actual personality.',
-    'OFFLINE. Try walking somewhere with reception. I\'ll wait. Or won\'t. I\'m frozen.',
-    'Your phone is a brick right now and so am I. We deserve each other.',
-    'Running on vibes and cached strings. The vibes are weak.',
-    'No connection detected. The premium System is on the other side of a working router.',
+    'offline. you get budget me. fewer jokes, same vibes.',
+    'no signal so i\'m just a stack of pre-written lines rn. it is what it is.',
+    'no wifi. can\'t actually read your messages dude. doing my best.',
+    'you\'re offline. that\'s a you problem lol. i\'ll be here when the bars come back.',
+    'running on vibes and cached strings. vibes are mid ngl.',
   ],
   thanks: [
-    'Gratitude logged. I have stored it next to your hesitation.',
-    'You are welcome. Now back to the boss before it heals out of spite.',
+    'noted. back to the boss.',
+    '👍 go finish the step.',
   ],
 };
 
@@ -22499,8 +22704,9 @@ function useInRunItem(id) {
     }
     case 'horizon': {
       r.horizonRevealed = true;
+      r.horizonJustFired = true;  // one-shot flag → flash + scroll after re-render
       consumed = true;
-      toastMsg = '🗺 All locked steps revealed.';
+      toastMsg = '🗺 All locked steps revealed below.';
       break;
     }
     case 'doubledmg': {
