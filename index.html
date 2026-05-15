@@ -7983,6 +7983,9 @@
 
   // Resize + recompress a data URL so the room doc fits in Firestore's 1MB
   // per-document cap even with several photos. Returns a JPEG data URL.
+  // Bonus side effect: re-encoding through canvas STRIPS all EXIF metadata
+  // (incl. GPS coordinates phones embed by default). See stripImageMetadata
+  // below — same mechanism, no resize.
   async function compressDataUrlForFirestore(dataUrl, maxDim = 900, quality = 0.6) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -8294,7 +8297,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.12.175';
+const BUILD_VERSION = '2026.05.15.176';
 
 // Server-side Anthropic relay (Cloudflare Worker — see relay/worker.js).
 // When set, every player gets full AI features with no key required —
@@ -14401,7 +14404,7 @@ function bindQuest() {
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = ev => {
+      reader.onload = async ev => {
         // Native file input fallback always fills the next-empty slot
         const step = r.quest[i];
         const required = Math.max(1, Math.min(6, step?.photoCount || 1));
@@ -14412,7 +14415,11 @@ function bindQuest() {
           const idx = photos.findIndex(p => !p);
           slot = idx >= 0 ? idx : (photos.length < required ? photos.length : 0);
         }
-        saveProofPhoto(i, slot, ev.target.result);
+        // Strip EXIF (incl. GPS) by re-encoding through canvas BEFORE
+        // anything else sees the photo. Without this, the AI judge call
+        // would receive raw camera output with location metadata intact.
+        const clean = await stripImageMetadata(ev.target.result);
+        saveProofPhoto(i, slot, clean);
         toast('Photo captured.');
         render();
       };
@@ -20037,6 +20044,40 @@ function calculateRequiredRunTime(r) {
    photos is a sparse array indexed by slot. dataUrl always mirrors the
    first captured photo so the AI judge / recap / share card paths keep
    working without a refactor. */
+// Strip EXIF / IPTC / GPS / any embedded metadata from a captured photo
+// by re-encoding through a canvas. Canvas drawImage + toDataURL only
+// preserves pixel data — every metadata chunk in the source JPEG is
+// silently dropped on re-encode. We do this BEFORE the photo touches
+// proof.dataUrl so neither the AI judge call nor the Firestore upload
+// ever sees the player's GPS coordinates or device-identifying tags.
+// Falls back to the original data URL on any error so a capture never
+// silently disappears.
+async function stripImageMetadata(dataUrl) {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth || img.width;
+          c.height = img.naturalHeight || img.height;
+          c.getContext('2d').drawImage(img, 0, 0);
+          // Use JPEG at high quality so we don't degrade the photo visibly.
+          // EXIF is gone either way; quality of 0.92 keeps it photo-grade.
+          resolve(c.toDataURL('image/jpeg', 0.92));
+        } catch (e) {
+          console.warn('[exif strip] re-encode failed:', e);
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    } catch (e) {
+      resolve(dataUrl);
+    }
+  });
+}
+
 function saveProofPhoto(stepIdx, slotIdx, dataUrl) {
   const r = state.run;
   if (!r) return;
@@ -22888,6 +22929,12 @@ const ONBOARD_SLIDES = [
     body: 'You can play solo or with up to 7 friends in real time. Cooperate, compete, or chaos-mode. Frames are forever. The arcade is yours.',
     imgBg: 'linear-gradient(135deg, rgba(255, 61, 166, 0.25), rgba(245, 194, 66, 0.20))',
     icon: 'img/pvp.png',
+  },
+  {
+    title: '▶ ABOUT YOUR PHOTOS',
+    body: 'Solo photos stay on your device. Party photos are visible only to your roommates and auto-delete within 24h after the room ends. GPS data is stripped before any photo is sent or stored. The host (an AI) judges proof — be silly, not sensitive.',
+    imgBg: 'linear-gradient(135deg, rgba(74, 222, 128, 0.22), rgba(79, 227, 214, 0.22))',
+    icon: 'img/ui_camera.png',
   },
 ];
 function maybeShowOnboarding() {
