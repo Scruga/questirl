@@ -8307,7 +8307,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.15.182';
+const BUILD_VERSION = '2026.05.15.185';
 
 // Server-side Anthropic relay (Cloudflare Worker — see relay/worker.js).
 // When set, every player gets full AI features with no key required —
@@ -8805,11 +8805,17 @@ const TRUE_FINAL_VARIANTS_SOLO = [
 ];
 
 const TOO_EASY_TAUNTS = [
-  '▶ DIFFICULTY INCREASED. Final step REPLACED with something the boss approves of personally.',
-  '▶ Your confidence has been weaponized. The new final step is what nightmares warn each other about.',
-  '▶ TOO EASY DETECTED. Quest reformatted. You did this. Live with it.',
-  '▶ Volunteer note received. The arena has prepared something memorable for the finale.',
-  '▶ You said the words. The wheel cackled. The final step has been UPGRADED.',
+  'difficulty INCREASED. final step swapped for something the boss personally requested.',
+  'main character energy detected. final step upgraded accordingly bro.',
+  'too easy huh? ok. final step rewritten. live with it.',
+  'volunteer note received. the arena has something memorable lined up lmao.',
+  'you said the words. wheel cackled. final step: upgraded.',
+];
+const TOO_EASY_TAUNTS_UNHINGED = [
+  'too easy?? the gremlin is delighted. consequences begin.',
+  'subject bored. quest reformatted. immediately.',
+  'you said the cursed words. the radiator heard. final step: worse.',
+  'the bit deepens. final step has been blessed. wrongly.',
 ];
 
 /* ============================================================
@@ -9980,64 +9986,81 @@ function buildSoloQuestVariants(diff, r) {
 const MAX_REROLLS_PER_RUN = 3;
 
 const REROLL_TAUNTS = [
-  '▶ Indecision logged. The arena appreciates your inability to commit.',
-  '▶ New quest, same hesitation. The boss is taking notes.',
-  '▶ Reroll? Bold move from someone who can\'t pick a Netflix show in under twenty minutes.',
-  '▶ Excellent. We will simply pretend the previous quest was a draft.',
-  '▶ Decisiveness ranking just dropped to "lukewarm soup".',
-  '▶ Reroll accepted. The boss adds you to its bedtime story rotation.',
-  '▶ Fresh quest forged from your indecision. Hope it was worth the coin.',
-  '▶ The wheel of consequences took a screenshot. For later.',
-  '▶ Reroll noted. The arena bills your soul. Receipt: your dignity.',
-  '▶ Sure. Try this one. The boss is curious how you\'ll fail this version.',
+  'indecision logged. respectfully.',
+  'new quest, same hesitation. boss is taking notes lol.',
+  'reroll? bold move from someone who took 4 min to open chat.',
+  'ok pretend the previous quest was a draft. we move.',
+  'decisiveness ranking just dropped to "lukewarm soup."',
+  'fresh quest, your coins are crying. enjoy.',
+  'sure. try this one. boss is curious how you\'ll fail this version.',
+  'reroll accepted. boss heals a little. fair trade if the new one slaps.',
+];
+const REROLL_TAUNTS_UNHINGED = [
+  'the previous quest was eaten by the radiator. here is the new one.',
+  'reroll. the gremlin shrugs damply. fine.',
+  'rerolling reality. boss heals 25 because vibes.',
+  'a new quest from the same wet mouth. enjoy.',
+  'subject indecisive. quest reformatted. continue.',
 ];
 
 const REROLL_DENIED_BROKE = [
-  '▶ REROLL DENIED — broke. The arena does not run on charm. (Need 10 🪙.)',
-  '▶ Reroll requires coin. Coin requires winning. Winning requires moving. We are stuck.',
-  '▶ The reroll machine accepts coins, not vibes. (Need 10 🪙.)',
+  'reroll denied. broke. (need 10 🪙.)',
+  'reroll requires coin. coin requires winning. winning requires moving. we are stuck.',
+  'the reroll machine accepts coins, not vibes. (need 10 🪙.)',
+];
+const REROLL_DENIED_BROKE_UNHINGED = [
+  'the gremlin checks your pockets. lint. no reroll. (need 10 🪙.)',
+  'coinless subject. denied. (need 10 🪙.)',
+  'the radiator demands tribute. you have none. (need 10 🪙.)',
 ];
 
 const REROLL_DENIED_MAXED = [
-  '▶ REROLL LOCKED. You\'ve burned all 3 of this run. The arena is laughing in fluent algorithm.',
-  '▶ No more rerolls this run. Commit to the chaos you wished for.',
-  '▶ Reroll budget: depleted. Decision-making: implied. Continue the quest.',
+  'reroll locked. you burned all 3 this run my guy.',
+  'no more rerolls this run. commit to the chaos you wished for.',
+  'reroll budget: depleted. decision-making: implied. continue the quest.',
+];
+const REROLL_DENIED_MAXED_UNHINGED = [
+  'three rerolls used. the bit is closed. continue.',
+  'the gremlin shakes its head. no more spins. commit.',
+  'reroll well dry. you are the quest now. proceed.',
 ];
 
 const HOST_LINES = {
   bossReveal: [
-    'A boss has appeared. Try to look surprised.',
-    'New target acquired. Confidence is welcome but unnecessary.',
-    'The arena recognizes your hesitation and considers it lunch.',
+    'a boss has appeared. try to look surprised.',
+    'new target acquired. confidence welcome but optional.',
+    'meet the boss. it has been doing this longer than you have.',
   ],
   questReveal: [
-    'Quest revealed. Timer started. Yes, the timer is real.',
-    'Your mission is now visible. Excuses are still hidden — for now.',
+    'quest revealed. timer started. yes the timer is real.',
+    'your mission is now visible. excuses are still hidden, for now.',
+    'here\'s the run. go ruin a couch goblin.',
   ],
   stepDone: [
-    'Photo proof received. Shockingly, this appears to be effort.',
-    'Step complete. The boss takes damage and a small ego hit.',
-    'You did the thing. The thing has been done. Continue.',
+    'photo received. shockingly, this appears to be effort lol.',
+    'step done. boss takes damage and a small ego hit.',
+    'you did the thing. the thing has been done. next.',
   ],
   voteFail: [
-    'Vote failed. The party briefly invents democracy and immediately regrets it.',
-    'Not everyone agreed. Suspicious. Continue or retry.',
+    'vote failed. democracy briefly invented, immediately regretted.',
+    'not everyone agreed. suspicious. continue or retry.',
   ],
   reward: [
-    'Reward incoming. The System is feeling generous, which is rare and lightly threatening.',
-    'Loot dispensed. Try not to peak here.',
+    'reward incoming. i\'m feeling generous which is rare and lightly threatening.',
+    'loot dispensed. try not to peak here bro.',
   ],
   tooEasy: [
-    'Player declared the quest too easy. The System loves confidence, especially when it ages badly.',
-    'Difficulty raised. The boss flexes. You volunteered for this.',
+    'declared too easy. confidence noted, especially when it ages badly.',
+    'difficulty raised. boss flexes. you volunteered for this.',
   ],
   reroll: [
-    'Reroll accepted. The boss is offended and heals 25 HP.',
-    'New quest forged from your indecision. Hope it was worth it.',
+    'reroll accepted. boss is offended and heals 25 hp.',
+    'new quest forged from your indecision. hope it was worth it.',
   ],
   help: [
-    'Stop overthinking like the goblin has a law degree.',
-    'Read the step out loud. If you still don\'t get it, blame the lighting.',
+    'stop overthinking like the boss has a law degree.',
+    'read the step out loud. if you still don\'t get it, blame the lighting.',
+    'just do example 2 my guy. always works.',
   ],
 };
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -10190,12 +10213,14 @@ function hostLine(category) {
 }
 
 const WELCOME_LINES = [
-  'Back already. Either bored or addicted. Both work for me.',
-  'New session loaded. Try not to humiliate the boss this time.',
-  'The arena missed you. Slightly. Not really.',
-  'Standing here doing nothing is also a choice. A boring one.',
-  'Your last run is sitting in the corner sulking. Start a new one.',
-  'I have prepared 17 fresh insults. Pick a mode so I can deploy them.',
+  'back already. either bored or addicted. both work for me.',
+  'hey. pick a mode. let\'s ruin a couch goblin.',
+  'you have been standing here for a while ngl. start something.',
+  'your last run is in the corner sulking. start a new one.',
+  'i prepared like 12 fresh insults. pick a mode so i can deploy them.',
+  'log on. boss is waiting. probably scared.',
+  'no thoughts head empty. perfect. start a run.',
+  'main character energy detected. wasted on the home screen lol.',
 ];
 
 // ──────────────────────────────────────────────────────────────────
@@ -11171,12 +11196,15 @@ function startWelcomeRotator() {
     el.classList.remove('slide-in');
     el.classList.add('slide-out');
     setTimeout(() => {
-      // Pick a different line than the one currently shown
+      // Pick a different line than the one currently shown. If the player's
+      // last run was unhinged, draw from the Gremlin pool so the home-screen
+      // greeting stays in-character for that mode.
+      const _wlPool = profile.lastUnhinged ? UNHINGED_WELCOME_LINES : WELCOME_LINES;
       const current = el.textContent;
-      let next = pick(WELCOME_LINES);
+      let next = pick(_wlPool);
       let safety = 0;
-      while (next === current && WELCOME_LINES.length > 1 && safety++ < 6) {
-        next = pick(WELCOME_LINES);
+      while (next === current && _wlPool.length > 1 && safety++ < 6) {
+        next = pick(_wlPool);
       }
       el.textContent = next;
       el.classList.remove('slide-out');
@@ -12349,11 +12377,15 @@ function screenHome() {
       <span class="blink" id="heroInsertCoin" style="cursor:pointer;" title="Drop a coin in the slot">▼ INSERT COIN ▼</span>
     </div>
 
-    <div class="welcome-bubble" id="welcomeBubble">
-      <div class="av">${systemAv.html('idle', 'sm')}</div>
+    <div class="welcome-bubble ${profile.lastUnhinged ? 'unhinged' : ''}" id="welcomeBubble">
+      <div class="av">${profile.lastUnhinged
+        ? '<img src="img/unhinged_head.png" class="unhinged-bat-img sm" alt="">'
+        : systemAv.html('idle', 'sm')}</div>
       <div class="welcome-content">
-        <div class="welcome-tag">▶ THE SYSTEM</div>
-        <div class="text" id="welcomeText">${pick(WELCOME_LINES)}</div>
+        <div class="welcome-tag">${profile.lastUnhinged
+          ? '<img src="img/unhinged_head.png" class="unhinged-bat-img tiny" alt=""> THE GREMLIN'
+          : '▶ THE SYSTEM'}</div>
+        <div class="text" id="welcomeText">${pick(profile.lastUnhinged ? UNHINGED_WELCOME_LINES : WELCOME_LINES)}</div>
       </div>
     </div>
 
@@ -15506,6 +15538,13 @@ function finalizeRun() {
   // home screen doesn't show a stale RESUME card after the player
   // collects their reward and goes home.
   clearResumeState();
+  // Remember the player's last-run mode so the home-screen welcome bubble
+  // and other "between runs" surfaces can stay in the correct character
+  // (System vs Gremlin) until the next run starts.
+  if (r) {
+    profile.lastUnhinged = !!r.unhinged;
+    try { saveProfile(); } catch (_) {}
+  }
   // Coop traitor mode — gate finalize behind an accusation phase. Each
   // player picks who they suspect; once the room's accusations map is
   // full, finalize re-enters and proceeds normally.
@@ -20208,20 +20247,37 @@ function updateChatFabBadge() {
 
 const TIME_TAUNTS = {
   60: [
-    '▶ ONE MINUTE LEFT. The boss is laughing. You are not.',
-    '▶ 60 seconds. The wheel of consequences is warming up.',
-    '▶ Time critical. The arena recommends panic as a strategy.',
-    '▶ Sixty. Less than that. Less. LESS.',
+    'one minute left bro. boss is laughing. you are not.',
+    '60 seconds. wheel of consequences warming up.',
+    'a minute left my guy. panic is a valid strategy.',
+    'sixty seconds. fewer than that actually. tick tick.',
   ],
   30: [
-    '▶ THIRTY SECONDS. The wheel is stretching. Visible enthusiasm.',
-    '▶ 30 seconds. Cowardice ratio: 100%. Move.',
-    '▶ Half a minute. The host is preparing a lengthy roast.',
+    'thirty seconds. the wheel is stretching lol.',
+    '30 seconds. respectfully, MOVE.',
+    'half a minute. i am preparing a long roast.',
   ],
   10: [
-    '▶ TEN. SECONDS. The boss already knows what is happening.',
-    '▶ 10 seconds. The wheel is spinning preemptively.',
-    '▶ TEN. NINE. EIGHT. (Imagine those, I lied about the others.)',
+    'ten. seconds. boss already knows what\'s happening.',
+    '10 seconds. wheel is spinning preemptively.',
+    'TEN. NINE. EIGHT. (i lied about the others, just go.)',
+  ],
+};
+const TIME_TAUNTS_UNHINGED = {
+  60: [
+    'one minute. the clock is wet. it knows.',
+    'sixty. the radiator hums faster. coincidence? no.',
+    'a minute remains. subject. focus.',
+  ],
+  30: [
+    'thirty seconds. the gremlin is leaning forward.',
+    '30. the lights are interested now.',
+    'halfminute. the bit demands urgency.',
+  ],
+  10: [
+    'ten. nine. (i won\'t count the rest. you know what they are.)',
+    'ten seconds. the boss is grinning damply.',
+    'ten. subject. commit. now.',
   ],
 };
 
@@ -22428,7 +22484,8 @@ function maybeFireTimeTaunt(secondsLeft) {
   for (const threshold of [60, 30, 10]) {
     if (secondsLeft <= threshold && !r.timeTauntsFired.includes(threshold)) {
       r.timeTauntsFired.push(threshold);
-      const line = pick(TIME_TAUNTS[threshold]);
+      const _pool = (r.unhinged && TIME_TAUNTS_UNHINGED[threshold]) ? TIME_TAUNTS_UNHINGED[threshold] : TIME_TAUNTS[threshold];
+      const line = pick(_pool);
       pushChat('host', line);
       if (line.length > (r.bestQuip || '').length) r.bestQuip = line;
       // Surface a toast too in case chat isn't open
@@ -22929,7 +22986,7 @@ function handleQuickAction(id, opts = {}) {
         if ((r.rerollsUsed || 0) >= MAX_REROLLS_PER_RUN) {
           sfx.error();
           if (!skipUserPush) pushChat('user', 'Reroll the quest.');
-          pushChat('host', pick(REROLL_DENIED_MAXED));
+          pushChat('host', pick(r.unhinged ? REROLL_DENIED_MAXED_UNHINGED : REROLL_DENIED_MAXED));
           renderChatSheet();
           return;
         }
@@ -22939,7 +22996,7 @@ function handleQuickAction(id, opts = {}) {
         if (!isFirstReroll && profile.coins < 10) {
           sfx.error();
           if (!skipUserPush) pushChat('user', 'Reroll the quest.');
-          pushChat('host', pick(REROLL_DENIED_BROKE));
+          pushChat('host', pick(r.unhinged ? REROLL_DENIED_BROKE_UNHINGED : REROLL_DENIED_BROKE));
           renderChatSheet();
           return;
         }
@@ -22956,7 +23013,7 @@ function handleQuickAction(id, opts = {}) {
       rerollSingleStep(idx);
       const newTitle = r.quest[idx]?.title || 'Step';
       if (!skipUserPush) pushChat('user', 'Reroll this step.');
-      pushChat('host', pick(REROLL_TAUNTS));
+      pushChat('host', pick(r.unhinged ? REROLL_TAUNTS_UNHINGED : REROLL_TAUNTS));
       pushChat('tag', `🎲 STEP ${idx + 1} REROLLED · ${oldTitle.toUpperCase()} → ${newTitle.toUpperCase()} · −10 COINS · BOSS +15 HP`);
       renderChatSheet();
       if (state.view === 'quest') render();
@@ -23024,7 +23081,7 @@ function handleQuickAction(id, opts = {}) {
       });
       r.timerSec = Math.max(90, (r.timerSec || 600) - 90);
       if (!skipUserPush) pushChat('user', "It's too easy.");
-      pushChat('host', pick(TOO_EASY_TAUNTS));
+      pushChat('host', pick(r.unhinged ? TOO_EASY_TAUNTS_UNHINGED : TOO_EASY_TAUNTS));
       pushChat('tag', `💪 +TRUE FINAL: ${tf.title} · TIMER −90s · +BONUS REWARD ROLL`);
       renderChatSheet();
       if (state.view === 'quest') render();
@@ -23384,6 +23441,10 @@ function openChibiPicker() {
 let qmpRoomState = null;
 let qmpUnsub = null;
 let qmpPlayerName = '';
+// Tracks the profile.name value we last synced into qmpPlayerName. Lets us
+// detect "user changed their account name since they last opened the party
+// lobby — re-sync" vs "user manually typed a custom party name — keep it."
+let qmpLastSyncedAccountName = '';
 let qmpPlayerAvatar = '🧙';
 let qmpRoomCode = null;
 let qmpHeartbeatTimer = null;
@@ -23643,9 +23704,20 @@ function randomThemeName() {
 }
 
 function screenPartyLobby() {
-  if (!qmpPlayerName || qmpPlayerName === 'Player' || qmpPlayerName === 'Player One') {
-    qmpPlayerName = randomThemeName();
+  // The party-creation name should match the player's account name. Sync
+  // from profile.name every time the lobby screen renders, so that if the
+  // player updates their account name later, the party UI reflects it. If
+  // they've already typed a custom party name in this session (different
+  // from their profile name AND not the placeholder), respect that — only
+  // re-sync when qmpPlayerName is empty, a placeholder, or still matches
+  // the last-known profile name (no manual edit).
+  const accountName = (profile && typeof profile.name === 'string' && profile.name.trim()) || '';
+  const isPlaceholder = !qmpPlayerName || qmpPlayerName === 'Player' || qmpPlayerName === 'Player One';
+  const isStaleAccountName = accountName && qmpPlayerName === qmpLastSyncedAccountName;
+  if (isPlaceholder || isStaleAccountName) {
+    qmpPlayerName = accountName ? accountName.slice(0, 14) : randomThemeName();
   }
+  qmpLastSyncedAccountName = accountName;
   app().innerHTML = `
     <div class="screen">
       <div class="lobby-header">
@@ -25135,21 +25207,22 @@ function screenPartyRoom() {
 // Comedy "loading hints" rotated on the generating screen. Different for
 // every player because it's a random pick each render.
 const LOADING_HINTS_NORMAL = [
-  '💡 Pro tip: judging your own photo is fun until it isn\'t.',
-  '💡 The boss has been doing this for years. You? Maybe.',
-  '💡 Studies show 100% of quests succeed when you actually do them.',
-  '💡 If you\'re reading this, you\'re still alive. Statistically encouraging.',
-  '💡 The host respects creative interpretation. Up to a point.',
-  '💡 Real-life cooldown: 10 seconds of staring at the ceiling counts.',
-  '💡 The judge has seen worse. Probably.',
-  '💡 Photos are forever. Choose your background.',
-  '💡 Touching grass is allowed but not required.',
-  '💡 The boss is intimidated by confident posture.',
-  '💡 Bonus damage if you commit to the bit.',
-  '💡 Strangers are unspawned NPCs. Do not interact.',
-  '💡 Battery low? Quest harder.',
-  '💡 The timer is more afraid of you than you are of it. Probably.',
-  '💡 If a step seems too easy, you\'re reading it wrong.',
+  '💡 bro the boss has done this like 400 times. you have not. play accordingly.',
+  '💡 tip: just do the second example in the list. it always works.',
+  '💡 ngl if you photograph a chair confidently the judge usually passes you.',
+  '💡 if a step feels too easy you\'re reading it wrong, my guy.',
+  '💡 the timer is real btw. it\'s not for show.',
+  '💡 photographing your own foot counts as effort. it shouldn\'t. but it does.',
+  '💡 the judge has seen worse. probably your previous run.',
+  '💡 task failed successfully is also a valid run lol.',
+  '💡 reroll exists. costs you a little. sometimes worth it.',
+  '💡 not me, telling you these tips like you\'re gonna read them.',
+  '💡 the boss heals 25hp every time you say "in a minute."',
+  '💡 your phone is your camera AND the judge. don\'t ask it to also be a friend.',
+  '💡 strangers are unspawned npcs. respectfully, do not interact.',
+  '💡 if you commit to the bit, the boss takes bonus damage. it\'s in the lore.',
+  '💡 confidence > technique. the judge can\'t actually tell the difference.',
+  '💡 you can do step 1 from your couch tbh. start there.',
 ];
 const LOADING_HINTS_UNHINGED = [
   '🦇 the gremlin sees you. has thoughts. will not share them.',
