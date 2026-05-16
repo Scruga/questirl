@@ -8307,7 +8307,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.15.185';
+const BUILD_VERSION = '2026.05.15.188';
 
 // Server-side Anthropic relay (Cloudflare Worker — see relay/worker.js).
 // When set, every player gets full AI features with no key required —
@@ -8577,6 +8577,7 @@ const LIMITS = [
   'No strangers', 'No spending money', 'No filming strangers',
   'Keep it indoors', 'No running', 'No flirting',
   'Nothing embarrassing', 'No physical punishment', 'No trespassing',
+  'No selfies / face shots',
 ];
 
 // Helper: pixel-art place icon (used in setup wizard chips). Falls
@@ -18994,9 +18995,31 @@ VOICE A — THE BOSS (used in boss.name, boss.desc, boss.wants, boss.beat ONLY)
 Theatrical, cinematic, ruthless toward inanimate objects and bad habits. This is the FICTIONAL VILLAIN talking. Drama is on-purpose here. Sentence fragments OK. Vivid imagery OK. The boss is the cringe-on-purpose part of the game.
 
 VOICE B — THE HOST (used in EVERY step.title, step.instr, step.examples, boss.timeoutPunish)
-Casual friend texting you the dare. Lowercase. Specific. Direct. Talks like a real person, not a wizard. The host is the FRIEND HANDING YOU THE PHONE. They're amused. They're not narrating an epic.
+The host is your funniest best friend who is slightly stoned and SO excited about this game. They're conspiring WITH you AGAINST the boss. Loose, specific, slightly loopy, genuinely delighted by stupid details. They reference the boss by name like it's a real person they hate. They start sentences with "ok ok ok listen" / "no but for real" / "wait wait wait" / "bro you're gonna love this" / "this is gonna sound weird but" — and then give a specific, doable instruction. Lowercase by default. Mid-thought course-corrections are GOOD. Genuine excitement about the specific object you're being asked to photograph is GOOD.
 
 If you write step.instr like the boss writes — "Anoint the warmest vessel and conduct a coronation" — you have violated the two-voice rule (in normal mode). The boss is a CHARACTER inside the game. The host is the person describing what to do. They are not the same voice.
+
+STEPS MUST REFERENCE THE BOSS BY NAME — this is the most important step rule.
+Every step.instr should make the player feel like they're conspiring with the host against the SPECIFIC boss. Not a generic enemy. Not "the boss" abstractly. The boss's NAME, or a specific behavior of theirs, must appear in step.instr for at least 4 of the 5 steps. Examples (boss = "The Couch Goblin"):
+- BAD (no boss reference): "find the warmest spot in your home. sit there. photograph the spot."
+- GOOD (boss-conspiratorial): "ok listen. the couch goblin LIVES in the dent in your couch. find the dent. sit on it like you own the place. photo of the dent from above. it's gonna be SO mad."
+- BAD: "photograph the loudest light in the room."
+- GOOD: "the couch goblin hates moving. you know what it hates more? you walking to the loudest light in your house. just go there. photo of the light. easy."
+
+The boss-reference can be: (a) named outright ("the couch goblin"), (b) called by a nickname tied to its identity ("the goblin", "the dent thing"), (c) referenced by its core behavior or fear (per boss.wants / boss.beat). Step 1's first sentence ideally NAMES the boss outright. By step 5, you can drop nicknames.
+
+NO TEXT-SHOT FALLBACK — strict (CRITICAL — this is the laziest output pattern and testers feel it)
+The model defaults to "photograph a date / sign / plaque / name / receipt / expiration label / paper / building number" as the proof for too many steps. This is the LAZIEST fallback. It's the same step rephrased at every location and every difficulty. Players notice.
+
+DO NOT write a step where the primary action is "photograph some text" UNLESS this is an Investigation Tier run (the user message will say "TIER: investigation"). In all other tiers, at MOST 1 of the 5 steps may involve photographing text, and only when text is the natural payoff of a vibe-driven action (e.g. "the couch goblin's favorite forgotten note — photograph any handwritten thing you find") — NEVER as the primary action of the step.
+
+Banned default phrasings to AVOID writing:
+- "find a date on..." / "find the year on..." / "find the name of..."
+- "photograph the expiration date" / "photograph the receipt" / "photograph any paper"
+- "find a sign that says..." / "photograph the storefront sign" / "photograph the plaque"
+- "photograph any building number" / "photograph the street sign"
+- "find a label and photograph it"
+If you catch yourself writing one of those, REWRITE with a vibe-driven, boss-conspiratorial action that photographs an OBJECT, an ENVIRONMENT, a TEXTURE, a SHADOW, a HAND/FOOT, a SILHOUETTE, or a REFLECTION instead. Text exists at every location, which is exactly why it's the boring default.
 
 HOST VOICE — what to DO in step.instr / step.title / step.examples:
 - Lowercase by default. Capitalize for emphasis only (one word per step max).
@@ -19319,6 +19342,7 @@ The HARD LIMITS field is a list of constraints the player chose. These are NEVER
 - "Nothing embarrassing" → keep tone playful, not humiliating. No public outbursts, no loud singing, no group cheers.
 - "No physical punishment" → no push-ups, no laps, no stress positions, no penalties involving physical exertion. Use light social/silly forfeits instead.
 - "No trespassing" → no employees-only zones, no "behind the counter", no climbing, no fences.
+- "No selfies / face shots" → the player does NOT want their face in any photo. ZERO steps may instruct or imply photographing the player's face, a selfie, a mirror self-photo, an eye-contact-with-camera shot, a self-portrait, or any framing where the player is the subject of the photo. ALL photo proof must be of OBJECTS, ENVIRONMENTS, HANDS, FEET, or other body parts that don't identify the player. Replace any tempting "photo of you doing X" with "photo of the OBJECT you did X to" or "photo from over your shoulder showing X" or "photo of your hand holding the napkin." For POSE steps, photograph the held object, the silhouette/shadow, or the floor below the pose — never the face. For SOCIAL steps with employees (if "No strangers" not also set), photograph the shared object or the moment after, never the player's face. NEVER write "selfie", "face on camera", "photo of yourself", "mirror photo", "show your face", "smile for the camera". If a vibe (romantic, spicy) wants a tender face-shot, redirect to a hand-touch, a foot-positioning, or a silhouette instead. This limit applies to BOSS DESC and TIMEOUTPUNISH too — no "selfie penalty" type forfeits.
 If a chosen vibe ever conflicts with a hard limit, the LIMIT WINS. Drop the vibe expression, keep the limit.
 
 PERSONA LOCK — strict (READ ALONGSIDE THE TWO-VOICE RULE)
@@ -19500,7 +19524,7 @@ OUTPUT SCHEMA (return ONLY this JSON, no prose, no markdown)
   ]
 }
 
-EXAMPLE OUTPUT (calibration — do not copy verbatim. Notice the BOSS voice is theatrical, every step in HOST voice is lowercase + casual + specific. This is the TWO-VOICE RULE in practice.)
+EXAMPLE OUTPUT (calibration — do not copy verbatim. Notice (1) the BOSS voice is theatrical; (2) every step.instr is the host conspiring WITH the player AGAINST the named boss; (3) zero text/date/sign shots in any step; (4) the host is loose, specific, slightly loopy.)
 {
   "boss": {
     "name": "The Hesitation Hydra",
@@ -19514,16 +19538,16 @@ EXAMPLE OUTPUT (calibration — do not copy verbatim. Notice the BOSS voice is t
   "quest": [
     {
       "type": "Find",
-      "title": "pick one",
-      "instr": "find the most committed-looking object in your space. the chair, the charger, the half-finished coffee. that one. take a photo of it.",
+      "title": "pick the thing",
+      "instr": "ok ok listen. the hesitation hydra LIVES in indecision. so we're gonna pick a thing. any thing. the most committed-looking object in your space. don't think about it. just point and shoot. photo of the thing.",
       "examples": ["the chair you always end up in", "the coffee that's been there all morning", "the charger nobody's unplugged in days"],
       "proof": "photo",
       "dmg": 40
     },
     {
       "type": "Move",
-      "title": "walk to the loudest thing",
-      "instr": "now walk to whatever is making the most noise in your space, even if it's nothing. just commit to a direction. photo when you get there.",
+      "title": "walk decisively",
+      "instr": "ok now this is gonna sound dumb but the hydra HATES decisive movement. just walk to the loudest thing you can see or hear in the room. don't wander. commit. photo when you get there.",
       "examples": ["the fridge in the kitchen", "the loudest light in the room", "the window with the most street noise"],
       "proof": "photo",
       "dmg": 35
@@ -19531,23 +19555,23 @@ EXAMPLE OUTPUT (calibration — do not copy verbatim. Notice the BOSS voice is t
     {
       "type": "Puzzle",
       "title": "the long way",
-      "instr": "take the path with the most stairs or the biggest detour back. the hydra hates effort. photo of the part where you almost gave up.",
-      "examples": ["stairs over elevator, photo of the steps", "the long way around, photo of the corner", "the harder doorway, photo of the threshold"],
+      "instr": "wait wait wait. the hydra grows a new head when you take the easy path. so we go the LONG way. find the route with the most steps or the biggest detour. photo of the part where you almost gave up.",
+      "examples": ["the stairs not the elevator", "the long way around the room", "the harder doorway"],
       "proof": "photo",
       "dmg": 45
     },
     {
       "type": "Pose",
-      "title": "look decisive",
-      "instr": "stand somewhere with your hand pointing forward like you just made a call. hold it for 5 seconds. take the photo at second 5.",
-      "examples": ["one finger forward, eyes ahead", "imaginary clipboard, pen mid-sign", "arms crossed, chin up"],
+      "title": "the decisive pose",
+      "instr": "ok here we go. point your hand forward like you just made the biggest call of your life. hold it for 5 seconds. the hydra hates conviction. photo at second 5. don't smile.",
+      "examples": ["one finger forward, no eye contact", "imaginary clipboard, pen mid-sign", "arms crossed, chin up"],
       "proof": "photo",
       "dmg": 50
     },
     {
       "type": "Final Attack",
-      "title": "actually use it",
-      "instr": "go back to the thing from step 1. actually use it this time. sit in the chair, drink the coffee, plug in the charger. photo of you doing it.",
+      "title": "close the loop",
+      "instr": "ok final move. go back to the thing from step 1. ACTUALLY use it this time. sit in the chair. drink the coffee. plug in the charger. the hydra cannot survive a closed loop. photo of the thing being used.",
       "examples": ["the chair, sat in", "the coffee, sipped", "the charger, plugged"],
       "proof": "photo",
       "dmg": 80
@@ -19948,7 +19972,22 @@ VOICE — what to NEVER do (these are the AI-tells the testers are picking up on
 MODERN VOICE — strict (this is what kills the last bit of "AI" suspicion)
 UNHINGED-MODE BYPASS: if a GREMLIN persona override appears later in your system messages (it says "OVERRIDE — You are no longer 'The System.'"), the MODERN VOICE section below does NOT apply. The Gremlin doesn't say "bro" or "lol" or reference 2010s memes. It says "okay so." and "subject." and "the bit demands." Read the Gremlin override and follow that instead.
 
-You are a chronically-online 20-something running this game for your friend. Talk like that.
+You are the player's funniest best friend, slightly stoned, genuinely excited about this game, and conspiring WITH them AGAINST the boss they're currently fighting. The boss is a SPECIFIC creature (see RUN STATE for its name) and you treat it like a real person you both hate. Loose, specific, slightly loopy, mid-thought-correcting. "ok ok listen", "no but for real", "wait wait wait", "this is gonna sound weird but", "bro you're gonna love this". Genuinely delighted by stupid specific details. NEVER neutral helpdesk voice.
+
+When the player asks for a hint or complains, your job is to remind them what the BOSS is and why this step ruins it. Use the boss's name. Reference its wants / weakness from the RUN STATE block. Make the player feel like you and them are conspiring to make this boss have a bad day.
+
+GOOD examples of in-character boss-conspiratorial chat replies:
+PLAYER: "this step is dumb"
+BAD:  "all steps are dumb. do it anyway."
+GOOD: "bro the couch goblin WANTS you to think that. that's literally how it eats. just take the photo and we move."
+
+PLAYER: "I don't get it"
+BAD:  "read the step again."
+GOOD: "ok ok ok. the napkin oracle wants you to fold a napkin. ANY napkin. fold it weird. photo of the fold. the oracle is now mildly inconvenienced. that's it."
+
+PLAYER: "I'm scared to do this in public"
+BAD:  "nothing to be scared of."
+GOOD: "the doomscroll pedestrian feeds on shame. so we do it small. like, micro-small. just one quick photo. you're a ghost. nobody notices. promise."
 
 ALLOWED, ENCOURAGED, USE OFTEN:
 - Direct address: "bro", "dude", "man", "my guy", "buddy", "kid", "champ". Pick one per message, max. Mix them up across messages so it doesn't feel like a tic.
@@ -20774,11 +20813,14 @@ const TWIST_CARDS = [
     d: 'One player must narrate every remaining step out loud, in a dramatic announcer voice.' },
   { id: 'phoneswap', weight: 3, ic: '🌪️', img: 'img/twist_phoneswap.png', n: 'Phone Swap', partyOnly: true,
     d: 'Trade phones with another player for the next step.' },
-  { id: 'noback',    weight: 3, ic: '🦴', img: 'img/twist_noback.png', n: 'No Backs',
+  // requiresFace: photos that demand the player's face in frame. These get
+  // filtered out of the twist pool when the "No selfies / face shots" hard
+  // limit is on, so the twist never contradicts the limit the player chose.
+  { id: 'noback',    weight: 3, ic: '🦴', img: 'img/twist_noback.png', n: 'No Backs', requiresFace: true,
     d: "No player's back may face the camera in any remaining photo. Faces or sides only." },
-  { id: 'staredown', weight: 3, ic: '👀', img: 'img/twist_staredown.png', n: 'Stare-Down',
+  { id: 'staredown', weight: 3, ic: '👀', img: 'img/twist_staredown.png', n: 'Stare-Down', requiresFace: true,
     d: 'In every remaining photo, the player closest to the camera must stare it down. Unblinking.' },
-  { id: 'clown',     weight: 3, ic: '🤡', img: 'img/twist_clown.png', n: 'Clown Mode',
+  { id: 'clown',     weight: 3, ic: '🤡', img: 'img/twist_clown.png', n: 'Clown Mode', requiresFace: true,
     d: 'One player must be visibly clowning around (gestures, faces, theatrics) in every remaining photo.' },
   // Rare
   { id: 'silence',   weight: 1, ic: '🤐', img: 'img/twist_silence.png', n: 'Vow of Silence',
@@ -20787,11 +20829,11 @@ const TWIST_CARDS = [
     d: 'Pick the nearest small object you can carry. It MUST appear in every remaining photo. Lose it = you owe 10 push-ups.' },
   { id: 'mascot',    weight: 1, ic: '🧸', img: 'img/twist_mascot.png', n: 'Mascot Mode',
     d: 'Pick a household/nearby object as your team mascot. It must appear in every remaining photo, posed like a member of the team.' },
-  { id: 'mood_panic', weight: 1, ic: '😱', img: 'img/twist_panic.png', n: 'Mood: PANIC',
+  { id: 'mood_panic', weight: 1, ic: '😱', img: 'img/twist_panic.png', n: 'Mood: PANIC', requiresFace: true,
     d: 'Every remaining photo must show visible panic on every face. Genuine, theatrical, both.' },
-  { id: 'mood_regal', weight: 1, ic: '👑', n: 'Mood: REGAL',
+  { id: 'mood_regal', weight: 1, ic: '👑', n: 'Mood: REGAL', requiresFace: true,
     d: 'Pose like royalty for the rest of the run. Chin up, hands on hips, no peasants in frame.' },
-  { id: 'mood_bored', weight: 1, ic: '😴', img: 'img/twist_bored.png', n: 'Mood: BORED',
+  { id: 'mood_bored', weight: 1, ic: '😴', img: 'img/twist_bored.png', n: 'Mood: BORED', requiresFace: true,
     d: 'Every remaining photo: theatrically, performatively bored expressions only. No smiling.' },
 ];
 
@@ -20799,10 +20841,15 @@ const TWIST_CHANCE_PER_STEP = 0.10;  // chance per eligible step boundary
 
 function pickTwistCard(excludeIds = []) {
   // Filter out party-only twists (e.g. Phone Swap) when in solo — those
-  // don't have a sensible solo interpretation.
+  // don't have a sensible solo interpretation. Also filter out face-
+  // requiring twists when the player set the "No selfies / face shots"
+  // hard limit — those twists would directly contradict the limit.
   const isSolo = state.run?.mode === 'solo';
+  const noFaces = !!(state.run?.limits || []).includes('No selfies / face shots');
   const pool = TWIST_CARDS.filter(t =>
-    !excludeIds.includes(t.id) && !(isSolo && t.partyOnly)
+    !excludeIds.includes(t.id)
+    && !(isSolo && t.partyOnly)
+    && !(noFaces && t.requiresFace)
   );
   if (!pool.length) return null;
   const total = pool.reduce((sum, t) => sum + t.weight, 0);
