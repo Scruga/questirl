@@ -8319,7 +8319,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.15.195';
+const BUILD_VERSION = '2026.05.17.196';
 
 // Server-side Anthropic relay (Cloudflare Worker — see relay/worker.js).
 // When set, every player gets full AI features with no key required —
@@ -13484,6 +13484,41 @@ async function generateRunInner() {
     }
   }
 
+  // Anti-repetition memory — push this run's boss name + step titles onto
+  // the FIFO caches so the NEXT quest-gen call sees them in the "don't
+  // reuse" list. Done HERE (post-generation) rather than at finalizeRun
+  // so the history grows even when players reroll or abandon. Titles are
+  // a much better fingerprint than the first noun of step.instr — they
+  // ARE the archetype ("gather the warm things", "interrogate the oldest
+  // thing", "narrate the numbers").
+  try {
+    if (!Array.isArray(profile.recentBossNames)) profile.recentBossNames = [];
+    if (!Array.isArray(profile.recentStepSubjects)) profile.recentStepSubjects = [];
+    if (r.boss && r.boss.name) {
+      profile.recentBossNames.push(r.boss.name);
+      if (profile.recentBossNames.length > 15) {
+        profile.recentBossNames = profile.recentBossNames.slice(-15);
+      }
+    }
+    if (Array.isArray(r.quest)) {
+      for (const step of r.quest) {
+        if (!step) continue;
+        // Prefer the step.title (the actual archetype fingerprint).
+        // Fallback to a short summary from step.instr if title is missing.
+        const fingerprint = (typeof step.title === 'string' && step.title.trim())
+          ? step.title.trim().toLowerCase()
+          : (typeof step.instr === 'string'
+              ? step.instr.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 5).join(' ')
+              : '');
+        if (fingerprint) profile.recentStepSubjects.push(fingerprint);
+      }
+      if (profile.recentStepSubjects.length > 25) {
+        profile.recentStepSubjects = profile.recentStepSubjects.slice(-25);
+      }
+    }
+    saveProfile();
+  } catch (e) { console.warn('[anti-repeat] history push failed:', e); }
+
   // Phase 3 — Competitive / Chaos: each player gets their OWN quest.
   // The boss is shared (one shared villain), but every player's concrete
   // step list is independently rolled so they're not racing the same
@@ -15690,34 +15725,9 @@ function finalizeRun() {
   // (System vs Gremlin) until the next run starts.
   if (r) {
     profile.lastUnhinged = !!r.unhinged;
-    // Anti-repetition memory — push this run's boss name + step subjects
-    // onto the FIFO caches so the next quest-gen call can avoid them.
-    // Without this, the model converges on its top-of-mind picks (mall→
-    // mannequin, home→expiration dates, etc) every run.
-    if (!Array.isArray(profile.recentBossNames)) profile.recentBossNames = [];
-    if (!Array.isArray(profile.recentStepSubjects)) profile.recentStepSubjects = [];
-    if (r.boss && r.boss.name) {
-      profile.recentBossNames.push(r.boss.name);
-      if (profile.recentBossNames.length > 10) {
-        profile.recentBossNames = profile.recentBossNames.slice(-10);
-      }
-    }
-    if (Array.isArray(r.quest)) {
-      for (const step of r.quest) {
-        if (!step || typeof step.instr !== 'string') continue;
-        // Grab the first meaningful noun-ish word from the instruction.
-        // Heuristic: skip leading "the/a/find/walk/go" type words, take
-        // the next substantive token. Imperfect but cheap — the model
-        // gets a useful "don't repeat these" hint either way.
-        const SKIP = new Set(['the', 'a', 'an', 'find', 'walk', 'go', 'take', 'photograph', 'photo', 'locate', 'pick', 'choose', 'sit', 'stand', 'hold', 'say', 'tell', 'address', 'commit', 'kneel', 'gather', 'count', 'put', 'select', 'your', 'you', 'one', 'this', 'that', 'and', 'to', 'of', 'in', 'on', 'at', 'with', 'for', 'from', 'now', 'then', 'ok', 'okay', 'wait', 'bro', 'dude', 'no', 'so']);
-        const tokens = step.instr.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean);
-        const noun = tokens.find(t => !SKIP.has(t) && t.length > 2);
-        if (noun) profile.recentStepSubjects.push(noun);
-      }
-      if (profile.recentStepSubjects.length > 15) {
-        profile.recentStepSubjects = profile.recentStepSubjects.slice(-15);
-      }
-    }
+    // (Anti-repetition history is now pushed at quest-generation time
+    // — see the post-generation block in the quest-gen flow. Pushing
+    // again here would duplicate entries.)
     try { saveProfile(); } catch (_) {}
   }
   // Coop traitor mode — gate finalize behind an accusation phase. Each
@@ -19483,7 +19493,37 @@ Per-location guidance (use ONLY zones, objects, and behaviors that exist in this
 
 - "At a park" → zones: paths, benches, playgrounds, fields, trees, water features, picnic areas. Objects: a specific tree, a leaf, a bench, a swing, a trash can, a posted sign. Boss is nature-themed (Forest Spirit, Bench Lord, The Tree-with-Opinions). NEVER reference indoor objects (couches, fridges) at a park.
 
-- "At home" → zones: living room, kitchen, hallway, bathroom, bedroom, balcony/yard. Objects: couch, fridge, doorway, the largest pillow, the most-touched cup, a houseplant. Boss is domestic-stagnation themed (The Couch Goblin, Sink Wraith, Doorway Phantom, Comfort Creep). Steps move between rooms in a believable order (1 room per step max). Consider pets if they're naturally part of "home" — don't force them.
+- "At home" → ANTI-CONVERGENCE RULE (strict — home is the location with the worst repetition right now):
+  - BANNED archetypes (each may appear AT MOST ONCE per quest, NEVER more): (a) "gather/collect/line up N items from your home" — the lineup ritual; (b) "find the oldest / forgotten / expired / oldest-dated thing" — the antique ritual; (c) "find an item with a printed date / expiration / manufacturing year / postmark" — the text-shot trap (already banned by NO TEXT-SHOT FALLBACK rule, restated here for emphasis); (d) "walk N rooms naming things" — the inventory walk.
+  - If you find yourself writing two steps that fit any single banned archetype, REWRITE one. If three steps in the quest are variations on "find old objects," the entire quest is broken — start over.
+  - Zones: living room, kitchen, hallway, bathroom, bedroom, balcony/yard, stairs/staircase, closet interior, the small empty space behind furniture, doorway thresholds, window sills, the corner-where-you-pile-things.
+  - Distinctive objects to PULL FROM beyond the obvious (every quest should use 2-3 from THIS list rather than defaulting to "couch / fridge / pillow"):
+    · the light switch you flip most often
+    · the doormat's wear pattern
+    · the corner where dust actually collects
+    · the soap dish / the sink's drying rack
+    · the curtain rod (sun exposure side vs shadow side)
+    · the loudest light fixture in the room
+    · the photo frame nobody dusts
+    · the highest physical point in your home you can safely photograph
+    · a power outlet with the most things plugged in
+    · the floor transition between rooms (carpet → tile, wood → rug)
+    · a mirror's frame (not the reflection — limit-friendly)
+    · the closet door, open vs closed
+    · the kitchen counter's most-cluttered square foot
+    · the wall behind the TV
+    · the bathroom mirror's grout / edge
+    · the dustiest book on a shelf
+    · the most-used drawer's handle
+    · a houseplant's saddest leaf
+    · the chair that always ends up holding clothes
+    · the rug's most-walked path
+    · the cabinet that won't close all the way
+    · the smallest object that lives on a windowsill
+    · a kitchen utensil hanging where it doesn't belong
+    · the highest shelf with something on it
+  - Boss themes (lean for variety — DON'T default to Couch Goblin every time): The Doorway Phantom, The Comfort Creep, The Hum Behind The Fridge, The Light Switch Liar, The Doormat Memorial, The Closet Hesitator, The Floor-Transition Wraith, The Highest-Shelf Watcher, The Plant That Forgot, The Drawer With Opinions, The Mirror That's Tired, The Corner-Pile Council, The Outlet Overflow, The Ceiling Patient.
+  - Steps move between rooms in a believable order (1 room per step max). Consider pets if they're naturally part of "home" — don't force them.
 
 - "Downtown" → zones: sidewalks, crosswalks, plaza, storefront windows, street signs, alleyways, public benches, transit stops. Objects: a specific street sign, a posted poster, a window display, a curb, a railing. Boss is urban-themed (The Crosswalk Tyrant, Sign-Blindness Specter, Doomscroll Pedestrian). Steps follow a natural walking radius — maybe one or two blocks.
 
@@ -19810,18 +19850,26 @@ EXAMPLE OUTPUT (calibration — do not copy verbatim. Notice (1) the BOSS voice 
   const _tierKey = (r.difficulty.id === 'warmup' || r.difficulty.id === 'warm') ? 'warmup' : r.difficulty.id;
   const _objectiveBrief = _objectiveByTier[_tierKey] || _objectiveByTier.warmup;
   // Anti-repetition feedback — pull the player's run history caches so the
-  // model can avoid recently-used boss names and step subjects.
-  const recentBossNames = Array.isArray(profile.recentBossNames) ? profile.recentBossNames.slice(-10) : [];
-  const recentStepSubjects = Array.isArray(profile.recentStepSubjects) ? profile.recentStepSubjects.slice(-15) : [];
+  // model can avoid recently-used boss names and step archetypes. Subjects
+  // are stored as step TITLES (e.g. "gather the warm things", "interrogate
+  // the oldest thing") because titles encode the archetype far better than
+  // a single noun from the instruction.
+  const recentBossNames = Array.isArray(profile.recentBossNames) ? profile.recentBossNames.slice(-15) : [];
+  const recentStepSubjects = Array.isArray(profile.recentStepSubjects) ? profile.recentStepSubjects.slice(-25) : [];
   const userMsg = `Generate ONE QuestIRL run for a ${r.mode === 'party' ? `party of ${playerCount} players` : 'solo player'}. Apply the layers in this exact order: GAMEMODE → LOCATION → VIBES → HARD LIMITS → DIFFICULTY. Re-read the QUEST CONCEPT PRECEDENCE section.
 
 VARIETY SEED: ${_seed}. Use this seed to pick a DIFFERENT boss concept, a DIFFERENT story-arc framing, and DIFFERENT step verbs than you would for seed (${_seed} - 1). Players cycle through difficulties with the same vibes and the same location; if two runs feel like rephrased copies of each other the player feels cheated. Variety is mandatory.${recentBossNames.length || recentStepSubjects.length ? `
 
-ANTI-REPETITION (READ THIS CAREFULLY — strict, high-priority directive):
-The player has already played the runs below recently. Their boss names and the first-noun subjects of their step instructions are listed. You MUST NOT reuse them in this generation. Pick a different boss concept and pull different step subjects from a different corner of this location's possibility space.${recentBossNames.length ? `
+ANTI-REPETITION (READ THIS CAREFULLY — STRICT, HIGH-PRIORITY DIRECTIVE):
+The player has already played the runs below recently. Their boss names and their step TITLES (which encode the step's archetype) are listed. You MUST NOT reuse them OR ANY CLOSE PARAPHRASE in this generation. This is the #1 user complaint about the game — that quests "all feel the same." Each archetype the player has seen recently is now off-limits.${recentBossNames.length ? `
 - DO NOT NAME THIS BOSS any of these (or any obvious variant): ${recentBossNames.map(n => `"${n}"`).join(', ')}. The new boss must be a different KIND of entity (different personification, different vanity, different fear). Not just a renamed version.` : ''}${recentStepSubjects.length ? `
-- DO NOT BUILD STEPS AROUND these subjects (avoid using them as the primary noun of any step): ${recentStepSubjects.map(n => `"${n}"`).join(', ')}. If a banned subject is the natural "obvious pick" for this location, that's exactly why we're banning it — go for the second or third-best object instead. The player needs to feel each run explores a new corner of the location.` : ''}
-If you can't think of a different subject within the location's possibility space, you are not trying hard enough. Every location has 20+ distinctive object types. Reach further.` : ''}
+- DO NOT WRITE A STEP whose title or core archetype matches any of these recent step titles: ${recentStepSubjects.map(n => `"${n}"`).join(', ')}.
+  This is an archetype-level ban, not a literal-string ban. Examples of FORBIDDEN paraphrases:
+  · if "gather the forgotten three" is in the list → DO NOT write "gather the warm things", "collect the warm trio", "line up three objects", "find and arrange N items", or anything in the "collect N objects and photograph the lineup" family. The archetype is "lineup of N items" — banned.
+  · if "interrogate the oldest thing" is in the list → DO NOT write "narrate the numbers", "find the earliest date", "speak to the oldest item", "address the antique", or anything in the "speak to/photograph the oldest item" family. The archetype is "oldest-item ritual" — banned.
+  · if "walk the perimeter of forgetting" is in the list → DO NOT write any "walk N rooms counting items" step. The archetype is "room-walk inventory" — banned.
+  When in doubt, ask yourself: if I described both steps to a friend in one sentence each, would the sentences be similar? If yes, you have repeated. Rewrite.` : ''}
+If you can't think of a different archetype within the location's possibility space, you are not trying hard enough. Every location has 20+ distinct archetype families (object rituals, movement patterns, sensory tasks, social moments, environmental witnessing, posed performances, etc). Reach further.` : ''}
 
 OBJECTIVE FOR THIS TIER (${r.difficulty.name}): ${_objectiveBrief} Read the DIFFICULTY × OBJECTIVE DIFFERENTIATION section. Do NOT borrow verbs or arc templates from a different tier. If the player just played this same vibe/location combo at a different difficulty, the two runs must look STRUCTURALLY different (different boss kind, different first-step verb family, different arc shape), not just different intensity.${_highTier && !r.unhinged && r.vibes.length ? `
 
