@@ -18,7 +18,7 @@
 // Bump this string in lockstep with index.html's BUILD_VERSION whenever
 // you want a cache reset. The page also passes its build version via
 // postMessage on registration — see version-sync in the install hook.
-const CACHE_VERSION = 'questirl-v2026.05.18.219';
+const CACHE_VERSION = 'questirl-v2026.05.18.220';
 
 // App shell — must succeed for the site to work offline.
 const CORE_ASSETS = [

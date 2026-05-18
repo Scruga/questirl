@@ -2270,6 +2270,52 @@
     animation-delay: 2.8s;
   }
 
+  /* Funfair payoff — after the fill completes, the whole banner SHAKES
+     for ~0.7s then BURSTS with a flash + scale pulse. JS triggers
+     these classes on a timeout that matches the fill animation end. */
+  @keyframes funfairShake {
+    0%, 100% { transform: translateX(0) rotate(0); }
+    8%   { transform: translateX(-5px) rotate(-1.2deg); }
+    16%  { transform: translateX(6px) rotate(1.2deg); }
+    24%  { transform: translateX(-7px) rotate(-1.5deg); }
+    32%  { transform: translateX(7px) rotate(1.5deg); }
+    40%  { transform: translateX(-6px) rotate(-1deg); }
+    48%  { transform: translateX(6px) rotate(1deg); }
+    56%  { transform: translateX(-4px) rotate(-0.8deg); }
+    64%  { transform: translateX(4px) rotate(0.8deg); }
+    72%  { transform: translateX(-2px); }
+    80%  { transform: translateX(2px); }
+    88%  { transform: translateX(-1px); }
+  }
+  @keyframes funfairBurst {
+    0%   { transform: scale(1); box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 3px 3px 0 var(--gold, #ffda5c), 0 0 14px rgba(255, 218, 92, 0.45); }
+    15%  { transform: scale(1.18); box-shadow: 0 0 60px 20px rgba(255, 218, 92, 1), 0 0 0 4px rgba(255, 218, 92, 0.8); }
+    40%  { transform: scale(0.96); box-shadow: 0 0 40px 12px rgba(255, 218, 92, 0.7); }
+    100% { transform: scale(1); box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 3px 3px 0 var(--gold, #ffda5c), 0 0 14px rgba(255, 218, 92, 0.45); }
+  }
+  @keyframes funfairBurstAccount {
+    0%   { transform: scale(1); box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 3px 3px 0 #b8a5ff, 0 0 14px rgba(184, 165, 255, 0.45); }
+    15%  { transform: scale(1.18); box-shadow: 0 0 60px 20px rgba(184, 165, 255, 1), 0 0 0 4px rgba(184, 165, 255, 0.8); }
+    40%  { transform: scale(0.96); box-shadow: 0 0 40px 12px rgba(184, 165, 255, 0.7); }
+    100% { transform: scale(1); box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 3px 3px 0 #b8a5ff, 0 0 14px rgba(184, 165, 255, 0.45); }
+  }
+  .level-up-bar.shaking { animation: funfairShake 0.7s ease-in-out; }
+  .level-up-bar.bursting { animation: funfairBurst 0.65s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .level-up-bar.account.bursting { animation: funfairBurstAccount 0.65s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes lubNumberPunch {
+    0%   { transform: scale(1); color: var(--gold, #ffda5c); }
+    25%  { transform: scale(1.7); color: #fff; text-shadow: 0 0 16px var(--gold, #ffda5c), 2px 2px 0 #000; }
+    100% { transform: scale(1); color: var(--gold, #ffda5c); }
+  }
+  .level-up-bar.bursting .lub-nums strong {
+    display: inline-block;
+    animation: lubNumberPunch 0.6s ease-out;
+  }
+  .level-up-bar.account.bursting .lub-nums strong {
+    animation: lubNumberPunch 0.6s ease-out;
+    color: #d4c3ff;
+  }
+
   /* ─── HOLD proof ─── press-and-hold-to-fill button + moving track ─── */
   .hold-stage {
     display: flex; flex-direction: column; align-items: stretch; gap: 8px;
@@ -2295,6 +2341,9 @@
     overflow: hidden;
     box-sizing: border-box;
   }
+  /* .hold-btn is a STYLED DIV — not a <button> — so it doesn't inherit
+     any .btn class CSS that was previously stomping our positioning
+     and transform. Built from scratch to look like an arcade button. */
   .hold-btn {
     flex: 0 0 55%;
     position: relative;
@@ -2304,28 +2353,44 @@
     -webkit-touch-callout: none;
     touch-action: none;
     pointer-events: auto;
-    font-size: 14px;
-    letter-spacing: 2px;
-    /* Smooth slide between random positions. The transition runs
-       whenever transform changes (set via JS every 1.2-1.8s).
-       IMPORTANT: must list transform first so we know its specific
-       transition is preserved when .btn:active would otherwise stomp it. */
-    transition: transform 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), background 0.2s;
-    will-change: transform;
-    /* Critical override: the parent .btn class sets transform:
-       translate(3px, 3px) on :active, which would fight our JS-set
-       translateX. Force translateX-only here. The button still
-       gets visual press feedback via brightness filter. */
-    transform: translateX(0);
-  }
-  .hold-btn:active:not(:disabled) {
-    /* Beat the .btn:active rule. Don't translate — just brighten. */
-    transform: translateX(var(--hold-offset, 0px)) !important;
-    filter: brightness(1.15);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--neon);
+    color: #fff;
+    text-shadow: 1px 1px 0 #000;
+    border: 3px solid #000;
     box-shadow:
       inset -3px -3px 0 rgba(0,0,0,0.5),
-      inset 3px 3px 0 rgba(255,255,255,0.15),
-      2px 2px 0 #000 !important;
+      inset 3px 3px 0 rgba(255,255,255,0.1),
+      4px 4px 0 #000;
+    font-family: var(--px);
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    transition: transform 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), filter 0.1s;
+    will-change: transform;
+    transform: translateX(0);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hold-btn.done {
+    background: var(--gold, #ffda5c);
+    color: #2a1500;
+    text-shadow: none;
+  }
+  .hold-btn[aria-disabled="true"] {
+    cursor: default;
+    pointer-events: none;
+  }
+  .hold-btn:active {
+    /* Visual press feedback — brighten + slight inset shift. Does NOT
+       touch transform so our translateX-based movement is preserved. */
+    filter: brightness(1.15);
+    box-shadow:
+      inset -3px -3px 0 rgba(0,0,0,0.6),
+      inset 3px 3px 0 rgba(255,255,255,0.2),
+      2px 2px 0 #000;
   }
   .hold-btn .hold-fill {
     position: absolute; top: 0; left: 0; bottom: 0;
@@ -8753,7 +8818,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.18.219';
+const BUILD_VERSION = '2026.05.18.220';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15392,14 +15457,17 @@ function renderProofUI(s, i) {
     const holdSec = Math.max(5, Math.min(60, s.holdSec || 15));
     const proof = r.proofs[i];
     const completed = !!(proof && proof.completed);
+    // Use a <div role="button"> instead of a <button> element — the
+    // native button styling kept overriding our positioning + transform
+    // CSS on iOS. With a styled div we have full control over events.
     return `
       <div class="hold-stage" id="hold-${i}" data-hold-sec="${holdSec}">
         <div class="hold-label">${completed ? '✓ HELD' : `HOLD FOR ${holdSec}s`}</div>
         <div class="hold-track">
-          <button class="btn primary hold-btn ${completed ? 'done' : ''}" data-hold="${i}" ${completed ? 'disabled' : ''}>
+          <div class="hold-btn ${completed ? 'done' : ''}" data-hold="${i}" role="button" tabindex="0" aria-label="Press and hold for ${holdSec} seconds" ${completed ? 'aria-disabled="true"' : ''}>
             <span class="hold-fill" style="width: ${completed ? 100 : 0}%"></span>
             <span class="hold-text">${completed ? 'COMPLETE' : 'PRESS &amp; HOLD'}</span>
-          </button>
+          </div>
         </div>
         <div class="hold-hint">${completed ? '' : 'The button moves. Keep your finger on it.'}</div>
       </div>
@@ -15553,7 +15621,7 @@ function bindQuest() {
         if (fill) fill.style.width = '100%';
         if (label) label.textContent = '✓ HELD';
         btn.classList.add('done');
-        btn.disabled = true;
+        btn.setAttribute('aria-disabled', 'true');
         const finalPool = milestonePool[100] || ['good.'];
         setWhisper(finalPool[Math.floor(Math.random() * finalPool.length)], true);
         buzz([30, 40, 60]);
@@ -15569,7 +15637,9 @@ function bindQuest() {
     };
     const start = (ev) => {
       if (ev && ev.preventDefault) ev.preventDefault();
-      if (btn.disabled) return;
+      // .hold-btn is now a <div role="button"> — use aria-disabled
+      // attribute instead of the (nonexistent) .disabled property.
+      if (btn.getAttribute('aria-disabled') === 'true') return;
       console.log('[hold] start fired for step', i);
       active = true;
       startMs = Date.now();
@@ -17367,11 +17437,48 @@ function screenReward() {
   // the bar-fill animation: ~400ms after render the bar starts filling,
   // sfx kicks off at the same moment. Account-bar fills 2.8s after,
   // so we fire a second arpeggio for that one too.
+  //
+  // After each bar finishes filling (~2.8s for mode, ~5.2s for account),
+  // shake the banner violently for ~0.7s, then BURST it with a flash +
+  // scale pulse + confetti. The number jumps in a punch animation.
   if (reward.levelUps) {
     const _modeUp = reward.levelUps[r.mode === 'party' ? 'party' : 'solo'];
     const _accUp  = reward.levelUps.account;
-    if (_modeUp) setTimeout(() => { try { sfx.levelUp && sfx.levelUp(); } catch (_) {} }, 400);
-    if (_accUp)  setTimeout(() => { try { sfx.levelUp && sfx.levelUp(); } catch (_) {} }, 2800);
+    if (_modeUp) {
+      setTimeout(() => { try { sfx.levelUp && sfx.levelUp(); } catch (_) {} }, 400);
+      // Bar finishes filling at ~2.8s (0.4s delay + 2.4s anim).
+      setTimeout(() => {
+        const bar = document.querySelector('.level-up-bar:not(.account)');
+        if (bar) bar.classList.add('shaking');
+      }, 2800);
+      // After 0.7s of shake → burst + confetti + extra arpeggio note.
+      setTimeout(() => {
+        const bar = document.querySelector('.level-up-bar:not(.account)');
+        if (bar) {
+          bar.classList.remove('shaking');
+          bar.classList.add('bursting');
+          try { fireConfetti(); } catch (_) {}
+          try { sfx.achievement && sfx.achievement(); } catch (_) {}
+        }
+      }, 3500);
+    }
+    if (_accUp) {
+      // Account bar starts 2.4s after mode bar, so push everything 2.4s later
+      setTimeout(() => { try { sfx.levelUp && sfx.levelUp(); } catch (_) {} }, 2800);
+      setTimeout(() => {
+        const bar = document.querySelector('.level-up-bar.account');
+        if (bar) bar.classList.add('shaking');
+      }, 5200);
+      setTimeout(() => {
+        const bar = document.querySelector('.level-up-bar.account');
+        if (bar) {
+          bar.classList.remove('shaking');
+          bar.classList.add('bursting');
+          try { fireConfetti(); } catch (_) {}
+          try { sfx.achievement && sfx.achievement(); } catch (_) {}
+        }
+      }, 5900);
+    }
   }
   const box = document.getElementById('box');
   box.onclick = () => {
