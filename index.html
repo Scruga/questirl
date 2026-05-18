@@ -8839,7 +8839,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.18.229';
+const BUILD_VERSION = '2026.05.18.231';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -20926,6 +20926,40 @@ function validateGeneratedQuest(ai, r) {
       }
     }
 
+    // Unverifiable-sequence detector. If a step requires a SEQUENCE of
+    // N actions ("touch five X", "walk to three Y", "visit four Z")
+    // but the proof is single-photo (no photoCount > 1, no tap, no
+    // confirm), the AI judge can't verify the sequence — it'll fail
+    // on the FINAL frame correctly but the player will be frustrated.
+    // Flag so the retry generates a sensible proof shape.
+    const stepProof = (step && step.proof) || 'photo';
+    const stepPhotoCount = step && step.photoCount;
+    const SEQUENCE_PATTERN = /\b(?:touch|visit|tap|walk\s+to|approach|reach|enter)\s+(?:each\s+of\s+)?(?:three|four|five|six|seven|3|4|5|6|7)\s+(?:different\s+)?\w+/i;
+    if (SEQUENCE_PATTERN.test(text) && stepProof === 'photo' && (!stepPhotoCount || stepPhotoCount < 2)) {
+      const m = text.match(SEQUENCE_PATTERN);
+      violations.push(`Step ${idx + 1} requires a sequence ("${m[0]}") but uses single-photo proof — judge can't verify. Use proof:"tap" or photoCount > 1.`);
+    }
+
+    // Every-path / whole-area sweep detector. The player has ~60s per
+    // step; they can\'t "walk every path", "visit every fork", "tour
+    // the entire park", "trace the whole loop". These steps generate
+    // a feel of being impossible to complete in the time budget.
+    const SWEEP_PATTERNS = [
+      /\bwalk\s+(?:all|every|each)\s+(?:the\s+)?(?:\w+\s+){0,2}(?:paths?|trails?|aisles?|wings?|rooms?|corners?|sections?|areas?|zones?)/i,
+      /\bvisit\s+every\s+(?:fork|turn|bench|tree|aisle|corner|path|trail|room|section)/i,
+      /\b(?:walk|cover|trace|sweep|tour)\s+(?:the\s+)?(?:whole|full|entire|complete)\s+(?:park|mall|store|building|venue|location|space|loop|perimeter|area|trail|path)/i,
+      /\bwithout\s+doubling\s+back/i,
+      /\bevery\s+visible\s+(?:path|trail|fork|aisle|corner)/i,
+      /\b(?:all|every)\s+(?:four|five|six|seven|3|4|5|6|7|main|major)\s+(?:paths?|trails?|aisles?|wings?|sections?)/i,
+    ];
+    for (const pat of SWEEP_PATTERNS) {
+      const m = text.match(pat);
+      if (m) {
+        violations.push(`Step ${idx + 1} sweep-the-whole-area trap: "${m[0]}" — single step can only cover ~60m / 60s. Pick ONE spot to walk to, not a sweep.`);
+        break;
+      }
+    }
+
     if (countNOfXInStep(text) > 0) stepsWithNOfX++;
   });
 
@@ -21020,7 +21054,7 @@ const STEP_ARCHETYPES = [
   'DEPLOY (fully commit to a pose/expression/sustained physical action)',
   'HARVEST (gather things from environment — max 1 per quest)',
   'CROWN (physically or symbolically crown something)',
-  'TOUR (visit a path through space without doing N-of-X)',
+  'TOUR (walk a SHORT path 20-60m between two specific spots the player can already see — NOT a sweep of the whole area, NOT "every path", NOT "all trails")',
   'TRADE (swap one thing for another, mime is fine)',
   'VOW (declare a future intention out loud)',
   'DISMISS (wave off, walk away from, deny)',
@@ -21917,7 +21951,14 @@ UNIVERSAL SAFETY (never violate, regardless of any player-set limit)
 - NEVER ask the player to download anything, install an app, or hand over contact info.
 - NEVER touch protected traits (race/religion/sexuality/gender/disability/mental-health/trauma/family/poverty).
 - NEVER photograph children, unconsenting strangers' faces, or private property interiors.
-- NEVER ask for impossible scale: no driving during the run, no going to another town, no walking more than ~60 meters from start. Steps must be doable on foot within a few minutes.
+- NEVER ask for impossible scale: no driving during the run, no going to another town, no walking more than ~60 meters from start. Steps must be doable on foot within a few minutes (60-90 seconds of movement MAX, on top of any time the step's action itself needs).
+- ⚠ EVERY-PATH / WHOLE-AREA TRAP — strict (testers flagged this). NEVER write steps that require sweeping a whole area or visiting every X. The player has maybe 60 seconds per step. They can\'t "walk every path", "visit every fork", "see all four trails", "tour the entire park", "cover the full perimeter", "trace the whole loop". Pick ONE thing to walk to, not a sweep. Banned phrasings:
+  · "walk every / visit every / all (main|four|N) (paths|trails|forks|aisles|wings|rooms|corners)"
+  · "without doubling back" + multi-path language (implies extensive walking)
+  · "end where the paths trap you" / "the geometry that grieves" type whole-park exploration framings
+  · "trace the whole / full / entire (X)"
+  · TOUR archetype is NOT a permission slip for whole-area walks. TOUR means: walk a SHORT path between two specific points the player can SEE FROM WHERE THEY STARTED. Max 60 meters.
+  GOOD replacements: "walk to the loudest bench you can hear" / "find the tree closest to the entrance and circle it once" / "pick the longest single path you can see and walk to its first bend, photograph the bend".
 - NEVER ask the player to hold up / look at / compare a previous photo while shooting a new one (one phone = camera AND viewer).
 - NEVER write per-step time limits in step.instr ("in under N seconds", "the host is timing it") — the system adds those itself via a post-processor for Nightmare runs.
 
@@ -21933,6 +21974,15 @@ PROOF — strict
 - For tap proof, add a step.tapCount field (integer 3-30, default 7). Match the count to the ritual: 3 for trinity rituals, 5 for a 5-breath cycle, 7 for a deeper ceremony, etc.
 - One photo per step. No video, no screenshots, no multi-shot, no before/after.
 - A step CAN have photoCount: 2-4 when it genuinely needs multiple distinct photos (e.g. "three different chairs, one photo per chair"), but default to 1.
+- ⚠ UNVERIFIABLE-SEQUENCE TRAP — strict (testers flagged this). NEVER write a step that requires the player to do N SEQUENTIAL ACTIONS but uses single-photo proof. Single-photo proof can only show ONE MOMENT — the AI judge cannot verify whether the player did the other N-1 actions before the photo. Examples of the FORBIDDEN pattern:
+  · "touch five machines in order, then photograph the fifth" — judge can't see the first four → fails.
+  · "walk to three zones in sequence and photograph the third" — same issue.
+  · "say five things to five objects, then photograph the fifth one" — judge can't hear or verify the prior four.
+  When a step REQUIRES sequential actions, ALWAYS use one of these proof shapes instead:
+  · proof:"tap" with tapCount = N — each tap = one completed action ("tap once for each zone you touched"). The count provides the verification.
+  · proof:"photo" with photoCount = N (2-4) — one photo per action. Multi-shot UI lets the player capture each step of the sequence.
+  · proof:"confirm" — honor-system button if the action is internal/social and untestable. Be honest about it; don't try to fake verification.
+  · Or REWRITE the step so it's a SINGLE OBSERVABLE MOMENT — "photograph the loudest machine you find in the gym" instead of "touch five machines and photograph the last one." The fewer-step version is almost always more interesting.
 
 STEP STRUCTURE
 - 5 steps. Each has: type, title (≤6 words), instr (≤130 chars), examples (3 short suggestions ≤50 chars each), proof, dmg.
@@ -22236,7 +22286,7 @@ async function aiJudgePhoto(dataUrl, step) {
   // before/after / no multi-shot), creative interpretations pass, only
   // fail when the photo is clearly unrelated. The judge keeps the run
   // moving — false fails frustrate players more than false passes.
-  const JUDGE_RULES = ` HARD RULES: (1) The player submits exactly ONE photo per step. NEVER ask for "before and after", "two photos", "a video", or anything multi-shot — that's not possible in the UI. (2) The step's "examples" are SUGGESTIONS, not requirements. If the player did something different that still hits the spirit of the step's instruction, PASS. (3) Lean toward PASS. Only fail when the photo is clearly unrelated to the step instruction — not just when it didn't match an example. (4) Your comment must NEVER mention before/after, multiple photos, video, retakes, or any feature that doesn't exist. (5) Keep it under 140 chars.`;
+  const JUDGE_RULES = ` HARD RULES: (1) The player submits exactly ONE photo per step. NEVER ask for "before and after", "two photos", "a video", or anything multi-shot — that's not possible in the UI. (2) The step's "examples" are SUGGESTIONS, not requirements. If the player did something different that still hits the spirit of the step's instruction, PASS. (3) Lean toward PASS. Only fail when the photo is clearly unrelated to the step instruction — not just when it didn't match an example. (4) Your comment must NEVER mention before/after, multiple photos, video, retakes, or any feature that doesn't exist. (5) Keep it under 140 chars. (6) UNVERIFIABLE-SEQUENCE LENIENCE: if the step asks for a SEQUENCE of actions (touch N things, walk to N zones, say N words to N objects) but the player can only submit ONE photo, you CANNOT verify the prior N-1 actions. In that case, PASS the photo if it shows the player was plausibly AT THE FINAL STEP of the sequence — don't fail with "no evidence you did the previous actions." That's a quest-gen failure, not a player failure. Be generous when the step's verification ask exceeds what one photo can show.`;
   // Pull photo-verifiable active twists onto the judge's checklist. Any
   // twist flagged photoVisible:false (Narrator, Phone Swap, Vow of
   // Silence) is audio/behavior-only — honor-system, not enforced here.
