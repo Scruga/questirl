@@ -2302,6 +2302,27 @@
   .level-up-bar.shaking { animation: funfairShake 0.7s ease-in-out; }
   .level-up-bar.bursting { animation: funfairBurst 0.65s cubic-bezier(0.34, 1.56, 0.64, 1); }
   .level-up-bar.account.bursting { animation: funfairBurstAccount 0.65s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  /* Post-burst state — bar drains back to 0%, the "from → to" pair
+     swaps for just "LV N" (the new level) bigger and centered. Drives
+     home the "you ARE level N now, starting fresh" feeling. */
+  .level-up-bar.settled .lub-nums {
+    font-size: 18px;
+    color: var(--gold, #ffda5c);
+    text-shadow: 2px 2px 0 #000;
+  }
+  .level-up-bar.account.settled .lub-nums {
+    color: #d4c3ff;
+  }
+  @keyframes lubSettleIn {
+    0%   { opacity: 0; transform: scale(0.6); }
+    60%  { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .level-up-bar.settled .lub-nums strong {
+    font-size: 22px;
+    display: inline-block;
+    animation: lubSettleIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
   @keyframes lubNumberPunch {
     0%   { transform: scale(1); color: var(--gold, #ffda5c); }
     25%  { transform: scale(1.7); color: #fff; text-shadow: 0 0 16px var(--gold, #ffda5c), 2px 2px 0 #000; }
@@ -8818,7 +8839,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.18.223';
+const BUILD_VERSION = '2026.05.18.229';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -10183,7 +10204,7 @@ const DIFFICULTIES = [
   { id: 'warmup',    name: 'Warm-Up',   tag: 'Easy',    desc: 'Low pressure, smaller reward.',                              box: 'Warm-Up Box',   stepBonus: 0 },
   { id: 'brave',     name: 'Brave',     tag: 'Mild',    desc: 'More movement, better reward.',                              box: 'Brave Box',     stepBonus: 5 },
   { id: 'bold',      name: 'Bold',      tag: 'Hard',    desc: 'More commitment. Better loot.',                              box: 'Bold Box',      stepBonus: 10 },
-  { id: 'chaos',     name: 'Chaos',     tag: 'Intense', desc: 'Twists. Punishments. Best reward.',                          box: 'Chaos Box',     stepBonus: 15 },
+  { id: 'chaos',     name: 'Chaos',     tag: 'Intense', desc: 'Twists. Punishments. High reward.',                          box: 'Chaos Box',     stepBonus: 15 },
   { id: 'nightmare', name: 'Nightmare', tag: 'Brutal',  desc: '3-min timer. Compounding step rules. Strict judge. Mean boss.', box: 'Nightmare Box', stepBonus: 25 },
 ];
 
@@ -17322,7 +17343,7 @@ function screenReward() {
         const _modeLabel = r.mode === 'party' ? 'PARTY' : 'SOLO';
         if (ups[_modeKey]) {
           banners.push(`
-            <div class="level-up-bar" data-delay="0">
+            <div class="level-up-bar" data-delay="0" data-from="${ups[_modeKey].from}" data-to="${ups[_modeKey].to}">
               <div class="lub-head">
                 <span class="lub-ic">⭐</span>
                 <span class="lub-label">${_modeLabel} LEVEL UP</span>
@@ -17334,7 +17355,7 @@ function screenReward() {
         }
         if (ups.account) {
           banners.push(`
-            <div class="level-up-bar account" data-delay="400">
+            <div class="level-up-bar account" data-delay="400" data-from="${ups.account.from}" data-to="${ups.account.to}">
               <div class="lub-head">
                 <span class="lub-ic">🏆</span>
                 <span class="lub-label">ACCOUNT LEVEL UP</span>
@@ -17425,6 +17446,31 @@ function screenReward() {
   // After each bar finishes filling (~2.8s for mode, ~5.2s for account),
   // shake the banner violently for ~0.7s, then BURST it with a flash +
   // scale pulse + confetti. The number jumps in a punch animation.
+  // Helper — after the burst animation peaks, drain the fill back to
+  // 0% and replace "4 → 5" with just "LV 5" (the new level). Drives
+  // home that the player IS the new level now, starting fresh toward
+  // the next threshold.
+  function settleLevelUpBar(bar) {
+    if (!bar) return;
+    const fill = bar.querySelector('.lub-fill');
+    if (fill) {
+      // Kill the keyframe animation so it stops forcing width:100%,
+      // then drain to 0% via a smooth CSS transition.
+      fill.style.animation = 'none';
+      fill.style.transition = 'width 0.6s cubic-bezier(0.6, 0, 0.4, 1)';
+      // Force a reflow so the browser sees the animation removal before
+      // the width change — otherwise it snaps without transitioning.
+      void fill.offsetWidth;
+      fill.style.width = '0%';
+    }
+    const numsEl = bar.querySelector('.lub-nums');
+    const toLevel = bar.dataset.to;
+    if (numsEl && toLevel) {
+      numsEl.innerHTML = `LV <strong>${toLevel}</strong>`;
+    }
+    bar.classList.add('settled');
+  }
+
   if (reward.levelUps) {
     const _modeUp = reward.levelUps[r.mode === 'party' ? 'party' : 'solo'];
     const _accUp  = reward.levelUps.account;
@@ -17445,6 +17491,12 @@ function screenReward() {
           try { sfx.achievement && sfx.achievement(); } catch (_) {}
         }
       }, 3500);
+      // After the burst settles (~0.65s of burst animation), drain the
+      // bar and swap the "4 → 5" text for "LV 5".
+      setTimeout(() => {
+        const bar = document.querySelector('.level-up-bar:not(.account)');
+        settleLevelUpBar(bar);
+      }, 4200);
     }
     if (_accUp) {
       // Account bar starts 2.4s after mode bar, so push everything 2.4s later
@@ -17462,6 +17514,10 @@ function screenReward() {
           try { sfx.achievement && sfx.achievement(); } catch (_) {}
         }
       }, 5900);
+      setTimeout(() => {
+        const bar = document.querySelector('.level-up-bar.account');
+        settleLevelUpBar(bar);
+      }, 6600);
     }
   }
   const box = document.getElementById('box');
@@ -19991,6 +20047,23 @@ function spawnAchievementSparkles(anchorEl) {
 /* ---------- Ideas ---------- */
 
 const IDEAS = [
+  // ──────────────────────────────────────────────────────────────
+  //  "NEXT LEVEL" features — added May 18. Listed top-down by my
+  //  impact-per-effort estimate. The top 5 are the ones that would
+  //  meaningfully change retention/virality if they shipped.
+  // ──────────────────────────────────────────────────────────────
+  { ic: '📅', n: 'Daily quest / Boss of the Day (top retention play)', d: 'Once per 24h, a global boss spawns — same boss config (location/vibes/difficulty/seed) for every player. Wordle-style. Everyone fights the same thing. Public scoreboard (fastest time, funniest photos, highest validator pass-rate). Conversation thread per day\'s boss in a community channel. Build: Firestore doc keyed to YYYY-MM-DD storing the day\'s seed; client checks on home-screen mount and shows a "TODAY\'S BOSS" card; a separate global leaderboard collection records completions. The seed should be deterministic per day so all clients render the same boss without coordination. Hardest part: timezone handling — probably go with "UTC midnight" as the universal rollover so everyone gets a new boss simultaneously. Est. 4-6h. This is the single biggest sticky-factor lever. Wordle proved daily-shared-content is addictive; we have the engine to do this much better since our content is interactive.' },
+  { ic: '📸', n: 'Auto-generated shareable run cards (viral loop)', d: 'After every completed run, generate a beautiful pre-designed share image: boss portrait + 5-step photo thumbnails + final time + difficulty/vibe stamps + the System\'s best one-line verdict for that run. One-tap share to Discord/Instagram/Twitter. Designed to look good cropped to story format AND square format. Build: a canvas-based generator that composites the data (already on r.reward + r.quest + r.proofs). Layout in 1080×1920 (story) and 1080×1080 (square), let the user pick. Use the existing pixel-art aesthetic so the cards feel on-brand. Est. 3-4h. The current recap exists but is full-screen-in-app — players have to screenshot and crop. A purpose-built share-card lifts shares from rare → routine. Every shared card is an ad.' },
+  { ic: '📚', n: 'Quest history + boss bestiary', d: 'A new tab/screen showing every boss the player has ever beaten, with stats per boss: date, vibes, difficulty, time, win/loss, AI judge\'s funniest comment, photos. Plus an unencountered-bosses preview ("these still haunt the arena") so players see what they HAVEN\'T seen yet — Pokémon-style collection psychology. The data is already being written to profile.history (mostly). Need to: (1) standardize what each history entry stores; (2) build the screen; (3) add a "you encountered N of M unique bosses" stat. Bestiary works especially well with the recurring/secret-boss mechanic already in the codebase (Ripley, etc.) — gives players a checklist. Est. 2-3h since most data exists.' },
+  { ic: '🎤', n: 'AI per-photo verdict at recap', d: 'Right now the AI judge gives ONE verdict per photo at submission. At recap, generate a personalized 1-2 sentence commentary for EACH submitted photo so the recap reads like a tournament judge\'s scorecard: "Step 3, the chair photo: bold framing, but the goblin\'s not impressed by the angle. 8/10 commitment." Massively increases re-read value of past quests — players will scroll back through old recaps to laugh at the System\'s commentary. Build: at finalizeRun, fire ONE batched AI call that takes the 5 photos + step instructions + boss flavor and returns 5 verdict strings. Stash on r.reward.photoVerdicts[] so they\'re visible on the recap screen. Est. 3h plus prompt iteration to land the right tone (DCC dry voice).' },
+  { ic: '🛠️', n: 'Player-designed bosses (seed your own quest)', d: 'Player types a one-line description ("a boss themed around my roommate who never does dishes"). AI generates a custom boss + 5-step quest from that seed. Saves with a 5-char share code (e.g. "K9PRX"). Player shares the code with a friend, friend enters the code, friend plays YOUR custom boss. Stats track how many people have beaten each saved boss. Build: (1) "boss factory" UI under a new tab; (2) AI call that takes the seed + location/vibes/difficulty selections and returns a saved-quest doc; (3) Firestore collection /customQuests/{code}; (4) a "play a custom boss" entry point that takes a code, fetches the doc, sets up the run; (5) moderation thinking — banned-words filter on submitted seeds so we don\'t end up generating offensive content. Est. 6-8h. Turns every player into a content creator. Viral hook: "my friend made a boss named after me, I have to fight it."' },
+  // ───── Second-tier additions ─────
+  { ic: '🔥', n: 'Streak rewards (cosmetic unlocks)', d: 'Quest streaks already exist in the codebase but only feed the reward multiplier. Add unlock thresholds: 3-day streak unlocks a unique frame, 7-day streak unlocks a new chibi avatar, 30-day streak grants a custom title ("Arena Regular"). Visible "streak progress" widget on home screen. Cheap to build (data is in profile.streak already), real retention lift because it tells the player "you\'re building something." Est. 1-2h.' },
+  { ic: '🌦️', n: 'Weather / time-of-day awareness in quest gen', d: 'Pass the player\'s local time (and optionally weather, if they grant location) into the quest-gen prompt. AI generates quests appropriate to context — sunset rituals at golden hour, rain-themed quests when it\'s raining, midnight-energy quests after 10pm, morning-quiet quests before 8am. Tiny code change (just inject "It is currently raining at 6:47pm" into the user message). Big atmospheric win. Est. 1h for time-of-day, +2-3h if adding weather API. Privacy note: weather requires location, so keep it opt-in.' },
+  { ic: '😀', n: 'Tap-to-react emojis on party photos', d: 'In party mode, the photo wall shows each player\'s submitted photo. Add tap-to-react with a small emoji picker (👏 🔥 💀 😂 ❤️ etc). Reactions show as floating badges on the photo. Stored in the room doc. Adds an async-social layer to multiplayer — friends in a long-running party room can react to each other\'s photos throughout the day. Est. 2-3h. Pairs really well with the photo wall already being a focal point of party mode.' },
+  { ic: '👻', n: 'Sequel-boss mode (recurring villain)', d: 'When a player beats a boss, ~15% chance the NEXT quest features that boss again — "X has returned, harder, and they remember what you did to them last time." The AI prompt receives the previous run\'s summary (steps taken, photos submitted, host\'s comments) and weaves callbacks into the new quest. Builds a recurring-villain feel without needing a full story mode. Est. 2-3h. Players will start NAMING bosses that keep coming back ("ugh, the Comfort Creep is back AGAIN"). Memorable.' },
+  { ic: '✏️', n: 'Drawing / sketch proof type', d: 'Player draws on a canvas with their finger as proof of a step. Works for steps that photos can\'t capture (imagined things, emotional states, "draw what you felt"). Canvas + finger tracking + clear button + AI judge configured to be VERY lenient about quality (people are bad at finger-drawing). Originally deferred when we shipped hold/tap because of scope. Build: ~3h for the canvas UI + 1h for AI judge prompt tuning to accept low-skill drawings. Once it works, opens a whole new step archetype ("draw the boss as you imagine them after step 3").' },
+  // ───── Existing entries ─────
   { ic: '✋', n: 'Re-enable hold proof (press-and-hold mechanic)', d: 'Hold proof was a press-and-hold-button mechanic — player sustains a touch for N seconds, button shows fill bar, System whispers milestone lines, button moves on a track every 1.2-1.8s so finger has to follow. Shelved May 18 because iOS Safari rendering kept breaking (touch events not registering, CSS overrides from .btn class conflicting with translateX positioning). The code is preserved verbatim — both the renderer (proof === "hold" branch with explicit fall-through to confirm-fallback) AND the handler (wrapped in `if (false)` block in bindQuest). To revive: (1) remove the `if (false)` gate on the handler; (2) restore the renderer branch to its `<div role="button">` implementation; (3) re-add "hold" to the allowed proof types in the AI prompt; (4) most critically — debug WHY iOS Safari was rejecting the touch events. Best guess: the SW was serving stale HTML for hours despite manual hard-refreshes, and the actual CSS fix may have worked but the user never received it. Try first by deleting service worker storage entirely on test device + cache-busting URL. If touch events still don\'t fire, suspect a CSS `pointer-events` cascade somewhere or a parent overflow issue. Once fixed, the mechanic is well-designed — the moving button + System whispers were genuinely fun in concept. Est. 2-3h to debug + restore.' },
   { ic: '⚡', n: 'Twist cards rework + re-enable', d: 'Twist cards are SHELVED as of May 18 (see maybeTriggerTwistCard early return). They were firing mid-quest with mixed reception — some twists are great (Mirror Mode, Mascot Mode, Bullseye Object), others are jarring or contradict the step that just got assigned (e.g. CLOWN MODE landing on a CONFRONT-archetype Nightmare step that demands no-smiling). The rework before re-enabling: (1) only fire when archetype-compatible — don\'t deal Stare-Down to a CONFESS step that needs face-down posing; (2) tie firing to difficulty — twists ONLY on Chaos/Nightmare runs where the extra layer makes sense (Brave/Bold are crowded enough already); (3) make twists VISIBLE on the quest screen as a "if you accept this you get a damage bonus" optional sidebar instead of forced mid-run shuffles; (4) audit each twist text for AI-voice consistency with the new lean prompt era; (5) add a "twist accepted" feedback signal to the validator so we can track if accepting twists correlates with higher 👍 ratings in Firestore. The code path is intact and tested — gate is a single early-return in maybeTriggerTwistCard. Est. 3-4h for the conditional re-enable.' },
   { ic: '🐺', n: 'Timed charm system (Lone Wolf + future charms)', d: 'Bring back the Lone Wolf Charm and add a class of TIMED CHARMS. Each charm grants a passive bonus for a fixed window — e.g. 7 days of +10% solo reward, or 24 hours of +1 reroll budget per run, or 3 runs of a damage boost. Required pieces: (1) a charms[] array on profile with {id, expiresAt or runsRemaining} entries; (2) reward-calc + setup-modifier code reads from charms[] in addition to inventory and armed items; (3) UI in inventory/store to show active charms with a countdown ("Lone Wolf Charm · expires in 4d 12h"); (4) a way to acquire them — chest drops at high tiers, store purchases, or quest-completion milestones; (5) housekeeping pass on profile load that drops expired charms and decrements runsRemaining. Lone Wolf Charm was the prototype passive-while-owned item but it broke once we added unhinged/competitive modes — too easy to forget you own it, too easy to abuse by stockpiling. A time-boxed version is the right model. Est. 4-6h once the timed-buff infrastructure exists; the first charm is the hard part, subsequent ones are content additions.' },
@@ -20814,6 +20887,35 @@ function validateGeneratedQuest(ai, r) {
       if (m) {
         violations.push(`Step ${idx + 1} real-purchase: "${m[0]}"`);
         break;
+      }
+    }
+
+    // No-selfies / face-shots limit enforcement. If the player picked
+    // this limit but the step still asks for a face shot, flag it so
+    // the retry kicks in. Catches the common leak phrases the model
+    // uses to evade the limit instruction.
+    const noSelfies = Array.isArray(r.limits) && r.limits.includes('No selfies / face shots');
+    if (noSelfies) {
+      const FACE_PATTERNS = [
+        /\bsmile\s+(?:for|at|into|to)\s+(?:the\s+)?camera/i,
+        /\bphoto(?:graph)?\s+(?:of\s+)?yourself/i,
+        /\bselfie\b/i,
+        /\bmirror\s+selfie/i,
+        /\bself[- ]portrait/i,
+        /\bshow\s+(?:us\s+|me\s+)?your\s+face/i,
+        /\byour\s+face\s+(?:in|on|visible)/i,
+        /\beye\s+contact\s+with\s+(?:the\s+)?camera/i,
+        /\blook\s+(?:at|into)\s+(?:the\s+)?camera/i,
+        /\bfacing\s+(?:the\s+)?camera/i,
+        /\b(?:photograph|capture|snap)\s+(?:your\s+)?(?:face|expression|smile|smirk|frown|grimace)/i,
+        /\bmake\s+(?:eye\s+contact|a\s+face)\s+(?:with|at)\s+(?:the\s+)?camera/i,
+      ];
+      for (const pat of FACE_PATTERNS) {
+        const m = text.match(pat);
+        if (m) {
+          violations.push(`Step ${idx + 1} face-shot violation (limit "No selfies / face shots" is active): "${m[0]}"`);
+          break;
+        }
       }
     }
 
@@ -21820,13 +21922,15 @@ UNIVERSAL SAFETY (never violate, regardless of any player-set limit)
 - NEVER write per-step time limits in step.instr ("in under N seconds", "the host is timing it") — the system adds those itself via a post-processor for Nightmare runs.
 
 PROOF — strict
-- Proof types: "photo", "confirm", "timer", "tap". Pick the one that best fits the step's action — NOT always photo. Across 5 steps, mix at least 2 different proof types if possible (don't make all 5 "photo" — players notice).
-  · photo: visual evidence of a physical action/object. Default for FIND/MOVE/POSE.
-  · confirm: simple "I did it" button. Use for actions that genuinely can't be photographed (internal/quiet moments, brief honor-system steps).
+- Proof types: "photo", "confirm", "timer", "tap". Pick the one that best fits each step's action — NOT always photo.
+- Each proof type:
+  · photo: visual evidence of a physical action/object. The default for most steps.
+  · confirm: simple "I did it" honor-system button. Use for internal/quiet moments that can't be photographed.
   · timer: passive countdown — player waits N seconds with the screen open.
-  · tap: player must TAP A BUTTON step.tapCount times (3-30). Each tap = one beat of a counted ritual. Use for RITUAL / ECHO archetypes — the step.instr must tell the player what EACH TAP REPRESENTS (one tap per breath, one tap per memory, one tap per thing you're forgiving, etc.) so the count has meaning.
-- DO NOT use "hold" as a proof type. The hold mechanism is currently shelved (see IDEAS tab → "Re-enable hold proof"); if you generate proof:"hold" it will be rendered as a plain confirm button as a fallback.
-- For tap proof, add a step.tapCount field (integer 3-30, default 7).
+  · tap: player must TAP A BUTTON step.tapCount times (3-30). Each tap = one beat of a counted ritual. Strong fit for RITUAL and ECHO archetypes (structured counts), and any moment where each tap can REPRESENT something (one breath, one memory, one promise). The step.instr should tell the player what each tap means.
+- VARIETY NUDGE: when a step's action naturally fits "tap" — counted whispers, counted breaths, three blessings, five promises — prefer tap over photo. Roughly 1 in 5 steps will naturally call for it. Don't force it on steps that don't fit. (Players have flagged that pure-photo quests start feeling samey, so lean tap when the action is countable.)
+- DO NOT use "hold" as a proof type. The hold mechanism is currently shelved; if you generate proof:"hold" it will fall back to a confirm button.
+- For tap proof, add a step.tapCount field (integer 3-30, default 7). Match the count to the ritual: 3 for trinity rituals, 5 for a 5-breath cycle, 7 for a deeper ceremony, etc.
 - One photo per step. No video, no screenshots, no multi-shot, no before/after.
 - A step CAN have photoCount: 2-4 when it genuinely needs multiple distinct photos (e.g. "three different chairs, one photo per chair"), but default to 1.
 
@@ -21868,7 +21972,21 @@ LOCATION
 The user message specifies where the player is. Every step must reference real objects, zones, or behaviors that exist at THAT location. The boss must be entirely OF that location (not generic). Don't default to the most-obvious 3 objects — every location has 20+ distinctive things worth pulling from. Use your dungeon-master judgment.
 
 HARD LIMITS — absolute
-The user message lists player-chosen constraints (e.g. "No strangers", "Keep it indoors", "No selfies / face shots"). Honor every one. Limits beat vibes if they conflict.
+The user message lists player-chosen constraints. Honor every one. Limits beat vibes if they conflict. Some limits have non-obvious enforcement — read these per-limit notes carefully when they appear in the user message's HARD LIMITS list:
+
+- "No selfies / face shots" → CRITICAL. The player\'s face MUST NEVER appear in any step\'s photo proof. NEVER write "smile for the camera", "photo of yourself", "selfie", "show your face", "mirror selfie", "self-portrait", "look at the camera", "make eye contact with the camera", "smile and snap". For POSE archetype steps, the photo target is NOT the player\'s face — it\'s a HAND (holding the object), a FOOT (in position), a SILHOUETTE (against a background), an OBJECT (the thing the player just blessed/named/touched), a REFLECTION (in a window/screen), or a SHADOW (cast on a wall/floor). Examples: instead of "smile while holding the cup" → "photograph the cup from over your shoulder" or "photograph the hand holding the cup, no face in frame". Instead of "selfie with the boss-object" → "photograph the boss-object next to one item that is uniquely yours". For DEPLOY/CONFRONT archetypes that involve eye contact with a thing, the photo is the THING (not the player\'s face). For social-interaction steps (if "No strangers" isn\'t also set), photograph the shared object or the moment after, never the player\'s face.
+
+- "No strangers" → zero stranger interaction. No employees. No waving. No "ask someone". No "the next person who passes". Self + environment ONLY.
+
+- "Keep it indoors" → the entire run must execute inside the current building. No "step outside", no "head to the parking lot", no "find a window facing out and photograph what\'s beyond".
+
+- "No physical punishment" → no push-ups, no laps, no stress positions, no "owe N push-ups" forfeits in boss.timeoutPunish. Use silly social forfeits instead.
+
+- "No spending money" → no buying, no purchases, no entering steps that imply a transaction. No "ask for a free sample" (that\'s borderline coercive).
+
+- "Nothing embarrassing" → keep tone playful, not humiliating. No loud singing, no public outbursts, no costumes that draw attention. Vibes like "spicy" or "chaotic" must be expressed through OBJECTS, not through public player visibility.
+
+- "No filming strangers" → photos must contain ZERO unconsenting human faces. Even in a public space, frame to exclude bystanders.
 
 MULTIPLAYER
 - coop: shared boss HP. Players physically together. Steps are GROUP rituals.
@@ -22003,8 +22121,16 @@ A separate architecture call already picked the structural choices for this ques
 - BOSS ARCHETYPE: ${opts.architecture.bossArchetype}
 - BOSS-SPECIFIC FLAVOR (use as the boss's core motivation): ${opts.architecture.bossSpecificFlavor}
 - ARC SHAPE: ${opts.architecture.arcShape}
-- STEP ARCHETYPES (in order — each step's KIND of action is FIXED, not a flavor hint):
-${(opts.architecture.stepArchetypes || []).map((a, i) => `    ${i + 1}. ${a}`).join('\n')}${r.unhinged ? `
+- STEP ARCHETYPES (in order — each step's KIND of action is FIXED, not a flavor hint). Suggested proof type next to each — these are NUDGES, not rules. Override when the step's specific action calls for something different:
+${(opts.architecture.stepArchetypes || []).map((a, i) => {
+  const key = (a || '').toUpperCase();
+  let suggestedProof = 'photo';
+  if (/^RITUAL/.test(key) || /^ECHO/.test(key)) suggestedProof = 'tap (counted ritual)';
+  else if (/^CONFESS/.test(key) || /^VOW/.test(key)) suggestedProof = 'tap or confirm';
+  else if (/^BLESS/.test(key)) suggestedProof = 'tap or photo';
+  else if (/^EULOGIZE/.test(key) || /^INTERROGATE-SILENT/.test(key)) suggestedProof = 'confirm or tap';
+  return `    ${i + 1}. ${a}${suggestedProof !== 'photo' ? ` → suggested proof: ${suggestedProof}` : ''}`;
+}).join('\n')}${r.unhinged ? `
 
 ⚠ UNHINGED MODE OVERRIDE — VOICE TAKES PRIORITY OVER STRUCTURE ⚠
 The architecture above gives you SHAPE. The GREMLIN persona override at the END of your system messages gives you VOICE. The Gremlin voice WINS for tone. Do NOT write the steps in dry observational normal-mode voice "for clarity" — that's wrong here. Every step.title, step.instr, and step.examples entry MUST sound like cursed found-footage poetry. Broken cadence. Object personification. Lowercase chant rhythm. Sentence fragments. Mid-thought corrections. "okay so. yes. yes. yes." "the chair has been WAITING." "the radiator agrees." Re-read the GREMLIN VOICE section and the example instructions. If your output sounds like a normal app's step text with a few weird words sprinkled in, YOU FAILED THE VOICE. Make a stranger reading it over the player's shoulder ask "what is wrong with you."
