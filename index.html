@@ -2888,6 +2888,41 @@
   .onboard-actions {
     display: grid; grid-template-columns: 1fr 2fr; gap: 8px;
   }
+  /* Name-picker slide variant — single-column action row (no Skip) and
+     a tight input/randomize block above the dots. */
+  .onboard-actions.onboard-actions-solo {
+    grid-template-columns: 1fr;
+  }
+  .onboard-name-row {
+    margin: 0 0 12px;
+  }
+  .onboard-name-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: rgba(10, 5, 24, 0.85);
+    border: 2px solid #000;
+    box-shadow: inset 0 0 0 2px var(--neon);
+    color: var(--neon);
+    font-family: var(--px); font-size: 13px;
+    letter-spacing: 1px; text-align: center;
+    padding: 12px 10px;
+    outline: none;
+    text-transform: none;
+  }
+  .onboard-name-input::placeholder {
+    color: rgba(79, 227, 214, 0.45);
+  }
+  .onboard-name-input:focus {
+    box-shadow: inset 0 0 0 2px var(--gold), 0 0 12px rgba(245, 194, 66, 0.4);
+  }
+  .onboard-name-random {
+    margin-top: 10px;
+  }
+  .onboard-actions .btn.primary:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.4);
+  }
 
   /* Detail bottom-sheet modal */
   .store-detail-bg {
@@ -25948,6 +25983,17 @@ const ONBOARD_SLIDES = [
     imgBg: 'linear-gradient(135deg, rgba(74, 222, 128, 0.22), rgba(79, 227, 214, 0.22))',
     icon: 'img/ui_camera.png',
   },
+  // Mandatory name-picker slide. No Skip, no backdrop-close. Player must
+  // either confirm the pre-filled random name or pick their own before
+  // the cabinet boots. profile.hasChosenName flips on Continue so the
+  // AI knows this is an intentional handle (not a default placeholder).
+  {
+    kind: 'namepicker',
+    title: '★ PICK YOUR HANDLE',
+    body: "The host will sometimes drop your name into quests and chat. Type one or hit Randomize. Max 16 chars.",
+    imgBg: 'linear-gradient(135deg, rgba(245, 194, 66, 0.25), rgba(79, 227, 214, 0.22))',
+    icon: 'img/avatar_wizard.png',
+  },
 ];
 function maybeShowOnboarding() {
   // Defensive — only fires the first time. Set the flag immediately so
@@ -25955,6 +26001,10 @@ function maybeShowOnboarding() {
   if (profile.onboardedV1) return;
   profile.onboardedV1 = true;
   saveProfile();
+  // Index of the namepicker slide (mandatory — Skip on welcome slides
+  // jumps here instead of closing). We resolve this dynamically rather
+  // than hardcoding so adding/removing slides above doesn't break it.
+  const namePickerIdx = ONBOARD_SLIDES.findIndex(s => s.kind === 'namepicker');
   let slideIdx = 0;
   const wrap = document.createElement('div');
   wrap.className = 'onboard-bg';
@@ -25963,6 +26013,11 @@ function maybeShowOnboarding() {
   const renderSlide = () => {
     const s = ONBOARD_SLIDES[slideIdx];
     const isLast = slideIdx === ONBOARD_SLIDES.length - 1;
+    const isNamePicker = s.kind === 'namepicker';
+    // Pre-fill: respect whatever profile.name already is (which is the
+    // auto-generated themed handle). Player can keep it, edit it, or
+    // hit Randomize for a new roll.
+    const prefill = (profile.name || randomThemeName()).slice(0, 16);
     wrap.innerHTML = `
       <div class="onboard">
         <div class="onboard-art" style="background:${s.imgBg};">
@@ -25970,20 +26025,70 @@ function maybeShowOnboarding() {
         </div>
         <h2>${s.title}</h2>
         <p>${s.body}</p>
+        ${isNamePicker ? `
+          <div class="onboard-name-row">
+            <input type="text" class="onboard-name-input" id="onboardNameInput"
+                   maxlength="16" placeholder="Your handle"
+                   value="${escapeHtml(prefill)}" autocomplete="off" />
+            <button class="btn ghost sm onboard-name-random" id="onboardNameRandom">🎲 RANDOMIZE</button>
+          </div>
+        ` : ''}
         <div class="onboard-dots">
           ${ONBOARD_SLIDES.map((_, i) => `<span class="dot ${i === slideIdx ? 'on' : ''}"></span>`).join('')}
         </div>
-        <div class="onboard-actions">
-          <button class="btn ghost sm" id="onboardSkip">Skip</button>
-          <button class="btn primary sm" id="onboardNext">${isLast ? 'Insert Coin' : 'Next'}</button>
+        <div class="onboard-actions ${isNamePicker ? 'onboard-actions-solo' : ''}">
+          ${isNamePicker ? '' : `<button class="btn ghost sm" id="onboardSkip">Skip</button>`}
+          <button class="btn primary sm" id="onboardNext"${isNamePicker && !prefill.trim() ? ' disabled' : ''}>${isLast ? 'Insert Coin' : 'Next'}</button>
         </div>
       </div>
     `;
-    wrap.querySelector('#onboardSkip').onclick = close;
-    wrap.querySelector('#onboardNext').onclick = () => {
-      if (isLast) close();
-      else { slideIdx++; renderSlide(); }
-    };
+    // Skip on welcome/photo slides jumps to the name picker — never
+    // closes the overlay. Name selection is mandatory.
+    const skipBtn = wrap.querySelector('#onboardSkip');
+    if (skipBtn) {
+      skipBtn.onclick = () => {
+        if (namePickerIdx >= 0) { slideIdx = namePickerIdx; renderSlide(); }
+        else { close(); }
+      };
+    }
+    const nextBtn = wrap.querySelector('#onboardNext');
+    if (isNamePicker) {
+      const input = wrap.querySelector('#onboardNameInput');
+      const randBtn = wrap.querySelector('#onboardNameRandom');
+      const sync = () => {
+        const v = (input.value || '').trim();
+        nextBtn.disabled = !v;
+      };
+      input.addEventListener('input', sync);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); if (!nextBtn.disabled) nextBtn.click(); }
+      });
+      randBtn.onclick = () => {
+        input.value = randomThemeName();
+        input.focus();
+        sync();
+      };
+      // Focus + select so the prefill is easy to overwrite without
+      // forcing the player to manually clear it.
+      setTimeout(() => { input.focus(); input.select(); }, 50);
+      nextBtn.onclick = () => {
+        const next = (input.value || '').trim().slice(0, 16);
+        if (!next) { try { sfx.error && sfx.error(); } catch {} return; }
+        profile.name = next;
+        profile.hasChosenName = true;
+        saveProfile();
+        try { sfx.success && sfx.success(); } catch {}
+        close();
+        // Re-render the home screen so the new name shows up in the
+        // header strip without requiring a page reload.
+        try { render(); } catch {}
+      };
+    } else {
+      nextBtn.onclick = () => {
+        if (isLast) close();
+        else { slideIdx++; renderSlide(); }
+      };
+    }
   };
   renderSlide();
 }
