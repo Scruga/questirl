@@ -2279,34 +2279,53 @@
     font-family: var(--px); font-size: 10px; color: var(--neon-3);
     text-align: center; letter-spacing: 1.5px;
   }
-  /* The track holds the button. The button can translateX within
-     these bounds while the player is holding it — they have to follow
-     it with their finger. Dashed border shows the "play area." */
+  /* The track holds the button via flex (NOT position:absolute — that
+     was flaky for touch events on iOS). The button is a flex item
+     that can translateX within these bounds while the player is
+     holding it. Dashed border shows the "play area." */
   .hold-track {
-    position: relative;
     width: 100%;
     height: 76px;
     border: 2px dashed rgba(0, 230, 195, 0.45);
     background: rgba(0, 0, 0, 0.3);
     box-shadow: inset 0 0 0 2px #000;
+    padding: 6px;
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+    box-sizing: border-box;
   }
   .hold-btn {
-    position: absolute;
-    top: 6px;
-    bottom: 6px;
-    left: 0;
-    width: 55%;
+    flex: 0 0 55%;
+    position: relative;
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
     touch-action: none;
+    pointer-events: auto;
     font-size: 14px;
     letter-spacing: 2px;
     /* Smooth slide between random positions. The transition runs
-       whenever transform changes (set via JS every 1.2-1.8s). */
+       whenever transform changes (set via JS every 1.2-1.8s).
+       IMPORTANT: must list transform first so we know its specific
+       transition is preserved when .btn:active would otherwise stomp it. */
     transition: transform 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), background 0.2s;
     will-change: transform;
+    /* Critical override: the parent .btn class sets transform:
+       translate(3px, 3px) on :active, which would fight our JS-set
+       translateX. Force translateX-only here. The button still
+       gets visual press feedback via brightness filter. */
+    transform: translateX(0);
+  }
+  .hold-btn:active:not(:disabled) {
+    /* Beat the .btn:active rule. Don't translate — just brighten. */
+    transform: translateX(var(--hold-offset, 0px)) !important;
+    filter: brightness(1.15);
+    box-shadow:
+      inset -3px -3px 0 rgba(0,0,0,0.5),
+      inset 3px 3px 0 rgba(255,255,255,0.15),
+      2px 2px 0 #000 !important;
   }
   .hold-btn .hold-fill {
     position: absolute; top: 0; left: 0; bottom: 0;
@@ -8734,7 +8753,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.18.217';
+const BUILD_VERSION = '2026.05.18.219';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15469,6 +15488,15 @@ function bindQuest() {
     // existing stop() handler. Computed lazily so the track has its
     // final width by the time we measure.
     const track = stage.querySelector('.hold-track');
+    // Account for the track's 6px padding on each side when computing
+    // the maximum X offset the button can slide to. We set BOTH the
+    // CSS custom property --hold-offset (so the :active state can read
+    // it) AND the transform directly (so the slide animates).
+    function setBtnX(px) {
+      btn.style.setProperty('--hold-offset', px + 'px');
+      btn.style.transform = `translateX(${px}px)`;
+      btn.dataset.curOffset = String(px);
+    }
     function scheduleMove(initialDelay) {
       if (!active) return;
       const delay = (typeof initialDelay === 'number') ? initialDelay : (1200 + Math.random() * 600);
@@ -15476,10 +15504,9 @@ function bindQuest() {
         if (!active) return;
         const trackW = track ? track.clientWidth : 0;
         const btnW = btn ? btn.offsetWidth : 0;
-        const maxOffset = Math.max(0, trackW - btnW);
+        // The track has 12px total horizontal padding (6 on each side).
+        const maxOffset = Math.max(0, trackW - btnW - 12);
         if (maxOffset > 8) {
-          // Random target within track. Bias toward a different half
-          // than current so the move is always meaningful.
           const cur = parseFloat(btn.dataset.curOffset || '0');
           const half = maxOffset / 2;
           let target;
@@ -15488,8 +15515,7 @@ function bindQuest() {
           } else {
             target = Math.random() * half;
           }
-          btn.style.transform = `translateX(${target}px)`;
-          btn.dataset.curOffset = String(target);
+          setBtnX(target);
         }
         scheduleMove();
       }, delay);
@@ -15521,9 +15547,9 @@ function bindQuest() {
         active = false;
         cancelAnimationFrame(tickHandle);
         if (moveTimer) { clearTimeout(moveTimer); moveTimer = null; }
-        // Snap the button back to center on completion for a clean
-        // "✓ HELD" final-state look.
-        btn.style.transform = 'translateX(0)';
+        // Snap the button back to start position on completion for a
+        // clean "✓ HELD" final-state look.
+        setBtnX(0);
         if (fill) fill.style.width = '100%';
         if (label) label.textContent = '✓ HELD';
         btn.classList.add('done');
@@ -15542,37 +15568,47 @@ function bindQuest() {
       tickHandle = requestAnimationFrame(tick);
     };
     const start = (ev) => {
-      ev.preventDefault();
+      if (ev && ev.preventDefault) ev.preventDefault();
       if (btn.disabled) return;
+      console.log('[hold] start fired for step', i);
       active = true;
       startMs = Date.now();
       firedMilestones = new Set();
       setWhisper('');
       // Reset button to starting position; first move comes after a
       // 2s grace period so the player can settle in.
-      btn.style.transform = 'translateX(0)';
-      btn.dataset.curOffset = '0';
+      setBtnX(0);
       scheduleMove(2000);
       tick();
     };
     const stop = (ev) => {
       if (!active) return;
+      console.log('[hold] stop fired for step', i, ev?.type);
       active = false;
       cancelAnimationFrame(tickHandle);
       if (moveTimer) { clearTimeout(moveTimer); moveTimer = null; }
       // Reset progress + whisper a "you broke it" line for personality.
       if (fill) fill.style.width = '0%';
-      btn.style.transform = 'translateX(0)';
-      btn.dataset.curOffset = '0';
+      setBtnX(0);
       if (label) label.textContent = `HOLD FOR ${holdSec}s — try again`;
       const broken = brokenPool[Math.floor(Math.random() * brokenPool.length)];
       setWhisper(broken);
       buzz([60, 30, 60]); // sharper "you flinched" buzz
     };
+    // Bind BOTH pointer and touch events for maximum mobile compat —
+    // iOS Safari has been known to fire touch but not pointer in some
+    // cases. They'll de-dupe naturally because once active=true, start
+    // is a no-op.
     btn.addEventListener('pointerdown', start);
     btn.addEventListener('pointerup', stop);
     btn.addEventListener('pointerleave', stop);
     btn.addEventListener('pointercancel', stop);
+    btn.addEventListener('touchstart', start, { passive: false });
+    btn.addEventListener('touchend', stop);
+    btn.addEventListener('touchcancel', stop);
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('mouseup', stop);
+    btn.addEventListener('mouseleave', stop);
     // Block scrolling while holding (mobile)
     btn.addEventListener('touchmove', (e) => { if (active) e.preventDefault(); }, { passive: false });
   });
@@ -16170,14 +16206,52 @@ function showNightmareWarningModal() {
 // ──────────────────────────────────────────────────────────────────
 // DEV MENU — only accessible when isDevMode() is true. Use to manually
 // drive the game during testing without grinding through real steps.
+// Helper — stamp r.proofs[i] with whatever shape the step's proof type
+// requires so the Complete/Submit button is enabled when we click it.
+// Without this, hold/tap steps stay locked because their .completed
+// flag was never set. Photo steps need a stub dataUrl. Multi-photo
+// steps need their photos[] slots filled.
+function devSatisfyStepProof(step, i) {
+  const r = state.run;
+  if (!r) return;
+  r.proofs = r.proofs || [];
+  r.proofs[i] = r.proofs[i] || { ts: Date.now() };
+  r.proofs[i].completed = true;
+  const ptype = step && step.proof;
+  if (ptype === 'tap') {
+    r.proofs[i].tapsDone = Math.max(step.tapCount || 7, r.proofs[i].tapsDone || 0);
+  } else if (ptype === 'hold') {
+    r.proofs[i].holdDurationSec = step.holdSec || 15;
+  } else if (ptype === 'photo' || !ptype) {
+    // Photo path needs a dataUrl for the Submit/Complete button to enable.
+    // Stub it with a 1x1 transparent PNG so downstream renderers
+    // (recap, share card) don't crash on a malformed src.
+    const STUB = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    if (!r.proofs[i].dataUrl) r.proofs[i].dataUrl = STUB;
+    r.proofs[i].autoCompleted = true;
+    // Multi-photo steps need photos[] entries too.
+    const required = Math.max(1, Math.min(6, step.photoCount || 1));
+    if (required > 1) {
+      r.proofs[i].photos = r.proofs[i].photos || [];
+      for (let j = 0; j < required; j++) {
+        if (!r.proofs[i].photos[j]) r.proofs[i].photos[j] = { ts: Date.now(), dataUrl: STUB };
+      }
+    }
+  }
+}
+
 function devForcePassCurrentStep() {
   const r = state.run;
   if (!r || !Array.isArray(r.quest)) return;
   const i = r.quest.findIndex((_, idx) => !r.completed.includes(idx));
   if (i < 0) return;
-  // Mark as a forced pass and trigger the completion handler.
+  const step = r.quest[i];
+  // Mark as a forced pass.
   r.judgments = r.judgments || [];
   r.judgments[i] = { pass: true, comment: '🛠 DEV — forced pass.' };
+  // Satisfy whatever proof type the step uses (photo/hold/tap/etc) so
+  // the Complete button is enabled when we click it.
+  devSatisfyStepProof(step, i);
   // The data-complete button is hidden in AI mode but still rendered;
   // clicking it runs the real completion logic (damage, streak, etc.).
   render();
@@ -16187,10 +16261,14 @@ function devForceWinRun() {
   const r = state.run;
   if (!r) return;
   // Auto-complete every remaining step so finalize sees a full kill.
+  // Stamp proof state for each so any downstream rendering of the
+  // recap / share card has valid proof shapes to render.
   for (let i = 0; i < r.quest.length; i++) {
     if (!r.completed.includes(i)) {
+      const step = r.quest[i];
       r.judgments = r.judgments || [];
       r.judgments[i] = { pass: true, comment: '🛠 DEV — auto-passed.' };
+      devSatisfyStepProof(step, i);
       r.completed.push(i);
     }
   }
@@ -20738,7 +20816,7 @@ const SYS_STAGE1_ARCHITECTURE = `You are the QUEST ARCHITECT for QuestIRL. Your 
 OUTPUT STRICT JSON, no prose, no markdown fences:
 {
   "bossArchetype": "<EXACT name from BOSS ARCHETYPES list>",
-  "bossSpecificFlavor": "<ONE sentence: how this archetype manifests AT the chosen LOCATION as the chosen VIBES. Be specific. e.g. 'A mall janitor-spirit that wants every storefront perfectly tidy and feels betrayed when shoppers leave fingerprints on glass.'>",
+  "bossSpecificFlavor": "<ONE sentence: how this archetype manifests AT the chosen LOCATION as the chosen VIBES. Be specific. e.g. 'A mall janitor-spirit that wants every storefront perfectly tidy and feels betrayed when shoppers leave fingerprints on glass.' If UNHINGED MODE is active (see user message), write the flavor in GREMLIN VOICE — lowercase, broken cadence, slightly cursed: 'the janitor has been here longer than the mall. it counts fingerprints. it remembers each one. unwell.'>",
   "arcShape": "<EXACT name from ARC SHAPES list>",
   "stepArchetypes": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", "<step 5>"]
 }
@@ -21816,7 +21894,15 @@ A separate architecture call already picked the structural choices for this ques
 - BOSS-SPECIFIC FLAVOR (use as the boss's core motivation): ${opts.architecture.bossSpecificFlavor}
 - ARC SHAPE: ${opts.architecture.arcShape}
 - STEP ARCHETYPES (in order — each step's KIND of action is FIXED, not a flavor hint):
-${(opts.architecture.stepArchetypes || []).map((a, i) => `    ${i + 1}. ${a}`).join('\n')}
+${(opts.architecture.stepArchetypes || []).map((a, i) => `    ${i + 1}. ${a}`).join('\n')}${r.unhinged ? `
+
+⚠ UNHINGED MODE OVERRIDE — VOICE TAKES PRIORITY OVER STRUCTURE ⚠
+The architecture above gives you SHAPE. The GREMLIN persona override at the END of your system messages gives you VOICE. The Gremlin voice WINS for tone. Do NOT write the steps in dry observational normal-mode voice "for clarity" — that's wrong here. Every step.title, step.instr, and step.examples entry MUST sound like cursed found-footage poetry. Broken cadence. Object personification. Lowercase chant rhythm. Sentence fragments. Mid-thought corrections. "okay so. yes. yes. yes." "the chair has been WAITING." "the radiator agrees." Re-read the GREMLIN VOICE section and the example instructions. If your output sounds like a normal app's step text with a few weird words sprinkled in, YOU FAILED THE VOICE. Make a stranger reading it over the player's shoulder ask "what is wrong with you."
+
+The boss archetype (${opts.architecture.bossArchetype.split('(')[0].trim()}) is the SHAPE of the boss. The Gremlin's voice describes how that boss talks/feels: cursed, surreal, unwell, warm underneath. The boss is not a thing you defeat with strategy — it's a thing the gremlin has BEEFS WITH and you're helping settle the beef.
+
+The step archetypes (TOUR, BURY, etc) tell you what KIND of action to write. The Gremlin voice tells you HOW to write it. Both together — never one without the other.
+` : ''}
 
 CRITICAL — STEP ARCHETYPES ARE BINDING ACTION TYPES, NOT THEMES:
 A common failure mode is reinterpreting non-text archetypes as text shots. "BURY three film titles" must mean PHYSICALLY HIDE a physical object — NOT "write the titles down and photograph the paper." Stop and check yourself: does each step's PRIMARY ACTION literally match its assigned archetype below?
