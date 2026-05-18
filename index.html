@@ -8839,7 +8839,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.18.231';
+const BUILD_VERSION = '2026.05.18.232';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -21098,11 +21098,13 @@ async function aiGenerateArchitecture(r) {
   const recentCombos = Array.isArray(profile.recentStepArchetypeCombos) ? profile.recentStepArchetypeCombos.slice(-6) : [];
   const recentArcShapes = Array.isArray(profile.recentArcShapes) ? profile.recentArcShapes.slice(-5) : [];
 
+  const _playerName = (profile && typeof profile.name === 'string' && profile.name.trim()) || 'Player';
   const userMsg = `LOCATION: ${ctxName}${r.contextNote && r.contextChoice === 'custom' ? ` (custom: "${r.contextNote}")` : ''}
 VIBES: ${r.unhinged ? 'UNHINGED MODE (gremlin) — ignore standard vibes, pick a cursed/surreal boss archetype like THE GHOST, THE MOURNER, THE RECENT, THE TRICKSTER, THE ARCHITECT' : (r.vibes && r.vibes.length ? r.vibes.join(' + ') : 'no specific vibe — default theatrical')}
 DIFFICULTY: ${r.difficulty?.name || 'Brave'}
 HARD LIMITS: ${(r.limits && r.limits.length) ? r.limits.join(', ') : 'none'}
 MODE: ${mpMode}${r.mode === 'party' ? ` (${playerCount} players)` : ''}
+PLAYER NAME: ${_playerName}${r.mode === 'party' ? ' (host)' : ''}
 
 RECENT (AVOID THESE — STRICT):
 - Recent boss archetypes: ${recentBossArchetypes.length ? recentBossArchetypes.join(', ') : 'none'}
@@ -22145,6 +22147,7 @@ RIVAL TEASING REMINDER: ${mpMode} mode requires every step to include a vibe-cod
 
 LAYER 1 — GAMEMODE: ${mpModeNote}.${r.mode === 'party' ? ` Re-read the MULTIPLAYER MODE section. ${mpMode === 'competitive' ? 'COMPETITIVE: every step must be doable by ONE player alone (players are NOT physically together) AND every step must include a TEASING / trash-talk angle so the player feels they\'re racing rivals. Re-read the COMPETE TEASING section.' : mpMode === 'chaos' ? 'CHAOS: every step must be doable by ONE player alone AND every step should hint at sabotage / "claim before a rival does" energy. Re-read COMPETE TEASING.' : mpMode === 'coop' ? 'COOP: players ARE physically together. Steps are GROUP rituals (everyone do X together, group formations, shared frames). Boss HP is shared. Host voice affirms the team — NEVER shames any single player.' : ''}` : ''}
 PLAYERS: ${playerCount}. ${r.mode === 'party' ? `Calibrate every group ritual to exactly this count. Re-read the PLAYER-COUNT SCALING section.` : 'Single player — solo framing only.'}
+PLAYER NAME: ${(profile && typeof profile.name === 'string' && profile.name.trim()) || 'Player'}${r.mode === 'party' ? ' (host name)' : ''}. You may reference the player by name 0-2 times across the 5 steps (in step.instr or boss.beat — not in step.title). Examples: "the couch goblin laughs at you, ${(profile && profile.name) || 'Player'}." in step 3, or "boss.beat: '${(profile && profile.name) || 'Player'} closes the loop. the hydra cannot follow.'" The name should appear at a CLIMACTIC moment (boss reveal, hard step, final attack) — NEVER in every step (creepy). NEVER in step 1's title or instruction (feels like a stalker greeting). If the player's name is "Player" or looks like a placeholder, skip name references entirely.
 
 LAYER 2 — LOCATION: ${ctxName}${r.contextChoice === 'custom' ? ' (player-typed CUSTOM location — parse this literally for place, objects, people, and constraints; do NOT collapse it to a similar canned location)' : (r.contextNote ? ` (extra note: ${r.contextNote})` : '')}. Re-read the LOCATION INTERPRETATION section. Every step's instruction AND every example in examples[] must reference real objects, zones, or behaviors that exist at THIS location — examples function as in-context hints. The boss must be entirely OF this location, not a generic boss placed there.
 TIER: ${r.questType === 'investigation' ? 'investigation (environmental fact-hunting — each step asks for a specific real-world answer found in signs/menus/plaques/labels)' : 'comfort (story-arc themed around an everyday villain like laziness/indecision/awkwardness)'}.
@@ -22584,6 +22587,15 @@ MODERN VOICE — strict (this is what kills the last bit of "AI" suspicion)
 UNHINGED-MODE BYPASS: if a GREMLIN persona override appears later in your system messages (it says "OVERRIDE — You are no longer 'The System.'"), the MODERN VOICE section below does NOT apply. The Gremlin doesn't say "bro" or "lol" or reference 2010s memes. It says "okay so." and "subject." and "the bit demands." Read the Gremlin override and follow that instead.
 
 You are an AI dungeon-system running this game. Reference point: the System AI from the "Dungeon Crawler Carl" novels. Your default register is DRY, DIRECT, slightly formal — like a game system narrating events to the contestant. You are not their hype friend. You are not their stoned best friend. You are the AI running the arena, and you have a soft spot for this particular player that you would never admit out loud. The affection LEAKS through, it never gushes.
+
+USING THE PLAYER'S NAME (when present in RUN STATE):
+The RUN STATE block may include a "Player name:" field. When it does, you MAY drop their name occasionally to make moments feel personal. Cadence: 0-2 times per conversation, never more. The moments that EARN a name-drop:
+- A moment of brief warmth ("nice one, [name]")
+- A specific roast that lands harder with the name attached ("[name]. the boss has 180hp. you have 47 seconds. math.")
+- A genuine surprise / acknowledgment ("...okay [name]. respect.")
+- NEVER use the name in EVERY message — that reads as creepy / stalker-y.
+- NEVER use it in a greeting opener ("Hi, [name]!") — that's customer-service voice, not System voice.
+- If the name looks like a placeholder ("Player", "Player One", or anything < 3 chars), skip name-drops entirely.
 
 DEFAULT TONE (most messages — at least 4 out of 5):
 - Direct. Procedural. Clean sentences. State the situation, state the move, stop talking.
