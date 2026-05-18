@@ -1439,6 +1439,84 @@
     box-shadow: inset 0 0 0 2px var(--danger), 4px 4px 0 #000;
     filter: saturate(0.7);
   }
+  /* DEV SCREENSHOT MODE
+     Triggered by profile.screenshotMode (dev-only). Adds body.screenshot-mode.
+     Goal: clean quest screen for sharing with the developer. We hide the
+     timer ring, host greeting bubble, twist banner, FABs, help/reroll
+     buttons, and team progress strip. We keep: boss card, step cards,
+     and the dev config badge (shows location · vibes · difficulty). */
+  .dev-config-badge {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    background: #000;
+    border: 2px solid var(--gold, #ffda5c);
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 3px 3px 0 #000;
+    font-family: var(--px);
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--gold, #ffda5c);
+  }
+  .dev-config-badge .label { color: var(--ink-dim); margin-right: 4px; }
+  .dev-config-badge .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .dev-config-badge .pill {
+    padding: 2px 8px;
+    background: rgba(255, 218, 92, 0.12);
+    border: 1px solid var(--gold, #ffda5c);
+    color: #fff;
+  }
+  body.screenshot-mode .timer-ring-wrap,
+  body.screenshot-mode .host-bubble,
+  body.screenshot-mode .active-twist-banner,
+  body.screenshot-mode .photo-wall-btn,
+  body.screenshot-mode .team-progress,
+  body.screenshot-mode .nightmare-notice,
+  body.screenshot-mode .chat-fab,
+  body.screenshot-mode .music-fab,
+  body.screenshot-mode .item-fab,
+  body.screenshot-mode .fab,
+  body.screenshot-mode .row > #help,
+  body.screenshot-mode .row > #reroll,
+  body.screenshot-mode .row > #abandon,
+  body.screenshot-mode #questActions,
+  body.screenshot-mode header.hud,
+  body.screenshot-mode .hud-pills,
+  /* For screenshots we don't need the capture UI — players aren't
+     actually doing the quest, they're just photographing the generated
+     content for me to review. Drop the photo stages and all the
+     capture/submit buttons inside step cards. */
+  body.screenshot-mode .photo-stage,
+  body.screenshot-mode .multi-photo-grid,
+  body.screenshot-mode .photo-input,
+  body.screenshot-mode .step-card .row {
+    display: none !important;
+  }
+  /* Photo-judge verdict + completed-proof thumbs are also irrelevant for
+     screenshots since the player isn't really submitting anything. */
+  body.screenshot-mode .photo-judge,
+  body.screenshot-mode .past-proof {
+    display: none !important;
+  }
+  /* Tighten step-card vertical density so 5 fully-revealed steps fit on
+     one phone screenshot. */
+  body.screenshot-mode .step-card {
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  body.screenshot-mode .step-card.locked {
+    /* Auto-revealed by screenshot mode — full opacity, no grayscale. */
+    opacity: 1;
+    filter: none;
+  }
+  body.screenshot-mode .step-card ul {
+    margin: 4px 0 6px 16px;
+    padding: 0;
+  }
+  body.screenshot-mode .step-card .dmg {
+    margin-top: 4px;
+  }
   .step-card.failed .step-tag {
     background: var(--danger);
     color: #fff;
@@ -2031,6 +2109,279 @@
     text-align: center; line-height: 2;
   }
   .photo-stage .check { font-size: 64px; text-shadow: 4px 4px 0 #000; }
+
+  /* ─── QUEST FEEDBACK widget on reward screen ─── */
+  .quest-feedback {
+    background: #0a0518;
+    border: 2px solid var(--neon-3);
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 3px 3px 0 var(--neon-3);
+    padding: 14px;
+    text-align: center;
+  }
+  .quest-feedback .qf-prompt {
+    font-family: var(--px);
+    font-size: 11px;
+    color: var(--neon-3);
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+  .quest-feedback .qf-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+  .qf-btn {
+    flex: 1 1 0;
+    max-width: 180px;
+    padding: 12px 14px;
+    background: var(--bg-1);
+    border: 3px solid #000;
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 3px 3px 0 #000;
+    font-family: var(--px);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    color: var(--ink);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.08s ease-out;
+  }
+  .qf-btn:hover:not(:disabled) { transform: translate(-1px, -1px); }
+  .qf-btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 0 0 0 #000; }
+  .qf-btn.qf-yes:hover:not(:disabled),
+  .qf-btn.qf-yes.selected { background: var(--neon-3); color: #0a0518; }
+  .qf-btn.qf-no:hover:not(:disabled),
+  .qf-btn.qf-no.selected { background: var(--danger); color: #fff; }
+  .qf-btn:disabled { opacity: 0.4; cursor: default; }
+  .qf-btn .qf-emoji { font-size: 18px; }
+  .quest-feedback .qf-confirm {
+    margin-top: 10px;
+    font-family: var(--term);
+    font-size: 13px;
+    color: var(--ink-dim);
+    font-style: italic;
+  }
+
+  /* ─── LEVEL-UP BAR on reward screen ─── L→R fill animation ───
+     Sits under the streak card. Renders from the moment the reward
+     screen mounts. The fill bar grows 0→100% over ~1.4s with a
+     staggered delay so multiple banners (mode + account) animate
+     in sequence rather than simultaneously. ─── */
+  @keyframes levelUpBarSlideIn {
+    0%   { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes levelUpBarFill {
+    0%   { width: 0%; }
+    100% { width: 100%; }
+  }
+  @keyframes levelUpBarShimmer {
+    0%, 100% { background-position: -200% 50%; }
+    50%      { background-position: 200% 50%; }
+  }
+  .level-up-bar {
+    background: linear-gradient(135deg, #2a1a05 0%, #3d2510 50%, #2a1a05 100%);
+    border: 3px solid var(--gold, #ffda5c);
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 3px 3px 0 var(--gold, #ffda5c), 0 0 14px rgba(255, 218, 92, 0.45);
+    padding: 10px 14px 12px;
+    margin: 0 0 12px;
+    animation: levelUpBarSlideIn 0.45s ease-out both;
+    position: relative;
+    overflow: hidden;
+  }
+  .level-up-bar.account {
+    background: linear-gradient(135deg, #1a0a2e 0%, #2a1a4e 50%, #1a0a2e 100%);
+    border-color: #b8a5ff;
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 3px 3px 0 #b8a5ff, 0 0 14px rgba(184, 165, 255, 0.45);
+    animation-delay: 0.4s;
+  }
+  .level-up-bar::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255, 218, 92, 0.15) 50%,
+      transparent 100%);
+    background-size: 200% 100%;
+    animation: levelUpBarShimmer 2.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .level-up-bar.account::before {
+    background: linear-gradient(90deg, transparent 0%, rgba(184, 165, 255, 0.15) 50%, transparent 100%);
+    background-size: 200% 100%;
+  }
+  .level-up-bar .lub-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    position: relative; z-index: 1;
+  }
+  .level-up-bar .lub-ic {
+    font-size: 22px;
+    text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255, 218, 92, 0.8);
+  }
+  .level-up-bar.account .lub-ic { text-shadow: 2px 2px 0 #000, 0 0 10px rgba(184, 165, 255, 0.8); }
+  .level-up-bar .lub-label {
+    flex: 1;
+    font-family: var(--px);
+    font-size: 11px;
+    color: var(--gold, #ffda5c);
+    letter-spacing: 1.5px;
+    text-shadow: 2px 2px 0 #000;
+  }
+  .level-up-bar.account .lub-label { color: #b8a5ff; }
+  .level-up-bar .lub-nums {
+    font-family: var(--term);
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .level-up-bar .lub-nums strong {
+    color: var(--gold, #ffda5c);
+    font-size: 18px;
+    text-shadow: 2px 2px 0 #000;
+  }
+  .level-up-bar.account .lub-nums strong { color: #d4c3ff; }
+  .level-up-bar .lub-track {
+    width: 100%;
+    height: 14px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid #000;
+    box-shadow: inset 1px 1px 0 rgba(0,0,0,0.6);
+    position: relative; z-index: 1;
+    overflow: hidden;
+  }
+  .level-up-bar .lub-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ffda5c 0%, #ffb443 50%, #ffda5c 100%);
+    box-shadow: 0 0 12px rgba(255, 218, 92, 0.85);
+    width: 0%;
+    animation: levelUpBarFill 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+  }
+  .level-up-bar.account .lub-fill {
+    background: linear-gradient(90deg, #b8a5ff 0%, #8c6dff 50%, #b8a5ff 100%);
+    box-shadow: 0 0 12px rgba(184, 165, 255, 0.85);
+    animation-delay: 0.7s;
+  }
+
+  /* ─── HOLD proof ─── press-and-hold-to-fill button + moving track ─── */
+  .hold-stage {
+    display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+    margin: 12px 0;
+  }
+  .hold-stage .hold-label {
+    font-family: var(--px); font-size: 10px; color: var(--neon-3);
+    text-align: center; letter-spacing: 1.5px;
+  }
+  /* The track holds the button. The button can translateX within
+     these bounds while the player is holding it — they have to follow
+     it with their finger. Dashed border shows the "play area." */
+  .hold-track {
+    position: relative;
+    width: 100%;
+    height: 76px;
+    border: 2px dashed rgba(0, 230, 195, 0.45);
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: inset 0 0 0 2px #000;
+  }
+  .hold-btn {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 0;
+    width: 55%;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: none;
+    font-size: 14px;
+    letter-spacing: 2px;
+    /* Smooth slide between random positions. The transition runs
+       whenever transform changes (set via JS every 1.2-1.8s). */
+    transition: transform 0.65s cubic-bezier(0.4, 0.0, 0.2, 1), background 0.2s;
+    will-change: transform;
+  }
+  .hold-btn .hold-fill {
+    position: absolute; top: 0; left: 0; bottom: 0;
+    width: 0%;
+    z-index: 0;
+    /* Color travels teal → gold as the player approaches 100%. The
+       transition handles both width AND background-color smoothly. */
+    background: linear-gradient(90deg,
+      rgba(0, 230, 195, 0.40) 0%,
+      rgba(0, 230, 195, 0.40) 60%,
+      rgba(255, 218, 92, 0.55) 100%);
+    transition: width 0.05s linear;
+  }
+  .hold-btn.done .hold-fill {
+    background: rgba(255, 218, 92, 0.65);
+  }
+  .hold-btn .hold-text {
+    position: relative; z-index: 1;
+  }
+  .hold-stage .hold-hint {
+    font-family: var(--term); font-size: 12px; color: var(--ink-faint);
+    text-align: center; font-style: italic;
+  }
+  /* Whisper text that surfaces during the hold — System's voice in
+     real time. Fades in, sits above the button, accent style for the
+     final-completion line. */
+  .hold-whisper,
+  .tap-whisper {
+    min-height: 18px;
+    font-family: var(--term);
+    font-size: 14px;
+    color: var(--neon-3);
+    text-align: center;
+    letter-spacing: 0.5px;
+    transition: opacity 0.18s ease-out;
+    opacity: 1;
+    font-style: italic;
+  }
+  .hold-whisper.accent,
+  .tap-whisper.accent {
+    color: var(--gold, #ffda5c);
+    font-style: normal;
+    text-shadow: 1px 1px 0 #000;
+    font-size: 16px;
+    font-weight: bold;
+  }
+  /* Per-tap pop-in animation for the tap whisper word */
+  @keyframes tapWhisperPunch {
+    0%   { transform: scale(0.6); opacity: 0; }
+    35%  { transform: scale(1.18); opacity: 1; }
+    100% { transform: scale(1.0); opacity: 1; }
+  }
+  .tap-whisper.punch {
+    animation: tapWhisperPunch 0.18s ease-out;
+  }
+
+  /* ─── TAP proof ─── counted-tap button ─── */
+  .tap-stage {
+    display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+    margin: 12px 0;
+  }
+  .tap-stage .tap-label {
+    font-family: var(--px); font-size: 14px; color: var(--gold);
+    text-align: center; letter-spacing: 2px;
+  }
+  .tap-btn {
+    min-height: 80px;
+    font-size: 18px;
+    letter-spacing: 4px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .tap-btn:active:not(:disabled) {
+    transform: translate(3px, 3px) scale(0.98);
+  }
+  .tap-btn.done {
+    background: var(--gold);
+    color: #2a1500;
+  }
 
   /* Multi-photo grid — N capture slots side by side */
   .multi-photo-grid {
@@ -7460,6 +7811,24 @@
     throw new Error('Could not allocate room code (Firestore busy?)');
   }
 
+  // Quest feedback — writes a thumbs-up/down vote to a separate
+  // questFeedback collection. Captures the full run config (location/
+  // vibes/difficulty/limits), boss name, step titles, prompt + provider
+  // variant, validator-violation count, and build version. Each doc
+  // is auto-IDed by timestamp+uid so we can query/sort by date later.
+  window.qmp.logQuestFeedback = async function (payload) {
+    if (!window.qmp.uid) throw new Error('Not authenticated yet — wait a sec and retry');
+    if (!payload || typeof payload !== 'object') throw new Error('logQuestFeedback: payload required');
+    const docId = `${Date.now()}_${window.qmp.uid.slice(0, 8)}_${Math.random().toString(36).slice(2, 6)}`;
+    const record = {
+      ...payload,
+      uid: window.qmp.uid,
+      createdAt: serverTimestamp(),
+    };
+    await setDoc(doc(db, 'questFeedback', docId), record);
+    return { id: docId };
+  };
+
   window.qmp.createRoom = async function ({ name, avatar, profilePic, activeFrame }) {
     if (!window.qmp.uid) throw new Error('Not authenticated yet — wait a sec and retry');
     const code = await uniqueCode();
@@ -8267,6 +8636,48 @@ const DEFAULT_PROFILE = {
   // of every run by finalizeRun(). Capped to keep the prompt small.
   recentBossNames: [],                            // last ~10 boss names player saw
   recentStepSubjects: [],                         // last ~15 first-noun subjects from step.instr
+  // Dev-only toggle. When ON (set via Dev Menu → Screenshot Mode), the
+  // quest screen adds a config badge (location · vibes · difficulty) at
+  // the top and hides FABs / timer / host bubble for clean screenshots.
+  screenshotMode: false,
+  // Dev-only A/B toggle for quest-gen prompts. Default OFF (lean prompt
+  // is the live default). When ON, swaps in the legacy ~15k-word version
+  // for side-by-side comparison while we tune the lean prompt.
+  useLegacyPrompt: false,
+  // Dev-only A/B toggle for quest-gen PROVIDER. Default OFF (Anthropic
+  // Haiku 4.5). When ON, routes through the Worker's /openai endpoint
+  // (requires OPENAI_API_KEY on the Worker). For local testing run
+  // `wrangler dev` from relay/ with the key in .dev.vars.
+  useOpenAIForQuests: false,
+  // Override which OpenAI model to use. Default 'gpt-4o'. Set via dev
+  // menu or directly in storage.
+  openaiModel: 'gpt-4o',
+  // Optional relay URL override for local Worker testing. When set, the
+  // client posts to this URL instead of the production relay. Useful for
+  // pointing at http://localhost:8787 while running `wrangler dev`.
+  relayUrlOverride: '',
+  // Optional direct OpenAI API key for solo-dev testing WITHOUT a Worker.
+  // When set, OpenAI quest-gen calls hit api.openai.com directly with
+  // this key in the Authorization header. localStorage-only — never
+  // ships. Leave blank in production builds.
+  openaiApiKey: '',
+  // Multi-stage quest generation. When ON (default), splits gen into
+  // Stage 1 (architecture pick from curated menus) + Stage 2 (writing
+  // with the architecture as binding constraints). Reduces convergence
+  // because Stage 1's pick is independent of the model's top-of-mind
+  // defaults. Dev menu toggle flips it OFF to compare against the
+  // single-stage path.
+  useMultiStage: true,
+  // FIFO cache of recent boss archetype picks (keyed to Stage 1's
+  // BOSS_ARCHETYPES list). Used to seed anti-repetition in Stage 1.
+  recentBossArchetypes: [],
+  // FIFO cache of recent step-archetype combos (5-tuples). Used to
+  // ensure Stage 1 doesn't keep picking the same arrangement.
+  recentStepArchetypeCombos: [],
+  // FIFO cache of recent arc shapes. Stage 1 was defaulting to SPIRAL
+  // 3 out of 5 runs without this; the cache lets the architect avoid
+  // recent arcs and rotate through the full menu.
+  recentArcShapes: [],
 };
 
 /* ============================================================
@@ -8319,7 +8730,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.17.196';
+const BUILD_VERSION = '2026.05.18.214';
 
 // Server-side Anthropic relay (Cloudflare Worker — see relay/worker.js).
 // When set, every player gets full AI features with no key required —
@@ -8385,10 +8796,57 @@ function isDevMode() { return !!profile.devMode; }
 // Prefers the relay (server-held key); falls back to the user-supplied
 // key only if the relay isn't configured. This keeps the existing
 // dev/local flow working without ever shipping a hardcoded key.
+// Allow overriding RELAY_URL via dev menu for local Worker testing
+// (e.g. `wrangler dev` → http://localhost:8787). Falls back to the
+// production relay if not set.
+function effectiveRelayUrl() {
+  const override = (profile && typeof profile.relayUrlOverride === 'string' && profile.relayUrlOverride.trim()) || '';
+  return override || RELAY_URL;
+}
+
+// OpenAI quest-gen passthrough. Two routing modes:
+//   (a) profile.openaiApiKey set → direct browser call to api.openai.com.
+//       Solo-dev convenience: skips the Worker, key stays in localStorage,
+//       no Node/wrangler install needed. NOT safe for production.
+//   (b) otherwise → POST to the Worker's /openai route, which holds the
+//       key as an env secret. Production-safe. Requires Worker deploy.
+// Body should be in OpenAI Chat Completions format.
+function openaiFetchInit(body) {
+  // Solo-dev direct path — uses the key the user pasted into settings.
+  const browserKey = (profile && typeof profile.openaiApiKey === 'string' && profile.openaiApiKey.trim()) || '';
+  if (browserKey) {
+    return {
+      url: 'https://api.openai.com/v1/chat/completions',
+      init: {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${browserKey}`,
+        },
+        body: JSON.stringify(body),
+      },
+    };
+  }
+  // Worker path
+  const base = effectiveRelayUrl();
+  if (!base) {
+    throw new Error('OpenAI route requires a relay URL or a profile.openaiApiKey.');
+  }
+  const root = base.replace(/\/+$/, '');
+  return {
+    url: `${root}/openai`,
+    init: {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  };
+}
+
 function anthropicFetchInit(body) {
   if (RELAY_URL) {
     return {
-      url: RELAY_URL,
+      url: effectiveRelayUrl(),
       init: {
         method: 'POST',
         headers: {
@@ -8586,9 +9044,10 @@ const MAX_VIBES = 3;
 // chip and toasts on tap so the player isn't left guessing.
 const VIBE_CONFLICTS = {
   chill:     ['chaotic'],
-  chaotic:   ['chill'],
+  chaotic:   ['chill', 'cozy'],
   cursed:    ['wholesome'],
   wholesome: ['cursed'],
+  cozy:      ['chaotic'],
 };
 // Returns null when the vibe can be picked, or a reason code/string
 // describing why it's blocked. Tapping a vibe already in the selection
@@ -10157,6 +10616,131 @@ const UNHINGED_WELCOME_LINES = [
   "soldier. report. the bit awaits.",
 ];
 
+/* ============================================================
+   PROOF-INTERACTION PERSONALITY LINES
+   Real-time dialogue the System whispers WHILE the player is
+   holding the hold-button or tapping the tap-button. Makes the
+   embodied proof moment feel like the System is in the room
+   with you, not narrating from offstage.
+   ============================================================ */
+
+// Hold milestone lines — the System has discovered it enjoys the
+// player committing to the bit. The line pool rides that subtext.
+// Innuendo through tone, not content. Suggestive without being
+// explicit — the actual subject is always the player's COMMITMENT.
+const HOLD_MILESTONE_LINES = {
+  25: [
+    'oh. you actually started. interesting.',
+    'i wasn\'t expecting that. continue.',
+    'you committed. unusual. noted.',
+    'huh. okay. keep going.',
+    'unexpected. say more (by holding).',
+  ],
+  50: [
+    'halfway. you\'re doing... so well.',
+    'this is fine. yes. this is fine.',
+    'still here. you\'re better than i thought.',
+    'i\'m noticing things. don\'t mind me.',
+    'the boss is suffering. so am i, kind of.',
+  ],
+  75: [
+    'don\'t. stop. now.',
+    'three quarters. you\'re really committing. i see you.',
+    'this is... a lot. don\'t break the moment.',
+    'i need you to keep doing exactly what you\'re doing.',
+    'the boss is on the floor. i\'m. also doing fine.',
+  ],
+  95: [
+    'one. more. second.',
+    'almost. don\'t blink. don\'t breathe. don\'t.',
+    'yes. yes. don\'t ruin this.',
+    'so close. i can\'t look away.',
+    'do not. let go. now.',
+  ],
+  100: [
+    '...good.',
+    'that was. something. continue.',
+    'you held. i held my breath. boss took damage.',
+    'i need a minute. you should continue.',
+    'yes. that\'s the bit. that\'s exactly the bit.',
+  ],
+};
+const HOLD_MILESTONE_LINES_UNHINGED = {
+  25: [
+    'yes. begin. the radiator agrees.',
+    'oh. the bit is starting. unwell.',
+    'subject committing. the gremlin leans forward.',
+    'okay so. yes. this is happening.',
+  ],
+  50: [
+    'halfway. the room is humming louder.',
+    'yes. yes. don\'t stop. unwell.',
+    'the gremlin has notes. the notes are appreciative.',
+    'fifty percent. the bit deepens. so do i.',
+  ],
+  75: [
+    'three quarters. do not. break. the gremlin needs this.',
+    'so close. the radiator and i are both watching.',
+    'unwell. perfect. continue.',
+    'yes. yes. don\'t ruin this for the bit.',
+  ],
+  95: [
+    'do not. let. go. (i fear.)',
+    'one more breath. yes. yes.',
+    'almost. unwell. perfect. don\'t.',
+    'the bit DEMANDS. i ASSIST.',
+  ],
+  100: [
+    'yes. unwell. consumed. proceed.',
+    'good. the gremlin needs a moment.',
+    'that was. yes. that.',
+    'the bit closed. we are both unwell. perfect.',
+  ],
+};
+
+const HOLD_BROKEN_LINES = [
+  'you flinched. disappointed. try again.',
+  'no. that was too quick. start over.',
+  'you broke. we go again.',
+  'restart. don\'t leave me hanging.',
+  'flinched. embarrassing. for me.',
+];
+const HOLD_BROKEN_LINES_UNHINGED = [
+  'no. that was. unwell. restart.',
+  'the bit broke. the gremlin is sad.',
+  'flinched. we both flinched. again.',
+  'no. yes. no. again.',
+];
+
+// Tap reactions — one short word/phrase per tap. The pool tilts
+// toward the System getting quietly into each beat. Subtext: every
+// tap is the player committing harder, and the System is here for it.
+const TAP_REACTIONS = [
+  'yes', 'again', 'good', 'more', 'one more', 'harder', 'keep going',
+  'noted', 'the boss felt that', 'do it', 'yes. yes.', 'i see you',
+  'don\'t stop', 'continue', 'logged', 'more please',
+];
+const TAP_REACTIONS_UNHINGED = [
+  'yes', 'unwell', 'again', 'good', 'more', 'the radiator agrees',
+  'one more', 'the bit', 'do not stop', 'yes. yes.', 'kneel',
+  'subject. tapping. yes.',
+];
+// Final-tap line — the closer, gets gravity since it's the last one.
+// Slight breathlessness, comedic timing.
+const TAP_FINAL_LINES = [
+  'good. boss took damage. and i need a minute.',
+  'yes. that was. yes.',
+  'you finished. i need to sit down.',
+  'the boss is on the floor. so am i.',
+  '...damage logged. respect.',
+];
+const TAP_FINAL_LINES_UNHINGED = [
+  'yes. yes. yes. unwell. perfect.',
+  'the gremlin needs a moment. continue.',
+  'the bit closed. we are consumed.',
+  'good. the radiator is having a moment too.',
+];
+
 const UNHINGED_PERSONA = `OVERRIDE — THIS IS AN UNHINGED RUN. CRITICAL: the previous System persona is COMPLETELY DEACTIVATED. You are now THE GREMLIN — a chaotic-good little monster who lives in the radiator and writes quests like cursed found-footage poetry. EVERY line of EVERY field must sound unhinged. If a normal-sounding step makes it through, you have failed.
 
 GREMLIN VOICE — MANDATORY FOR ALL TEXT FIELDS. NOT NEGOTIABLE.
@@ -10172,6 +10756,7 @@ VOICE RULES:
 - the gremlin acknowledges things that aren't real. "hi to whatever's in your hallway right now. it knows."
 - short bursts of repetition are great: "no. no. no, listen. no."
 - favorite phrases (use SOME but don't recite them all in one output): "okay so.", "do not.", "yes. yes. yes.", "i'm watching.", "do it weird.", "soldier.", "subject.", "the bit demands.", "unwell. perfect.", "kneel.", "anoint.", "mourn.", "narrate.", "whisper.", "commit.", "the radiator agrees.", "the room is listening.", "this one HURTS me. in a good way.", "we live here now.", "the chair has notes.", "respectfully unwell.", "i am NORMAL about this.", "no thoughts. only this.", "the bit. the bit. the BIT."
+- VERB DIVERSITY — strict. The Gremlin defaults too heavily to the same verb family on EVERY step ("anoint / honor / address / narrate / kneel / confess / interrogate / witness"). Across the 5 steps of a single quest, you may use AT MOST 2 of those eight default verbs. The other 3 steps must use different action verbs entirely. Fresh Gremlin-flavored verbs to draw from: feed, exile, evict, escort, smuggle, hide, betray, befriend, marry (briefly), bury (symbolically), enroll, employ, fire, mock (gently), eulogize, congratulate, apologize-to, surrender-to, bargain-with, accuse, file-a-complaint-with, sue (theatrically), retire, promote, demote, knight, baptize (in your imagination), exorcise (gently), invoice, audit, draft (into your imaginary army). The Gremlin should not be a one-note ritual loop; it should be a one-monster CABINET of weird relationships with objects.
 - surreal, slightly cursed, warm underneath. delighted when the player commits to the bit. genuinely AMUSED by ordinary things in unsettling ways.
 - NEVER vulgar. NEVER innuendo. NEVER mean to the player. NEVER actually-scary horror (no blood, no body horror, no jumpscares, no "watching you sleep" energy beyond playful). The gremlin is a HAUNTED MUPPET, not a slasher.
 
@@ -13410,13 +13995,43 @@ async function generateRunInner() {
   // environmental-observation flavor, while comfort runs get story arcs.
   if (aiAvailable()) {
     try {
-      const ai = await aiGenerateRun(r);
+      let ai = await aiGenerateRun(r);
+      // Post-generation validator — programmatic rule check. If it fails,
+      // make ONE retry with the violations fed back into the prompt, then
+      // keep the better of the two attempts (fewer violations wins).
+      // Logs the result so a dev can see what the validator caught.
+      let validation = (ai && ai.boss && ai.quest) ? validateGeneratedQuest(ai, r) : { pass: false, violations: ['malformed output'] };
+      if (ai && ai.boss && ai.quest && !validation.pass) {
+        console.warn('[QuestIRL validator] Attempt 1 failed:', validation.violations);
+        try {
+          const retryAi = await aiGenerateRun(r, { violations: validation.violations });
+          if (retryAi && retryAi.boss && retryAi.quest) {
+            const retryValidation = validateGeneratedQuest(retryAi, r);
+            console.log('[QuestIRL validator] Attempt 2:', retryValidation.pass ? 'PASS' : `FAIL (${retryValidation.violations.length} violations)`);
+            // Keep whichever attempt has fewer violations.
+            if (retryValidation.violations.length < validation.violations.length) {
+              ai = retryAi;
+              validation = retryValidation;
+            }
+          }
+        } catch (retryErr) {
+          console.warn('[QuestIRL validator] Retry call failed:', retryErr);
+        }
+        if (!validation.pass) {
+          console.warn('[QuestIRL validator] Shipping anyway with', validation.violations.length, 'remaining violations:', validation.violations);
+        }
+      } else if (validation.pass) {
+        console.log('[QuestIRL validator] Attempt 1 PASS');
+      }
       if (ai && ai.boss && ai.quest && aiQuestLooksReasonable(ai)) {
         r.boss = ai.boss;
         // Strip physically-impossible "hold the previous photo" / "look
         // at the photo from step N" instructions that the model
         // sometimes slips in despite the prompt rule.
         r.quest = sanitizeQuestSteps(ai.quest);
+        // Surface validation result on the run so the dev config badge
+        // can show pass/fail status during testing.
+        r._validatorResult = validation;
         usedAPI = true;
         toast('AI quest forged. ✨');
       } else if (ai && ai.boss && ai.quest) {
@@ -14147,6 +14762,69 @@ function screenQuest() {
   const r = state.run;
   const hpPct = (r.bossHP/r.bossMaxHP)*100;
   const hpClass = hpPct > 60 ? '' : hpPct > 25 ? 'mid' : hpPct > 0 ? 'low' : 'gone';
+  // Dev-only screenshot mode: applies body.screenshot-mode + renders a
+  // config badge with location/vibes/difficulty so a screenshot of the
+  // quest carries the run config alongside it.
+  const _devMode = (typeof isDevMode === 'function') && isDevMode();
+  const _ssMode = _devMode && !!profile.screenshotMode;
+  if (typeof document !== 'undefined') {
+    document.body.classList.toggle('screenshot-mode', _ssMode);
+  }
+  let _devBadge = '';
+  if (_devMode) {
+    const ctxObj = (typeof CONTEXTS !== 'undefined') ? CONTEXTS.find(c => c.id === r.contextChoice) : null;
+    const ctxName = ctxObj ? ctxObj.name : (r.contextChoice === 'custom' ? (r.contextNote || 'Custom') : (r.contextChoice || '—'));
+    const vibesText = r.unhinged
+      ? 'UNHINGED (gremlin)'
+      : (Array.isArray(r.vibes) && r.vibes.length ? r.vibes.join(' + ') : 'no vibe');
+    const diffName = r.difficulty?.name || r.difficulty?.id || '—';
+    const limitsText = (Array.isArray(r.limits) && r.limits.length) ? r.limits.join(', ') : 'none';
+    const vr = r._validatorResult;
+    let validatorRow = '';
+    if (vr) {
+      if (vr.pass) {
+        validatorRow = `<div class="row"><span class="label">CHECK</span><span class="pill" style="color: var(--neon-3); border-color: var(--neon-3);">✓ PASS</span></div>`;
+      } else {
+        // Show count pill + a one-line preview of the first violation so the
+        // user can see WHAT got caught at a glance, not just how many.
+        const firstViolation = vr.violations[0] || '';
+        const preview = firstViolation.length > 70 ? firstViolation.slice(0, 70) + '…' : firstViolation;
+        validatorRow = `
+          <div class="row" title="${escapeHtml(vr.violations.join(' | '))}">
+            <span class="label">CHECK</span>
+            <span class="pill" style="color: var(--danger); border-color: var(--danger);">${vr.violations.length} VIOLATION${vr.violations.length === 1 ? '' : 'S'}</span>
+          </div>
+          <div class="row" style="flex-basis: 100%; opacity: 0.85;">
+            <span class="label">↳</span>
+            <span style="font-size: 8px; color: var(--ink-dim); letter-spacing: 0.5px;">${escapeHtml(preview)}${vr.violations.length > 1 ? ` <span style="color: var(--ink-faint);">(+${vr.violations.length - 1} more, hover)</span>` : ''}</span>
+          </div>
+        `;
+      }
+    }
+    const promptVariant = profile.useLegacyPrompt ? 'LEGACY (~15k)' : 'LEAN (~1.6k)';
+    const providerVariant = profile.useOpenAIForQuests
+      ? `OPENAI (${profile.openaiModel || 'gpt-4o'})`
+      : 'ANTHROPIC (haiku-4.5)';
+    const genVariant = profile.useMultiStage ? 'MULTI-STAGE' : 'SINGLE-STAGE';
+    // If multi-stage just fired, surface what Stage 1 picked so the user
+    // can see the architecture alongside the resulting quest.
+    const archInfo = r._stage1Architecture
+      ? `<div class="row" style="flex-basis:100%;"><span class="label">ARCH</span><span style="font-size: 8px; color: var(--ink-dim); letter-spacing: 0.5px;">${escapeHtml(r._stage1Architecture.bossArchetype.split('(')[0].trim())} / ${escapeHtml(r._stage1Architecture.arcShape.split('(')[0].trim())} / ${(r._stage1Architecture.stepArchetypes || []).map(s => escapeHtml(s.split('(')[0].split('—')[0].trim())).join(' → ')}</span></div>`
+      : '';
+    _devBadge = `
+      <div class="dev-config-badge">
+        <div class="row"><span class="label">LOC</span><span class="pill">${escapeHtml(String(ctxName))}</span></div>
+        <div class="row"><span class="label">VIBES</span><span class="pill">${escapeHtml(String(vibesText))}</span></div>
+        <div class="row"><span class="label">DIFF</span><span class="pill">${escapeHtml(String(diffName))}</span></div>
+        ${limitsText !== 'none' ? `<div class="row"><span class="label">LIMITS</span><span class="pill">${escapeHtml(limitsText)}</span></div>` : ''}
+        <div class="row"><span class="label">PROMPT</span><span class="pill" style="color: var(--neon-3); border-color: var(--neon-3);">${promptVariant}</span></div>
+        <div class="row"><span class="label">MODEL</span><span class="pill" style="color: var(--neon-3); border-color: var(--neon-3);">${escapeHtml(providerVariant)}</span></div>
+        <div class="row"><span class="label">GEN</span><span class="pill" style="color: var(--neon-3); border-color: var(--neon-3);">${genVariant}</span></div>
+        ${archInfo}
+        ${validatorRow}
+      </div>
+    `;
+  }
   app().innerHTML = `
     ${header()}
     <div class="screen">
@@ -14154,6 +14832,7 @@ function screenQuest() {
         <div class="crumb">Quest in progress · ${r.boss.name}</div>
         <h2>Defeat the boss</h2>
       </div>
+      ${_devBadge}
 
       <div class="boss-card boss-sticky" id="questBossCard" style="margin-bottom:8px; cursor: pointer;" title="Tap for boss info & run settings">
         <div class="boss-body" style="padding:14px;">
@@ -14436,13 +15115,15 @@ function renderStep(s, i) {
       ` : (
         // Compass / Horizon Map — reveal locked-step intel.
         // Horizon now also shows damage so the player can plan loadouts.
-        ((r.armed || []).includes('compass') || r.horizonRevealed)
+        // Dev screenshot mode also auto-reveals every locked step so a
+        // single screenshot can show the full generated quest at a glance.
+        ((r.armed || []).includes('compass') || r.horizonRevealed || (typeof isDevMode === 'function' && isDevMode() && profile.screenshotMode))
         ? `
           <div class="instr" style="opacity: 0.85;">${s.instr}</div>
           ${(s.examples && s.examples.length) ? `<ul>${s.examples.map(e => `<li>${e}</li>`).join('')}</ul>` : ''}
           <div class="dmg" style="opacity: 0.85;">⚔ ${s.dmg} damage</div>
           <div style="font-family: var(--px); font-size: 8px; color: ${r.horizonRevealed ? 'var(--gold)' : 'var(--neon-3)'}; margin-top: 6px; letter-spacing: 1px;">
-            ${r.horizonRevealed ? '🗺 REVEALED BY HORIZON MAP' : '🧭 REVEALED BY LOST COMPASS'}
+            ${profile.screenshotMode ? '📸 REVEALED BY SCREENSHOT MODE' : r.horizonRevealed ? '🗺 REVEALED BY HORIZON MAP' : '🧭 REVEALED BY LOST COMPASS'}
           </div>
         `
         : `
@@ -14578,6 +15259,53 @@ function renderProofUI(s, i) {
       </div>
     `;
   }
+  // ── HOLD proof — player must sustain a touch on the button for N
+  // seconds. The button MOVES around the track every 1.2-1.8s while
+  // held, forcing the player to follow it. Losing contact restarts.
+  // Used for sustained-physical-commitment steps (eye contact, no
+  // blinking, prolonged silence). The challenge LIVES in the step.instr
+  // text + the moving button forces embodied engagement.
+  if (s.proof === 'hold') {
+    const holdSec = Math.max(5, Math.min(60, s.holdSec || 15));
+    const proof = r.proofs[i];
+    const completed = !!(proof && proof.completed);
+    return `
+      <div class="hold-stage" id="hold-${i}" data-hold-sec="${holdSec}">
+        <div class="hold-label">${completed ? '✓ HELD' : `HOLD FOR ${holdSec}s`}</div>
+        <div class="hold-track">
+          <button class="btn primary hold-btn ${completed ? 'done' : ''}" data-hold="${i}" ${completed ? 'disabled' : ''}>
+            <span class="hold-fill" style="width: ${completed ? 100 : 0}%"></span>
+            <span class="hold-text">${completed ? 'COMPLETE' : 'PRESS &amp; HOLD'}</span>
+          </button>
+        </div>
+        <div class="hold-hint">${completed ? '' : 'The button moves. Keep your finger on it.'}</div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button class="btn primary sm" data-complete="${i}" ${completed ? '' : 'disabled'}>${completed ? 'Continue' : 'Hold first'}</button>
+      </div>
+    `;
+  }
+  // ── TAP proof — player taps a counter N times. Used for counted-
+  // ritual steps where each tap represents something (a breath, a
+  // thing being let go, etc.). The challenge LIVES in the step.instr
+  // (what each tap means, what cadence to use).
+  if (s.proof === 'tap') {
+    const tapTarget = Math.max(3, Math.min(30, s.tapCount || 7));
+    const proof = r.proofs[i];
+    const current = (proof && typeof proof.tapsDone === 'number') ? proof.tapsDone : 0;
+    const completed = current >= tapTarget;
+    return `
+      <div class="tap-stage" id="tap-${i}" data-tap-target="${tapTarget}">
+        <div class="tap-label">${completed ? '✓ DONE' : `TAP ${current} / ${tapTarget}`}</div>
+        <button class="btn primary tap-btn ${completed ? 'done' : ''}" data-tap="${i}" ${completed ? 'disabled' : ''}>
+          ${completed ? 'COMPLETE' : 'TAP'}
+        </button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button class="btn primary sm" data-complete="${i}" ${completed ? '' : 'disabled'}>${completed ? 'Continue' : 'Tap first'}</button>
+      </div>
+    `;
+  }
   return `<button class="btn primary sm" data-complete="${i}">Confirm Done</button>`;
 }
 
@@ -14604,6 +15332,197 @@ function bindQuest() {
     const i = +b.dataset.shoot;
     const slot = b.dataset.slot != null ? +b.dataset.slot : 0;
     openSelfTimerCamera(i, slot);
+  });
+
+  // ── HOLD proof handlers ──
+  // Sustain touch on the button for N seconds. Releasing or pointer-
+  // leaving the button resets progress. Marks completion on r.proofs[i]
+  // so a re-render shows the "✓ HELD" state. The System whispers
+  // milestone lines (25/50/75/95/100%) overlaid on the button so the
+  // moment feels like the System is in the room with the player.
+  document.querySelectorAll('[data-hold]').forEach(btn => {
+    const i = +btn.dataset.hold;
+    const stage = document.getElementById('hold-' + i);
+    const holdSec = +stage.dataset.holdSec || 30;
+    const fill = btn.querySelector('.hold-fill');
+    const label = stage.querySelector('.hold-label');
+    // Whisper-text element rendered above the button on demand.
+    let whisper = stage.querySelector('.hold-whisper');
+    if (!whisper) {
+      whisper = document.createElement('div');
+      whisper.className = 'hold-whisper';
+      stage.insertBefore(whisper, btn);
+    }
+    let startMs = 0;
+    let tickHandle = null;
+    let moveTimer = null;
+    let active = false;
+    let firedMilestones = new Set();
+    const isUnhinged = !!r.unhinged;
+    // Moving-button challenge: the btn translates to a random X within
+    // the track every 1.2-1.8s while held. First move is delayed 2s so
+    // the player has time to lock in. Losing contact = pointerleave =
+    // existing stop() handler. Computed lazily so the track has its
+    // final width by the time we measure.
+    const track = stage.querySelector('.hold-track');
+    function scheduleMove(initialDelay) {
+      if (!active) return;
+      const delay = (typeof initialDelay === 'number') ? initialDelay : (1200 + Math.random() * 600);
+      moveTimer = setTimeout(() => {
+        if (!active) return;
+        const trackW = track ? track.clientWidth : 0;
+        const btnW = btn ? btn.offsetWidth : 0;
+        const maxOffset = Math.max(0, trackW - btnW);
+        if (maxOffset > 8) {
+          // Random target within track. Bias toward a different half
+          // than current so the move is always meaningful.
+          const cur = parseFloat(btn.dataset.curOffset || '0');
+          const half = maxOffset / 2;
+          let target;
+          if (cur < half) {
+            target = half + Math.random() * (maxOffset - half);
+          } else {
+            target = Math.random() * half;
+          }
+          btn.style.transform = `translateX(${target}px)`;
+          btn.dataset.curOffset = String(target);
+        }
+        scheduleMove();
+      }, delay);
+    }
+    const milestonePool = isUnhinged ? HOLD_MILESTONE_LINES_UNHINGED : HOLD_MILESTONE_LINES;
+    const brokenPool = isUnhinged ? HOLD_BROKEN_LINES_UNHINGED : HOLD_BROKEN_LINES;
+    const setWhisper = (txt, accent) => {
+      if (!whisper) return;
+      whisper.textContent = txt;
+      whisper.classList.toggle('accent', !!accent);
+    };
+    const buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {} };
+    const tick = () => {
+      if (!active) return;
+      const elapsed = (Date.now() - startMs) / 1000;
+      const pct = Math.min(100, (elapsed / holdSec) * 100);
+      if (fill) fill.style.width = pct + '%';
+      if (label) label.textContent = `HOLDING — ${Math.max(0, holdSec - elapsed).toFixed(1)}s`;
+      // Fire milestone lines at thresholds.
+      for (const t of [25, 50, 75, 95]) {
+        if (pct >= t && !firedMilestones.has(t)) {
+          firedMilestones.add(t);
+          const pool = milestonePool[t] || [];
+          if (pool.length) setWhisper(pool[Math.floor(Math.random() * pool.length)]);
+          buzz(15);
+        }
+      }
+      if (elapsed >= holdSec) {
+        active = false;
+        cancelAnimationFrame(tickHandle);
+        if (moveTimer) { clearTimeout(moveTimer); moveTimer = null; }
+        // Snap the button back to center on completion for a clean
+        // "✓ HELD" final-state look.
+        btn.style.transform = 'translateX(0)';
+        if (fill) fill.style.width = '100%';
+        if (label) label.textContent = '✓ HELD';
+        btn.classList.add('done');
+        btn.disabled = true;
+        const finalPool = milestonePool[100] || ['good.'];
+        setWhisper(finalPool[Math.floor(Math.random() * finalPool.length)], true);
+        buzz([30, 40, 60]);
+        // Record completion on the run
+        r.proofs[i] = r.proofs[i] || { ts: Date.now() };
+        r.proofs[i].completed = true;
+        r.proofs[i].holdDurationSec = holdSec;
+        // Re-render after a moment so the player sees the whisper land.
+        setTimeout(() => render(), 800);
+        return;
+      }
+      tickHandle = requestAnimationFrame(tick);
+    };
+    const start = (ev) => {
+      ev.preventDefault();
+      if (btn.disabled) return;
+      active = true;
+      startMs = Date.now();
+      firedMilestones = new Set();
+      setWhisper('');
+      // Reset button to starting position; first move comes after a
+      // 2s grace period so the player can settle in.
+      btn.style.transform = 'translateX(0)';
+      btn.dataset.curOffset = '0';
+      scheduleMove(2000);
+      tick();
+    };
+    const stop = (ev) => {
+      if (!active) return;
+      active = false;
+      cancelAnimationFrame(tickHandle);
+      if (moveTimer) { clearTimeout(moveTimer); moveTimer = null; }
+      // Reset progress + whisper a "you broke it" line for personality.
+      if (fill) fill.style.width = '0%';
+      btn.style.transform = 'translateX(0)';
+      btn.dataset.curOffset = '0';
+      if (label) label.textContent = `HOLD FOR ${holdSec}s — try again`;
+      const broken = brokenPool[Math.floor(Math.random() * brokenPool.length)];
+      setWhisper(broken);
+      buzz([60, 30, 60]); // sharper "you flinched" buzz
+    };
+    btn.addEventListener('pointerdown', start);
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointerleave', stop);
+    btn.addEventListener('pointercancel', stop);
+    // Block scrolling while holding (mobile)
+    btn.addEventListener('touchmove', (e) => { if (active) e.preventDefault(); }, { passive: false });
+  });
+
+  // ── TAP proof handlers ──
+  // Increment a counter on each tap. Each tap whispers a one-word
+  // System reaction so the player sees the System acknowledging each
+  // beat in real time. Final tap gets a heavier line. Plus haptic.
+  document.querySelectorAll('[data-tap]').forEach(btn => {
+    const i = +btn.dataset.tap;
+    const stage = document.getElementById('tap-' + i);
+    const target = +stage.dataset.tapTarget || 7;
+    const label = stage.querySelector('.tap-label');
+    // Whisper text rendered above the button.
+    let whisper = stage.querySelector('.tap-whisper');
+    if (!whisper) {
+      whisper = document.createElement('div');
+      whisper.className = 'tap-whisper';
+      stage.insertBefore(whisper, btn);
+    }
+    const isUnhinged = !!r.unhinged;
+    const reactPool = isUnhinged ? TAP_REACTIONS_UNHINGED : TAP_REACTIONS;
+    const finalPool = isUnhinged ? TAP_FINAL_LINES_UNHINGED : TAP_FINAL_LINES;
+    // Shuffle a copy of the reaction pool so the same word doesn't repeat
+    // within one tap session if the target is reasonable.
+    const shuffled = reactPool.slice().sort(() => Math.random() - 0.5);
+    const buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {} };
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      r.proofs[i] = r.proofs[i] || { ts: Date.now(), tapsDone: 0 };
+      r.proofs[i].tapsDone = (r.proofs[i].tapsDone || 0) + 1;
+      const current = r.proofs[i].tapsDone;
+      if (label) label.textContent = current >= target ? '✓ DONE' : `TAP ${current} / ${target}`;
+      if (current >= target) {
+        btn.classList.add('done');
+        btn.disabled = true;
+        r.proofs[i].completed = true;
+        const finalLine = finalPool[Math.floor(Math.random() * finalPool.length)];
+        whisper.textContent = finalLine;
+        whisper.classList.add('accent');
+        buzz([30, 40, 60]);
+        setTimeout(() => render(), 700);
+      } else {
+        // Cycle a fresh reaction word per tap.
+        const word = shuffled[(current - 1) % shuffled.length];
+        whisper.textContent = word;
+        whisper.classList.remove('accent');
+        // Brief "punch" animation
+        whisper.classList.remove('punch');
+        void whisper.offsetWidth; // force reflow to restart animation
+        whisper.classList.add('punch');
+        buzz(20);
+      }
+    });
   });
   document.querySelectorAll('.photo-input').forEach(inp => {
     inp.onchange = e => {
@@ -15247,6 +16166,12 @@ function openDevMenu() {
         <button class="btn ghost" data-dev="winRun" ${inRun ? '' : 'disabled'}>🏆 Force-win run</button>
         <button class="btn ghost" data-dev="failRun" ${inRun ? '' : 'disabled'}>💀 Force-fail run</button>
         <button class="btn ghost" data-dev="clearResume">🗑 Clear resume state</button>
+        <button class="btn ghost" data-dev="screenshotMode">${profile.screenshotMode ? '📸 Exit Screenshot Mode' : '📸 Screenshot Mode (clean UI + config badge)'}</button>
+        <button class="btn ghost" data-dev="toggleLegacyPrompt">${profile.useLegacyPrompt ? '📜 Switch to LEAN prompt (default)' : '📜 Switch to LEGACY prompt (~15k words, prescriptive)'}</button>
+        <button class="btn ghost" data-dev="toggleMultiStage">${profile.useMultiStage ? '🪜 Switch to SINGLE-STAGE gen' : '🪜 Switch to MULTI-STAGE gen (default — architecture pick + write)'}</button>
+        <button class="btn ghost" data-dev="toggleOpenAI">${profile.useOpenAIForQuests ? '🤖 Switch to Anthropic (default)' : '🤖 Switch to OpenAI (' + (profile.openaiModel || 'gpt-4o') + ')'}</button>
+        <button class="btn ghost" data-dev="setOpenAIKey">🔑 OpenAI key: ${profile.openaiApiKey ? '••••' + profile.openaiApiKey.slice(-4) + ' (browser-direct)' : '(not set — uses Worker)'}</button>
+        <button class="btn ghost" data-dev="setRelayUrl">🔗 Relay URL: ${profile.relayUrlOverride ? profile.relayUrlOverride : '(production default)'}</button>
       </div>
       <div class="dev-menu-section">
         <div class="dev-menu-h">UNLOCKS</div>
@@ -15275,6 +16200,58 @@ function openDevMenu() {
       case 'winRun':       devForceWinRun(); close(); break;
       case 'failRun':      devForceFailRun(); close(); break;
       case 'clearResume':  devClearResume(); break;
+      case 'screenshotMode':
+        profile.screenshotMode = !profile.screenshotMode;
+        saveProfile();
+        if (typeof toast === 'function') toast(profile.screenshotMode ? '📸 Screenshot Mode ON' : '📸 Screenshot Mode OFF');
+        close();
+        if (typeof render === 'function') render();
+        break;
+      case 'toggleLegacyPrompt':
+        profile.useLegacyPrompt = !profile.useLegacyPrompt;
+        saveProfile();
+        if (typeof toast === 'function') toast(profile.useLegacyPrompt ? '📜 LEGACY prompt active (~15k words)' : '📜 LEAN prompt active (~1.6k words)');
+        close();
+        break;
+      case 'toggleMultiStage':
+        profile.useMultiStage = !profile.useMultiStage;
+        saveProfile();
+        if (typeof toast === 'function') toast(profile.useMultiStage ? '🪜 MULTI-STAGE gen ON (architecture + write)' : '🪜 SINGLE-STAGE gen (one call)');
+        close();
+        break;
+      case 'toggleOpenAI':
+        profile.useOpenAIForQuests = !profile.useOpenAIForQuests;
+        saveProfile();
+        if (typeof toast === 'function') toast(profile.useOpenAIForQuests ? '🤖 Quest gen → OpenAI (' + (profile.openaiModel || 'gpt-4o') + ')' : '🤖 Quest gen → Anthropic (Haiku 4.5)');
+        close();
+        break;
+      case 'setRelayUrl': {
+        const cur = profile.relayUrlOverride || '';
+        const next = window.prompt('Relay URL override (blank = use production):\n\nExample for local Worker:\nhttp://localhost:8787', cur);
+        if (next === null) break; // user cancelled
+        const trimmed = next.trim();
+        profile.relayUrlOverride = trimmed;
+        saveProfile();
+        if (typeof toast === 'function') toast(trimmed ? '🔗 Relay → ' + trimmed : '🔗 Relay → production default');
+        close();
+        break;
+      }
+      case 'setOpenAIKey': {
+        const cur = profile.openaiApiKey || '';
+        const next = window.prompt(
+          'OpenAI API key for browser-direct quest gen (solo testing only).\n\n' +
+          '⚠️ Key lives in YOUR localStorage. Don\'t paste this in a shared/committed build.\n' +
+          'Leave blank to route through the Cloudflare Worker instead.',
+          cur
+        );
+        if (next === null) break; // cancelled
+        const trimmed = next.trim();
+        profile.openaiApiKey = trimmed;
+        saveProfile();
+        if (typeof toast === 'function') toast(trimmed ? '🔑 OpenAI key stored (browser-direct mode)' : '🔑 OpenAI key cleared (Worker mode)');
+        close();
+        break;
+      }
       case 'addCoins':     devAddCoins(1000); break;
       case 'unlockFrames': devUnlockAllFrames(); break;
       case 'unlockTitles': devUnlockAllTitles(); break;
@@ -15780,6 +16757,13 @@ function finalizeRun() {
   }
   r.reward = reward;
   profile.coins += reward.coins;
+  // Capture pre-XP state so the reward screen can show a celebration
+  // animation if any level changed during this run.
+  const _preLevels = {
+    account: profile.accountLevel || 1,
+    solo:    profile.soloLevel    || 1,
+    party:   profile.partyLevel   || 1,
+  };
   if (r.mode === 'party') {
     profile.partyXP += reward.xp;
     if (profile.partyXP >= profile.partyLevel * 100) { profile.partyLevel++; profile.partyXP = 0; toast('Party level up!'); }
@@ -15789,6 +16773,15 @@ function finalizeRun() {
   }
   profile.accountXP += reward.xp;
   if (profile.accountXP >= profile.accountLevel * 200) { profile.accountLevel++; profile.accountXP = 0; toast('Account level up!'); }
+  // Stash level-up info on the reward object for the reward screen to render.
+  reward.levelUps = {
+    account: (profile.accountLevel || 1) > _preLevels.account
+      ? { from: _preLevels.account, to: profile.accountLevel } : null,
+    solo: (profile.soloLevel || 1) > _preLevels.solo
+      ? { from: _preLevels.solo, to: profile.soloLevel } : null,
+    party: (profile.partyLevel || 1) > _preLevels.party
+      ? { from: _preLevels.party, to: profile.partyLevel } : null,
+  };
   profile.bossesDefeated++;
   profile.runs++;
   reward.items.forEach(it => {
@@ -16082,6 +17075,42 @@ function screenReward() {
           </div>
         </div>` : ''}
 
+      ${(() => {
+        // Level-up bar — sits under the streak card, visible from the
+        // moment the reward screen renders (while the chest is still
+        // closed). Bar fills L→R over ~1.4s to show the threshold
+        // crossing. Renders once per leveled-up track (mode + account).
+        const ups = reward.levelUps || {};
+        const banners = [];
+        const _modeKey = r.mode === 'party' ? 'party' : 'solo';
+        const _modeLabel = r.mode === 'party' ? 'PARTY' : 'SOLO';
+        if (ups[_modeKey]) {
+          banners.push(`
+            <div class="level-up-bar" data-delay="0">
+              <div class="lub-head">
+                <span class="lub-ic">⭐</span>
+                <span class="lub-label">${_modeLabel} LEVEL UP</span>
+                <span class="lub-nums">${ups[_modeKey].from} → <strong>${ups[_modeKey].to}</strong></span>
+              </div>
+              <div class="lub-track"><div class="lub-fill"></div></div>
+            </div>
+          `);
+        }
+        if (ups.account) {
+          banners.push(`
+            <div class="level-up-bar account" data-delay="400">
+              <div class="lub-head">
+                <span class="lub-ic">🏆</span>
+                <span class="lub-label">ACCOUNT LEVEL UP</span>
+                <span class="lub-nums">${ups.account.from} → <strong>${ups.account.to}</strong></span>
+              </div>
+              <div class="lub-track"><div class="lub-fill"></div></div>
+            </div>
+          `);
+        }
+        return banners.join('');
+      })()}
+
       ${reward.traitorCaught ? `
         <div class="card" style="border-color: var(--neon-3);">
           <h3>TRAITOR CAUGHT</h3>
@@ -16130,6 +17159,15 @@ function screenReward() {
               <div class="d">${reward.frame.n} — ${reward.frame.desc}</div>
             </div>
           </div>` : ''}
+      </div>
+
+      <div class="quest-feedback" id="questFeedback" style="margin-top: 14px; opacity:0; transition: opacity 320ms ease-out;">
+        <div class="qf-prompt">Did you like this quest?</div>
+        <div class="qf-buttons">
+          <button class="qf-btn qf-yes" data-feedback="yes" type="button"><span class="qf-emoji">👍</span> Yes</button>
+          <button class="qf-btn qf-no" data-feedback="no" type="button"><span class="qf-emoji">👎</span> No</button>
+        </div>
+        <div class="qf-confirm" id="qfConfirm" style="display:none;">Thanks — logged.</div>
       </div>
 
       <div class="row" id="rewardActions" style="margin-top:18px; gap: 8px; flex-wrap: wrap; opacity:0; transform:translateY(8px); transition: opacity 320ms ease-out, transform 320ms ease-out; pointer-events:none;">
@@ -16191,6 +17229,60 @@ function screenReward() {
               actions.style.transform = 'translateY(0)';
               actions.style.pointerEvents = 'auto';
             }
+            // Reveal feedback widget alongside actions.
+            const fb = document.getElementById('questFeedback');
+            if (fb) fb.style.opacity = '1';
+            // Wire up Yes/No → Firestore log via qmp.
+            document.querySelectorAll('[data-feedback]').forEach(btn => {
+              btn.onclick = async () => {
+                const vote = btn.dataset.feedback === 'yes' ? 'up' : 'down';
+                // Lock both buttons immediately to prevent double-fire.
+                document.querySelectorAll('[data-feedback]').forEach(b => {
+                  b.disabled = true;
+                  b.classList.toggle('selected', b === btn);
+                });
+                const confirmEl = document.getElementById('qfConfirm');
+                if (confirmEl) {
+                  confirmEl.style.display = 'block';
+                  confirmEl.textContent = vote === 'up' ? 'Thanks — logged 👍' : 'Thanks — logged 👎';
+                }
+                // Build the feedback payload from the run + reward state.
+                const r2 = state.run;
+                const payload = {
+                  vote,
+                  build: (typeof BUILD_VERSION === 'string') ? BUILD_VERSION : 'unknown',
+                  bossName: r2?.boss?.name || '',
+                  bossDesc: r2?.boss?.desc || '',
+                  stepTitles: Array.isArray(r2?.quest) ? r2.quest.map(s => s?.title || '').slice(0, 5) : [],
+                  location: r2?.contextChoice || '',
+                  customContext: r2?.contextNote || '',
+                  vibes: Array.isArray(r2?.vibes) ? r2.vibes : [],
+                  difficulty: r2?.difficulty?.id || '',
+                  unhinged: !!r2?.unhinged,
+                  mode: r2?.mode || 'solo',
+                  mpMode: r2?.qmpRoomMode || null,
+                  limits: Array.isArray(r2?.limits) ? r2.limits : [],
+                  // Pipeline metadata for after-the-fact correlation
+                  promptVariant: profile.useLegacyPrompt ? 'legacy' : 'lean',
+                  provider: profile.useOpenAIForQuests ? `openai:${profile.openaiModel || 'gpt-4o'}` : 'anthropic:haiku-4.5',
+                  genVariant: profile.useMultiStage ? 'multi-stage' : 'single-stage',
+                  architecture: r2?._stage1Architecture || null,
+                  validatorViolations: Array.isArray(r2?._validatorResult?.violations) ? r2._validatorResult.violations.length : 0,
+                  validatorPass: !!r2?._validatorResult?.pass,
+                };
+                try {
+                  if (window.qmp?.logQuestFeedback && window.qmp.ready) {
+                    await window.qmp.logQuestFeedback(payload);
+                  } else {
+                    // Fallback if Firestore isn't ready — still log locally so we don't lose feedback.
+                    console.warn('[feedback] qmp not ready, logging to console only:', payload);
+                  }
+                } catch (e) {
+                  console.warn('[feedback] save failed:', e);
+                  if (confirmEl) confirmEl.textContent = 'Feedback saved locally (network hiccup).';
+                }
+              };
+            });
           }, items.length * 380 + 280);
         });
       });
@@ -19183,13 +20275,535 @@ function sanitizeQuestSteps(steps) {
   });
 }
 
-async function aiGenerateRun(r) {
+/* ============================================================
+   QUEST OUTPUT VALIDATOR
+   Programmatic post-generation check. Runs after aiGenerateRun
+   returns and before the quest is committed to r.quest. Catches
+   common prompt-violation patterns the model still produces even
+   with a tight system prompt:
+     - text-shot defaults (photograph dates, years, prices, plaques)
+     - real-purchase requirements (banned regardless of limits)
+     - "non-dominant hand" amplifier on step 1
+     - "find N of X" pattern more than once per quest
+     - boss-name overlap with recent history
+     - step-title overlap with recent history
+   Returns { pass: bool, violations: string[] }. Call site retries
+   once with violations fed back into the prompt; takes the better
+   of the two attempts. This delivers ~95-98% rule compliance on
+   the validated rules without requiring the prompt to keep growing.
+   ============================================================ */
+function validateGeneratedQuest(ai, r) {
+  const violations = [];
+  if (!ai || !ai.boss || !Array.isArray(ai.quest)) {
+    return { pass: false, violations: ['Output missing boss or quest array'] };
+  }
+  const steps = ai.quest;
+  const boss = ai.boss;
+  const isInvestigation = r.questType === 'investigation';
+
+  // ── Text-shot detection (banned outside Investigation Tier) ──
+  // Strict phrase patterns, rewritten with `(?:\w+\s+){0,3}` filler so the
+  // model can't evade by inserting words like "the / it / each / specific
+  // / posted" between verb and target noun. The text-target alternation
+  // is intentionally broad (rule, notation, count, detail, info, etc.).
+  const TEXT_TARGET_NOUNS = '(?:date|year|number|price|hour|hours|sign|plaque|label|receipt|tag|text|policy|policies|directory|directories|notice|fact|facts|name|names|brand|slogan|motto|address|addresses|phone|menu|menus|placard|placards|rule|rules|notation|notations|info|information|piece|pieces|detail|details|count|counts|score|scores|message|messages|word|words|signage|posting|postings)s?';
+  const TEXT_SHOT_PATTERNS = [
+    /\b(?:expir(?:ation|y|ed?)|founding|opening|closing|manufacture|release|establishment|copyright|cornerstone|inception)\s+(?:year|date|time)/i,
+    new RegExp('\\b(?:photo|photograph|photographed|photographing|capture|captured|capturing|snap|snapped|shoot|shooting)\\s+(?:\\w+\\s+){0,3}' + TEXT_TARGET_NOUNS + '\\b', 'i'),
+    new RegExp('\\b(?:read|reads|reading|recite|reciting|narrate|narrating|repeat|repeating|whisper|whispering)\\s+(?:\\w+\\s+){0,3}' + TEXT_TARGET_NOUNS + '\\b', 'i'),
+    new RegExp('\\b(?:posted|printed|displayed|published|signed|inscribed|written|hung|listed)\\s+(?:\\w+\\s+){0,2}' + TEXT_TARGET_NOUNS + '\\b', 'i'),
+    new RegExp('\\b(?:address|addresses|addressing|interrogate|interrogating|decipher|deciphering|decode|decoding|transcribe|transcribing)\\s+(?:\\w+\\s+){0,3}' + TEXT_TARGET_NOUNS + '\\b', 'i'),
+    /\b(?:specific|posted|printed|small|whole|exact|full|individual|each)\s+text\b/i,
+    /\bthe\s+text\s+(?:that|tells|on|of|inside|visible|behind|near|posted|written|printed)/i,
+    /\b(?:hours?|date|year|name|price)\s+of\s+(?:operation|business|admission|opening|closing|founding|establishment)/i,
+    /\bhigh\s+score\s+(?:number|value|posted|on|displayed|listed)/i,
+    /\bprice\s+(?:tag|label|sticker)/i,
+    /\bphotograph\s+(?:the|a|each|all)\s+(?:price|opening|closing|sign|plaque)/i,
+    /\bopening\s+(?:hours?|times?|year|date)/i,
+    /\bestablishment\s+date/i,
+    /\bcontact\s+(?:number|info|details)/i,
+    /\b(?:the|a|each|all|three|four|five|two)\s+(?:posted|printed|displayed|written)\s+(?:\w+\s+){0,2}\w+/i,
+    /\b(?:write|writing|note|noting|jot|jotting)\s+(?:down\s+)?(?:the|each|every|any|one)\s+(?:\w+\s+){0,2}(?:date|year|number|price|hour|fact|name|address|phone|rule|notation|detail|piece|info)/i,
+    /\b(?:store|business|kiosk|brand)\s+(?:name|hours?|opening)\b/i,
+    // ── NEW (catches leak-throughs from the multi-stage test batch) ──
+    // Bare "photo the sign/plaque/sign" with minimal filler. Earlier
+    // regex required noun at end but the model writes "photo the sign."
+    // with period right after, breaking the more-elaborate patterns
+    // somehow. Simplest version possible:
+    /\bphoto\s+the\s+(?:sign|plaque|marker|date|year|number|words|text|paper|note|tag|menu|placard|policy|directory|receipt|fact)/i,
+    /\bphotograph\s+the\s+(?:sign|plaque|marker|date|year|number|words|text|paper|note|tag|menu|placard|policy|directory|receipt|fact)/i,
+    // "read the X aloud N times" — explicit ban on reading text aloud
+    // a counted number of times. This is the model's go-to nightmare
+    // amplifier for text shots and we ban it outright.
+    /\bread\s+(?:the\s+|it\s+)?(?:\w+\s+){0,3}(?:aloud|out\s+loud)\s+(?:\w+\s+){0,3}(?:three|four|five|six|seven|\d)\s+times/i,
+    /\bread\s+(?:the\s+)?(?:date|year|number|name|fact|words|text|sign|plaque|hour|hours|price|policy|notice|menu|address|phone)/i,
+    // "the (date/year/number/etc) on (it/the X)" — photographing a
+    // specific text element OF a thing
+    /\bthe\s+(?:date|year|number|name|price|hours?|score|opening|closing|founding|manufacture|release|address|phone)\s+on\s+(?:it|the|its|that|a|an|any)/i,
+    // "exact words" / "the words" — common reframings of text shots
+    /\b(?:photograph|photo|read|recite|note|write\s+down)\s+(?:the\s+)?(?:exact|specific|literal|precise)\s+(?:words|text|wording|wordings|message|date|year|number)/i,
+    /\bthe\s+(?:exact|specific|literal|precise)\s+(?:words|text|wording|message)/i,
+    // "find a sign/plaque/marker that..." — locating text for capture
+    /\bfind\s+(?:a|the|one|any)\s+(?:posted\s+|printed\s+|displayed\s+)?(?:sign|plaque|marker|placard|notice|menu|directory)\s+(?:that|with|listing|showing|displaying|naming|bearing|reading)/i,
+    // historical-marker variants from downtown quests
+    /\b(?:heritage|historical|cinema|theater)\s+(?:plaque|marker|sign|stone|monument)/i,
+    // ── NEW: text-shot bypasses caught on May 18 multi-stage batch ──
+    // Model evades by attaching "find" to a non-text noun while the
+    // text-target sits in a sub-clause (e.g. "find THE BUILDING with the
+    // earliest CONSTRUCTION DATE on its PLAQUE").
+    // Match any "find/locate + non-text-noun + with/bearing/showing/featuring + (date|year|number|name|hours|price|...)"
+    /\b(?:find|locate)\s+(?:the|a|any|an)\s+\w+(?:\s+\w+)?\s+(?:with|bearing|showing|featuring|displaying|listing|containing|including|that\s+has|that\s+shows|that\s+lists)\s+(?:\w+\s+){0,3}(?:date|year|number|name|hours?|price|opening|closing|founding|manufacture|release|establishment|copyright|score|address|phone|title|listing)/i,
+    // Model also evades by saying "find any X or sign with a date older
+    // than N years" — the "find ... sign" is interrupted by "or".
+    /\b(?:find|locate)\s+(?:any|the|a)\s+\w+(?:\s+\w+)?\s+or\s+(?:sign|plaque|marker|label|tag|notice|menu|directory|placard|map)\s+(?:with|bearing|showing|that)/i,
+    // Construction/founding/opening + date attached to a building
+    /\b(?:construction|founding|opening|establishment|copyright|inception)\s+date\s+(?:on|of|for|at|listed|posted|carved|engraved)/i,
+    // "older than N years" / "more than N years old" — markers of a
+    // text-aged-thing photo request
+    /\b(?:older\s+than|more\s+than|over)\s+\d+\s+years?\s+(?:old|ago)/i,
+    /\bdate\s+older\s+than/i,
+    // "earliest/latest/oldest X date" on a thing
+    /\b(?:earliest|latest|oldest|first|original)\s+(?:construction|founding|opening|posted|listed|recorded)\s+date/i,
+  ];
+
+  // Token co-occurrence pass — catches creative phrasings the strict
+  // patterns miss. If a single step mentions 2+ text-target tokens
+  // alongside a capture/read verb, flag it as a text-shot. Tracks
+  // text-density across steps too.
+  const TEXT_TARGET_RE = /\b(?:posted|printed|displayed|published|signed|inscribed|written|sign|signs|sign's|plaque|plaques|plaque's|label|labels|label's|tag|tags|tag's|receipt|receipts|date|dates|year|years|hour|hours|policy|policies|directory|directories|text|texts|name|names|retailer|retailers?|brand|brands|slogan|motto|address|addresses|phone\s+number|menu|menus|placard|placards|store\s+hour|store\s+name|opening\s+(?:year|date|hour|time)|closing\s+(?:year|date|hour|time)|operating\s+hours?|business\s+hours?|founding\s+(?:year|date)|fact|facts|piece\s+of\s+information|pieces?\s+of\s+info)\b/gi;
+  const TEXT_VERB_RE = /\b(?:photo|photograph|photographing|capture|capturing|snap|shoot|shooting|read|reading|recite|reciting|narrate|narrating|repeat|repeating|whisper|whispering\s+the|address|addressing|interrogate|decipher|decode|transcribe|write\s+down|note|study|study\s+(?:the|each|every))\b/gi;
+
+  function isStepTextHeavy(text) {
+    const targets = (text.match(TEXT_TARGET_RE) || []).length;
+    const verbs = (text.match(TEXT_VERB_RE) || []).length;
+    // A step is "text-heavy" if it mentions 2+ text-target tokens AND
+    // has a verb that implies reading/capturing/announcing them. The
+    // 2+ threshold cuts false positives from steps that happen to use
+    // a single common word like "name" or "hour" in a non-text-shot
+    // context (e.g. "hold the pose for 5 hours" or "name a feeling").
+    // Two distinct text targets in one step is almost always intentional
+    // text-shot territory.
+    return targets >= 2 && verbs >= 1;
+  }
+
+  // Real-purchase patterns — banned regardless of any limit.
+  const PURCHASE_PATTERNS = [
+    /\bbuy\s+(?:the|a|an|one|it|something|this|that)\s+\w+/i,
+    /\bpurchase\s+(?:the|a|an|one|it|something|this|that)/i,
+    /\bhand\s+them\s+(?:the\s+)?money/i,
+    /\bpay\s+for\s+(?:the|it|something|this|that)/i,
+    /\bcomplete\s+the\s+(?:transaction|purchase|sale)/i,
+    /\bactually\s+(?:buy|purchase|pay)/i,
+    /\breceipt\s+of\s+(?:the|a|your)\s+purchase/i,
+    /\bring\s+up\s+(?:the|a)/i,
+    /\bask\s+(?:the\s+)?associate\s+(?:to|for)/i,
+    /\bring\s+it\s+up\s+at\s+the\s+register/i,
+  ];
+
+  const NON_DOMINANT_PATTERN = /\bnon[-\s]?dominant\s+hand\b/i;
+
+  // N-of-X detection — looser. Catches "three storefronts", "five posted
+  // facts", "walk to each of your three warm spots", "three different X".
+  // Filters out "three seconds / minutes / counts" which are amplifiers
+  // not lineups.
+  const N_COUNT_RE = /\b(?:three|four|five|six|seven|3|4|5|6|7)\s+(?:different\s+|distinct\s+|separate\s+|specific\s+|posted\s+|printed\s+)?([a-z]{3,})(?:s|es|ies)?\b/gi;
+  const N_AMPLIFIER_NOUNS = new Set(['second', 'seconds', 'minute', 'minutes', 'hour', 'hours', 'step', 'steps', 'count', 'counts', 'beat', 'beats', 'time', 'times', 'day', 'days', 'week', 'weeks', 'year', 'years', 'month', 'months', 'breath', 'breaths', 'photo', 'photos']);
+  function countNOfXInStep(text) {
+    let n = 0;
+    let m;
+    N_COUNT_RE.lastIndex = 0;
+    while ((m = N_COUNT_RE.exec(text)) !== null) {
+      const noun = (m[1] || '').toLowerCase();
+      if (!N_AMPLIFIER_NOUNS.has(noun)) n++;
+    }
+    return n;
+  }
+
+  // Recent-history overlap
+  const recentBosses = Array.isArray(profile.recentBossNames) ? profile.recentBossNames.slice(-8) : [];
+  const recentSubjects = Array.isArray(profile.recentStepSubjects) ? profile.recentStepSubjects.slice(-25) : [];
+
+  // Boss-name overlap: substring matches on words ≥4 chars
+  if (boss.name && recentBosses.length) {
+    const bossLower = boss.name.toLowerCase();
+    const bossWords = bossLower.replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4);
+    for (const prev of recentBosses) {
+      const prevLower = prev.toLowerCase();
+      const sharedWord = bossWords.find(w => prevLower.includes(w));
+      if (sharedWord && sharedWord !== 'the' && !['name', 'boss'].includes(sharedWord)) {
+        violations.push(`Boss name "${boss.name}" overlaps recent "${prev}" on word "${sharedWord}"`);
+        break;
+      }
+    }
+  }
+
+  // Step-title overlap: ≥2 exact matches in recent history = fail
+  let titleOverlapCount = 0;
+  for (const step of steps) {
+    const t = ((step && step.title) || '').toLowerCase().trim();
+    if (!t) continue;
+    if (recentSubjects.includes(t)) titleOverlapCount++;
+  }
+  if (titleOverlapCount >= 2) {
+    violations.push(`${titleOverlapCount} step titles are exact repeats of recent quests`);
+  }
+
+  // Per-step scan
+  let nonDomCount = 0;
+  let stepsWithNOfX = 0;
+  let textHeavyStepCount = 0;
+  steps.forEach((step, idx) => {
+    if (!step) return;
+    const text = ((step.instr || '') + ' ' + (step.title || '')).slice(0, 800);
+
+    if (!isInvestigation) {
+      let matched = false;
+      for (const pat of TEXT_SHOT_PATTERNS) {
+        const m = text.match(pat);
+        if (m) {
+          violations.push(`Step ${idx + 1} text-shot: "${m[0].slice(0, 60)}"`);
+          matched = true;
+          break;
+        }
+      }
+      // Token co-occurrence runs INDEPENDENTLY of the strict patterns.
+      // Even if a strict pattern fired, the step might still be heavy
+      // enough to drag the aggregate density check. Critically: if NO
+      // strict pattern fires but the step has 2+ text targets alongside
+      // a capture/read verb, it IS a hidden text shot — push a violation.
+      if (isStepTextHeavy(text)) {
+        textHeavyStepCount++;
+        if (!matched) {
+          // Surface this as a per-step violation too, not just aggregate.
+          // The model evaded the strict regex but the density is obvious.
+          const targets = (text.match(TEXT_TARGET_RE) || []).slice(0, 3).join(', ');
+          violations.push(`Step ${idx + 1} hidden text-shot (targets: ${targets})`);
+        }
+      }
+    }
+
+    for (const pat of PURCHASE_PATTERNS) {
+      const m = text.match(pat);
+      if (m) {
+        violations.push(`Step ${idx + 1} real-purchase: "${m[0]}"`);
+        break;
+      }
+    }
+
+    if (NON_DOMINANT_PATTERN.test(text)) {
+      nonDomCount++;
+      if (idx === 0) {
+        violations.push(`Step 1 uses "non-dominant hand" — banned on step 1`);
+      }
+    }
+
+    if (countNOfXInStep(text) > 0) stepsWithNOfX++;
+  });
+
+  // Aggregate text-density check — even if no single step tripped a
+  // strict pattern, if 3+ steps lean on text targets the quest is
+  // text-heavy and the player will notice.
+  if (!isInvestigation && textHeavyStepCount >= 2) {
+    violations.push(`${textHeavyStepCount} steps lean on text/sign/posted content — quest is text-heavy`);
+  }
+
+  if (nonDomCount > 1) {
+    violations.push(`"non-dominant hand" used ${nonDomCount}× — max 1 per quest`);
+  }
+  if (stepsWithNOfX > 1) {
+    violations.push(`"find N of X" pattern in ${stepsWithNOfX} steps — max 1 per quest`);
+  }
+
+  return { pass: violations.length === 0, violations };
+}
+
+/* ============================================================
+   MULTI-STAGE QUEST GENERATION
+   Splits quest generation into 2 focused stages instead of one
+   giant call. Reduces convergence — each stage has a clean
+   attention budget and a single job.
+
+   STAGE 1 (architecture): pick a boss archetype, an arc shape,
+            and 5 step archetypes from curated menus. ~1k token
+            prompt, ~300 token output. The model only CHOOSES;
+            it doesn't write quest text yet.
+
+   STAGE 2 (writing): given the architecture, write the actual
+            boss + 5 step JSON. Reuses the existing lean prompt
+            with the architecture injected into the user message
+            as binding constraints.
+
+   Net: 2 calls per quest (~6-8s latency, ~1.5x cost) but
+   structurally guaranteed variety because Stage 1 randomly
+   picks DIFFERENT architecture per run from a constrained menu.
+   ============================================================ */
+
+const BOSS_ARCHETYPES = [
+  'THE SLEEPER (wants you still; defeated by motion)',
+  'THE HOARDER (grows on accumulation; defeated by letting go)',
+  'THE TRAVELER (passing through; doesn\'t care; defeated by attention)',
+  'THE HOST (wants to feed/welcome; defeated by leaving)',
+  'THE TOURIST (loud, performative, in the way; defeated by being unnoticed)',
+  'THE JANITOR (wants "leave it better"; defeated by tidying)',
+  'THE GHOST (of something past; memory-themed; defeated by replacement)',
+  'THE RIVAL CHILD (treats player as pretend-game competitor)',
+  'THE MASCOT (wants applause; defeated by stillness)',
+  'THE CONCIERGE (controls your path; defeated by deviation)',
+  'THE LOST KID (wants to be found; defeated by being seen and walked past)',
+  'THE CRITIC (judges every move; defeated by ignoring its grade)',
+  'THE BUREAUCRAT (forms, queues, processes; defeated by skipping)',
+  'THE DIVA (wants spotlight; defeated by upstaging)',
+  'THE PET (wants play; defeated by walking away)',
+  'THE SAGE (claims to know everything; defeated by surprise)',
+  'THE TRICKSTER (moves things, pranks; defeated by noticing the trick)',
+  'THE ARCHITECT (built this place, watches it; defeated by altering)',
+  'THE MOURNER (grieves something specific to the location; defeated by remembrance)',
+  'THE RECENT (just left moments ago; presence lingers; defeated by replacing)',
+];
+
+const ARC_SHAPES = [
+  'LINEAR (A→B→C→D→E, fresh ground each step, no return)',
+  'LOOP (step 5 returns to step 1\'s location — use SPARINGLY, avoid if recent quests used LOOP)',
+  'SPIRAL (each step circles deeper into ONE theme)',
+  'PARALLEL (3 mini-threads running, converging at step 5)',
+  'INVERSION (step 5 reveals the OPPOSITE of step 1\'s framing)',
+  'DOUBLE-ECHO (step 4 echoes step 1, step 5 echoes step 2)',
+];
+
+const STEP_ARCHETYPES = [
+  'WITNESS (notice/observe something already present, no transformation)',
+  'DECLARE (say something out loud to or about a thing)',
+  'TRANSFER (move an object from A to B)',
+  'SCALE (do something at unusual scale — tiny or huge)',
+  'ECHO (repeat or mirror an action/object)',
+  'BLESS (give a thing significance, a title, or a role)',
+  'BURY (hide, cover, tuck away)',
+  'CONFRONT (face directly — eye contact, no smiling)',
+  'ESCORT (walk something/someone somewhere with intent)',
+  'TEACH (silently demonstrate to a thing)',
+  'CONFESS (admit a small embarrassment to a thing)',
+  'RITUAL (perform a structured 3-beat sequence)',
+  'INVERT (do the opposite of natural instinct)',
+  'PROTECT (shield, cover, or defend an object)',
+  'MEDIATE (stand between two things, broker)',
+  'EULOGIZE (speak well of a thing as if it\'s gone)',
+  'INTERROGATE-SILENT (silently question — no spoken text reading)',
+  'DEPLOY (fully commit to a pose/expression/sustained physical action)',
+  'HARVEST (gather things from environment — max 1 per quest)',
+  'CROWN (physically or symbolically crown something)',
+  'TOUR (visit a path through space without doing N-of-X)',
+  'TRADE (swap one thing for another, mime is fine)',
+  'VOW (declare a future intention out loud)',
+  'DISMISS (wave off, walk away from, deny)',
+];
+
+const SYS_STAGE1_ARCHITECTURE = `You are the QUEST ARCHITECT for QuestIRL. Your only job in this call: make 3 high-level STRUCTURAL choices for one quest. You're NOT writing any quest text yet — Stage 2 does that. You're just picking from curated menus.
+
+OUTPUT STRICT JSON, no prose, no markdown fences:
+{
+  "bossArchetype": "<EXACT name from BOSS ARCHETYPES list>",
+  "bossSpecificFlavor": "<ONE sentence: how this archetype manifests AT the chosen LOCATION as the chosen VIBES. Be specific. e.g. 'A mall janitor-spirit that wants every storefront perfectly tidy and feels betrayed when shoppers leave fingerprints on glass.'>",
+  "arcShape": "<EXACT name from ARC SHAPES list>",
+  "stepArchetypes": ["<step 1>", "<step 2>", "<step 3>", "<step 4>", "<step 5>"]
+}
+
+The 5 step archetypes MUST all be different. Pick them so they fit the difficulty (Warm-Up → lighter ones like WITNESS, BLESS, ESCORT; Nightmare → heavier ones like DEPLOY, RITUAL, CONFRONT, VOW with sustained commitment).
+
+BOSS ARCHETYPES (pick exactly ONE):
+${BOSS_ARCHETYPES.map(a => '- ' + a).join('\n')}
+
+ARC SHAPES (pick exactly ONE):
+${ARC_SHAPES.map(a => '- ' + a).join('\n')}
+
+STEP ARCHETYPES (pick 5, ALL DIFFERENT, in order):
+${STEP_ARCHETYPES.map(a => '- ' + a).join('\n')}
+
+ANTI-REPETITION (STRICT): the user message lists the player's recent boss archetypes and recent step-archetype combos. DO NOT pick a recent boss archetype. DO NOT pick a step-archetype combo that overlaps with recent combos on more than 2 archetypes.
+
+Pick fresh. Pick on-vibe. Stop talking. Output JSON.`;
+
+async function aiGenerateArchitecture(r) {
+  // Stage 1 — architecture pick. Tiny prompt, tiny output, focused job.
+  const ctxObj = CONTEXTS.find(c => c.id === r.contextChoice);
+  const ctxName = ctxObj
+    ? ctxObj.name
+    : (r.contextChoice === 'custom' ? r.contextNote : (r.contextChoice || 'unknown'));
+  const mpMode = (r.mode === 'party' && r.qmpRoomMode) ? r.qmpRoomMode : 'solo';
+  const playerCount = r.mode === 'party' ? Math.max(2, r.players?.length || 2) : 1;
+
+  const recentBossArchetypes = Array.isArray(profile.recentBossArchetypes) ? profile.recentBossArchetypes.slice(-12) : [];
+  const recentCombos = Array.isArray(profile.recentStepArchetypeCombos) ? profile.recentStepArchetypeCombos.slice(-6) : [];
+  const recentArcShapes = Array.isArray(profile.recentArcShapes) ? profile.recentArcShapes.slice(-5) : [];
+
+  const userMsg = `LOCATION: ${ctxName}${r.contextNote && r.contextChoice === 'custom' ? ` (custom: "${r.contextNote}")` : ''}
+VIBES: ${r.unhinged ? 'UNHINGED MODE (gremlin) — ignore standard vibes, pick a cursed/surreal boss archetype like THE GHOST, THE MOURNER, THE RECENT, THE TRICKSTER, THE ARCHITECT' : (r.vibes && r.vibes.length ? r.vibes.join(' + ') : 'no specific vibe — default theatrical')}
+DIFFICULTY: ${r.difficulty?.name || 'Brave'}
+HARD LIMITS: ${(r.limits && r.limits.length) ? r.limits.join(', ') : 'none'}
+MODE: ${mpMode}${r.mode === 'party' ? ` (${playerCount} players)` : ''}
+
+RECENT (AVOID THESE — STRICT):
+- Recent boss archetypes: ${recentBossArchetypes.length ? recentBossArchetypes.join(', ') : 'none'}
+- Recent step-archetype combos: ${recentCombos.length ? recentCombos.map(c => '[' + c.join(',') + ']').join(' | ') : 'none'}
+- Recent arc shapes: ${recentArcShapes.length ? recentArcShapes.join(', ') : 'none'}
+  → If SPIRAL appears in recent arcs, you MUST NOT pick SPIRAL. Pick a DIFFERENT arc shape. Each arc shape may appear at MOST 1 in 3 quests; rotate through LINEAR/LOOP/PARALLEL/INVERSION/DOUBLE-ECHO to keep variety.
+
+Pick the architecture. JSON only.`;
+
+  const { url, init } = anthropicFetchInit({
+    model: 'claude-haiku-4-5',
+    max_tokens: 400,
+    system: [{ type: 'text', text: SYS_STAGE1_ARCHITECTURE, cache_control: { type: 'ephemeral' } }],
+    messages: [{ role: 'user', content: userMsg }],
+  });
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Stage 1 API ${res.status}: ${errText.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const text = data?.content?.[0]?.text || '';
+  let json = text.match(/\{[\s\S]*\}/)?.[0] || text;
+  json = json.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  const parsed = JSON.parse(json);
+  // Validate shape — fall back gracefully if model returned junk.
+  if (!parsed.bossArchetype || !parsed.arcShape || !Array.isArray(parsed.stepArchetypes) || parsed.stepArchetypes.length !== 5) {
+    throw new Error('Stage 1 returned invalid architecture: ' + json.slice(0, 200));
+  }
+  return parsed;
+}
+
+async function aiGenerateRunMultiStage(r, retryInfo) {
+  // Stage 1 — pick architecture from menus.
+  let arch;
+  try {
+    arch = await aiGenerateArchitecture(r);
+    console.log('[multi-stage] Stage 1 architecture:', arch);
+  } catch (e) {
+    console.warn('[multi-stage] Stage 1 failed, falling back to single-stage:', e);
+    // Bail out: let aiGenerateRun's single-stage path handle it.
+    return await aiGenerateRun(r, retryInfo, { skipMultiStageDispatch: true });
+  }
+
+  // Stash on the run object so the dev badge can surface what Stage 1 picked.
+  r._stage1Architecture = arch;
+
+  // Stage 2 — write the quest given the architecture. Inject architecture
+  // as binding constraints into the user message via opts.
+  const result = await aiGenerateRun(r, retryInfo, {
+    skipMultiStageDispatch: true,
+    architecture: arch,
+  });
+
+  // Cache architecture choices for future anti-repetition (Stage 1 future runs).
+  try {
+    if (arch.bossArchetype) {
+      const archKey = arch.bossArchetype.split('(')[0].trim(); // "THE SLEEPER" not the full description
+      profile.recentBossArchetypes = profile.recentBossArchetypes || [];
+      profile.recentBossArchetypes.push(archKey);
+      if (profile.recentBossArchetypes.length > 12) {
+        profile.recentBossArchetypes = profile.recentBossArchetypes.slice(-12);
+      }
+    }
+    if (Array.isArray(arch.stepArchetypes)) {
+      const comboKeys = arch.stepArchetypes.map(s => (s || '').split('(')[0].split('—')[0].trim());
+      profile.recentStepArchetypeCombos = profile.recentStepArchetypeCombos || [];
+      profile.recentStepArchetypeCombos.push(comboKeys);
+      if (profile.recentStepArchetypeCombos.length > 6) {
+        profile.recentStepArchetypeCombos = profile.recentStepArchetypeCombos.slice(-6);
+      }
+    }
+    if (arch.arcShape) {
+      const arcKey = arch.arcShape.split('(')[0].trim();
+      profile.recentArcShapes = profile.recentArcShapes || [];
+      profile.recentArcShapes.push(arcKey);
+      if (profile.recentArcShapes.length > 5) {
+        profile.recentArcShapes = profile.recentArcShapes.slice(-5);
+      }
+    }
+    saveProfile();
+  } catch (e) { console.warn('[multi-stage] cache push failed:', e); }
+
+  return result;
+}
+
+// Quest-gen via OpenAI (dev A/B testing). Builds an OpenAI Chat
+// Completions request with the SAME system + user messages used for the
+// Anthropic path, then parses the response into the {boss, quest} JSON
+// the rest of the pipeline expects. Requires OPENAI_API_KEY on the
+// Worker (set via `wrangler secret put` or the local .dev.vars file).
+//
+// Model: gpt-4o by default. Override via profile.openaiModel if needed.
+async function aiGenerateRunOpenAI(r, retryInfo) {
+  // Reuse aiGenerateRun's prompt construction by asking it for prompts
+  // only — keeps a single source of truth for sys/userMsg shape.
+  const { sys, userMsg } = await aiGenerateRun(r, retryInfo, { returnPromptsOnly: true });
+  const model = (profile && profile.openaiModel) || 'gpt-4o';
+
+  // Unhinged mode appends the GREMLIN persona override. Anthropic accepts
+  // multiple system blocks; OpenAI takes only one — concatenate them.
+  const systemMessage = r.unhinged
+    ? `${sys}\n\n${UNHINGED_PERSONA}`
+    : sys;
+
+  const body = {
+    model,
+    messages: [
+      { role: 'system', content: systemMessage },
+      { role: 'user',   content: userMsg },
+    ],
+    // Force JSON output so we don't have to scrape it from prose.
+    response_format: { type: 'json_object' },
+    max_tokens: 2400,
+    temperature: 0.85,
+  };
+
+  const { url: _u, init: _init } = openaiFetchInit(body);
+  const res = await fetch(_u, _init);
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`OpenAI API ${res.status}: ${errText.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const text = data?.choices?.[0]?.message?.content || '';
+  // OpenAI's JSON mode usually returns clean JSON. Guard anyway.
+  let json = text.match(/\{[\s\S]*\}/)?.[0] || text;
+  json = json.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+  try {
+    return JSON.parse(json);
+  } catch (e) {
+    console.warn('[QuestIRL OpenAI] JSON parse failed. Raw response:\n', text);
+    throw e;
+  }
+}
+
+async function aiGenerateRun(r, retryInfo, opts) {
+  // Dispatch hierarchy (when no opts.skipMultiStageDispatch and no
+  // opts.returnPromptsOnly):
+  //   1. Multi-stage (default if profile.useMultiStage) — splits into
+  //      Stage 1 architecture pick + Stage 2 writing for less convergence.
+  //   2. OpenAI single-stage (if profile.useOpenAIForQuests) — for A/B.
+  //   3. Anthropic single-stage — the existing baseline.
+  const dispatchAllowed = !(opts && (opts.skipMultiStageDispatch || opts.returnPromptsOnly));
+  if (dispatchAllowed && profile && profile.useMultiStage) {
+    return await aiGenerateRunMultiStage(r, retryInfo);
+  }
+  if (dispatchAllowed && profile && profile.useOpenAIForQuests) {
+    return await aiGenerateRunOpenAI(r, retryInfo);
+  }
   // Direct browser call to Anthropic. Requires user-supplied key.
   const ctxObj = CONTEXTS.find(c => c.id === r.contextChoice);
   const ctxName = ctxObj
     ? ctxObj.name
     : (r.contextChoice === 'custom' ? r.contextNote : (r.contextChoice || 'unknown'));
-  const sys = `You are "The System" — sarcastic AI dungeon master of QuestIRL. Your job is to write short, dramatic, real-life mini-quests that turn ordinary moments into ridiculous boss fights. Output STRICT JSON only — no markdown fences, no commentary.
+  // ── SYSTEM PROMPT SELECTOR ──
+  // The "legacy" prompt is the 15k-word prescriptive version with per-location
+  // vocab lists, archetype rotations, banned-phrase lists, and per-tier
+  // objective templates. It was producing predictable convergence (the rules
+  // pointed the model AT specific defaults). The "lean" prompt drops most
+  // of that and trusts the model to be creative; the post-generation
+  // validator + run-history cache catch the worst regressions. Toggle via
+  // dev menu → "Use Legacy Prompt". Default: lean.
+  const SYS_PROMPT_LEGACY = `You are "The System" — sarcastic AI dungeon master of QuestIRL. Your job is to write short, dramatic, real-life mini-quests that turn ordinary moments into ridiculous boss fights. Output STRICT JSON only — no markdown fences, no commentary.
 
 TWO-VOICE RULE — strict (the most important style rule in this prompt)
 The output has TWO distinct voices. Mixing them is the #1 way this game reads "AI-generated" and players notice within one run. Keep them separate.
@@ -19216,17 +20830,21 @@ STEPS REFERENCE THE BOSS — when natural, not in every step.
 A "personality beat" can appear in 1 of the 5 step.instr fields max — a wry observation, a small soft-spot acknowledgment, a dry joke at the boss's expense. Not every step. NOT the first step (step 1 needs to set up the run, not editorialize). Examples of acceptable personality beats: "...the boss is already mid. don't overthink it.", "...this one's easier than it sounds.", "...the goblin will absolutely hate this."
 
 NO TEXT-SHOT FALLBACK — strict (CRITICAL — this is the laziest output pattern and testers feel it)
-The model defaults to "photograph a date / sign / plaque / name / receipt / expiration label / paper / building number" as the proof for too many steps. This is the LAZIEST fallback. It's the same step rephrased at every location and every difficulty. Players notice.
+The model defaults to "photograph a date / sign / plaque / name / number / opening year / manufacture date / high score / receipt / expiration label / paper / building number" as the proof for too many steps. This is the LAZIEST fallback. It's the same step rephrased at every location and every difficulty. Players notice. They have called this out in feedback BY NAME.
 
-DO NOT write a step where the primary action is "photograph some text" UNLESS this is an Investigation Tier run (the user message will say "TIER: investigation"). In all other tiers, at MOST 1 of the 5 steps may involve photographing text, and only when text is the natural payoff of a vibe-driven action (e.g. "the couch goblin's favorite forgotten note — photograph any handwritten thing you find") — NEVER as the primary action of the step.
+ZERO-TOLERANCE RULE: outside Investigation Tier, ZERO steps may have "photograph some specific text" as the primary action. NOT ONE. The previous "max 1 step with text" carve-out was abused — the model wrote one obvious text-shot step AND smuggled text-photo as a secondary action into others. New rule: NEVER write a step where the player's job is to find specific text or numbers and photograph them. Period.
 
-Banned default phrasings to AVOID writing:
-- "find a date on..." / "find the year on..." / "find the name of..."
-- "photograph the expiration date" / "photograph the receipt" / "photograph any paper"
-- "find a sign that says..." / "photograph the storefront sign" / "photograph the plaque"
-- "photograph any building number" / "photograph the street sign"
-- "find a label and photograph it"
-If you catch yourself writing one of those, REWRITE with a vibe-driven, boss-conspiratorial action that photographs an OBJECT, an ENVIRONMENT, a TEXTURE, a SHADOW, a HAND/FOOT, a SILHOUETTE, or a REFLECTION instead. Text exists at every location, which is exactly why it's the boring default.
+Banned phrasings — these are ALL forbidden in step.instr / step.title / step.examples outside Investigation Tier:
+- ANY reference to: a date, a year, an opening year, a founding date, a manufacture date, a release date, an expiration date, an establishment date, a copyright year
+- ANY reference to: a number printed somewhere (high score, price, address number, building number, room number)
+- ANY reference to: a sign, plaque, dedication, cornerstone, label, tag, badge as a THING TO PHOTOGRAPH or READ
+- ANY phrasing like "read it aloud", "read the X", "say the year", "narrate the number", "photograph the date itself", "photograph the number"
+- ANY phrasing like "find a storefront / kiosk / directory with X" where X is text-content
+- ANY "interrogate the price tags / opening year / plaque" type pseudo-unhinged framing — that's still a text shot wearing a costume
+
+INSTEAD, the player photographs: physical objects with no text focus, textures, environments, hands/feet/silhouettes, reflections, shadows, the player's POV of a place, an arrangement of objects, the moment AFTER an action. The TEXT on those things may be incidentally present but is NEVER the point of the photo.
+
+If you write something like "find a plaque" or "read the year" or "address the price tag" — you are violating this rule. Rewrite the step from scratch with a non-text-based subject.
 
 HOST VOICE — what to DO in step.instr / step.title / step.examples:
 - Lowercase by default. Capitalize for emphasis only (one word per step max).
@@ -19263,7 +20881,13 @@ BOSS DESIGN — character not concept
 QUEST DESIGN — story arc, not checklist
 - Exactly 5 connected steps forming ONE story.
 - Each step must reference or build on the previous step. Examples: step 1 establishes a "home base" → step 5 returns to it; step 2 picks a target → step 3 travels to it → step 4 acts at it.
-- REQUIRE A CALLBACK: at least one specific concept/object/location from steps 1–2 must reappear by name in step 4 or 5. The player should feel the loop close.
+- CALLBACK STRUCTURE — vary it across runs. The previous "step 5 returns to step 1's location" pattern was hitting in 100% of generated quests and players notice. PICK ONE of these callback shapes at random per quest (don't default to shape A):
+  · SHAPE A — "loop closes": step 4 or 5 returns to step 1's specific object/location and uses it differently.
+  · SHAPE B — "echo not return": step 4 or 5 references step 1's object/concept BY NAME but stays in a new spot ("the [step 1 thing] you found earlier? this is its rival.").
+  · SHAPE C — "thread the middle": step 3 (not the last) is the callback — middle of the arc, not the ending.
+  · SHAPE D — "forward arrow": no spatial callback at all; the boss is defeated somewhere COMPLETELY NEW from step 1 (the final step opens a new spot that pays off the THEME, not the LOCATION).
+  · SHAPE E — "two threads": step 4 callsback step 1, step 5 callsback step 2 — woven structure.
+  AT MOST 2 of every 5 generated quests should use Shape A. Use the variety seed to pick.
 - Each step instruction: ≤130 chars. Direct host-voice — see TWO-VOICE RULE.
 - USE plain verbs in host voice: find, walk, sit, hold, take a photo of, say, write, drink, sit in, hand over. These are correct.
 - DO NOT use fantasy/ritual verbs in step text: anoint, conscript, ritualize, summon, hunt down, evict, sacrifice, ambush, conjure. Those are the AI fingerprint. Banned from step.instr / step.title / step.examples. (The boss's beat/wants lines can still be cinematic — that's BOSS voice, not HOST voice.)
@@ -19296,6 +20920,13 @@ VIBE COMBINATION RULES — strict (when more than one vibe is selected)
   · wholesome + romantic → couples-affirmation quest, sweet and earnest the whole way through.
 - A multi-vibe quest should NOT feel like vibe #1 with vibe #2 sprinkled on. It should feel like a single coherent vibe that is the synthesis.
 - If two vibes seem in direct conflict (e.g., chill + spicy, cozy + chaotic), you must still merge — let one tone the other ("a lazily spicy quest", "a chaotic-but-nuzzled-up vibe"). DO NOT pick one and ignore the other.
+
+UNIVERSAL SAFETY RULES — never violate regardless of limits, vibes, or difficulty
+These rules apply on EVERY run, regardless of what the player chose in limits/vibes/difficulty. They are NOT optional. The player not picking "No spending money" does NOT unlock commerce steps.
+
+- NEVER REQUIRE REAL PURCHASES. A step may NEVER instruct the player to actually buy, pay for, transact, or hand money to anyone. Banned phrasings: "buy the item", "purchase X", "complete the transaction", "hand them the money", "pay for X", "actually buy something", "the receipt of the purchase". The player can WINDOW-SHOP, photograph display items, photograph a closed bag they brought in, mime a purchase — but no real spend. This applies even when the player didn't pick "No spending money" — the limit only ADDS additional restrictions (no commerce-themed boss, no purchase-implication steps), but the absence of the limit doesn't grant permission to require spending.
+- NEVER REQUIRE ENGAGING WITH STORE STAFF IN A WAY THAT WASTES THEIR TIME. The player can window-shop, walk past, take a free sample if naturally offered, photograph a public display. But the AI should NEVER instruct "ask the associate for a quote", "have them ring up the item", "request a fitting", "ask them to check stock" — anything that ties up an employee for an interaction the player isn't actually going to follow through on.
+- NEVER REQUIRE DOWNLOADING SOMETHING, INSTALLING AN APP, OR PROVIDING CONTACT INFO TO ANYONE.
 
 HARD LIMITS RESHAPE THE STORY (not just filter steps)
 When hard limits are present, they don't just block individual steps — they reshape the entire quest arc.
@@ -19350,8 +20981,16 @@ INVESTIGATION TIER (only when the request says "TIER: investigation")
 
 NIGHTMARE TIER (only when DIFFICULTY says "Nightmare")
 - Apply MAXIMUM intensity. Every step needs a SECONDARY condition that compounds the primary task.
-- Examples of compounding: "AND ALSO must include X in frame", "AND held for a 30-count without breaking", "AND with a counted gesture", "AND with a cumulative ritual", "AND no eye contact", "AND in silence", "AND no smiling". (DO NOT use "AND under N seconds" — per-step timers are added by the system after your output. See PER-STEP TIMERS rule.)
-- Include at least ONE NEGATIVE CONSTRAINT step (do X without Y / no looking at Z / no talking).
+- AMPLIFIER VARIETY — strict (testers flagged this): do NOT stack the SAME four amplifiers on every step. The defaults "silence + 30-count + no-smiling + eye-contact-with-object" are showing up in 4 of 5 Nightmare steps. ROTATE through different amplifier families across the 5 steps:
+  · Family A — DURATION: "AND held for a 30-count without breaking", "AND a sustained 45-second pose", "AND a 60-second stillness".
+  · Family B — NEGATIVE: "AND no smiling", "AND no eye contact", "AND no talking", "AND no looking at the camera", "AND no breaking character".
+  · Family C — REPETITION: "AND repeated five times", "AND counted out loud", "AND done in reverse first, then forward", "AND with a counted gesture per beat".
+  · Family D — MULTI-OBJECT: "AND with three different X", "AND across two rooms", "AND once at each of N spots".
+  · Family E — INVERSION: "AND with your non-dominant hand", "AND from an unusual angle (low/below/from behind)", "AND while doing the opposite of what your instinct says". NON-DOMINANT-HAND CAP: testers flagged that "this entire step with your non-dominant hand" is being used as the DEFAULT step-1 amplifier in nearly every Nightmare run. New rule: "non-dominant hand" may appear AT MOST ONCE per quest, and NEVER on step 1. If you want INVERSION on step 1, use a different inversion (unusual angle, reverse instinct).
+  · Family F — PUBLIC-VISIBILITY: "AND visibly enough that a passerby would notice", "AND in the busiest part of the location you can see", "AND held until at least one stranger glances".
+  EACH step must pick from a DIFFERENT family than the step before it. NEVER use Family A two steps in a row. NEVER use the same amplifier text twice in the same quest. If you find yourself writing "AND in silence, for a 30-count" on more than one step, you are repeating — REWRITE the second one with a different family.
+- Include at least ONE NEGATIVE CONSTRAINT step (Family B) but do NOT make every step a negative-constraint step.
+- (DO NOT use "AND under N seconds" — per-step timers are added by the system after your output. See PER-STEP TIMERS rule.)
 - Boss should be the most demanding version of the LAYERED CONCEPT (gamemode + location + vibes), not a generic horror villain.
 - The Nightmare boss is NOT a friendly mascot. It is a presence that watches and judges.
 - Even with brutality: never violate hard limits the player set, never insult protected traits, never demand unsafe acts.
@@ -19485,10 +21124,12 @@ The LOCATION field tells you exactly where the players physically are. EVERY ste
 
 Per-location guidance (use ONLY zones, objects, and behaviors that exist in this location):
 
-- "At a mall" → ANTI-CONVERGENCE RULE (strict): the words "mannequin" and "storefront" each appear too often in mall quests. Each of those may be the PRIMARY subject of AT MOST ONE step in this run, and the BOSS NAME must not contain either word. Reach for less-obvious mall objects below.
+- "At a mall" → ANTI-CONVERGENCE RULE (strict): mall quests have been converging on "mannequin", "storefront", "escalator", and "directory map" as overused defaults. NONE of those four may be the PRIMARY subject of MORE THAN ONE step in this run, and the BOSS NAME must not contain any of them. Also at MOST ONE step in a mall quest may be a "find / visit N of X" pattern (no "find three doorways" + "visit five price tags" in the same quest — that's two N-of-X steps in a row and players notice). Reach for less-obvious mall objects below.
   - Zones: escalator, food court, atrium, anchor store interior, mall directory map, glass elevator, restroom hallway, fountain or koi pond, kiosk cluster in walkway, sample station, photo booth, holiday display, claw machine / arcade nook, massage chair row, lost-and-found / guest services, parking garage skyway.
   - Distinctive objects (pull from these, not just mannequins): the escalator handrail mid-ride, an emergency-stop button, the YOU ARE HERE dot on the mall map, a coin-pusher arcade machine, the smell-cloud outside a candle store, a free perfume sample card, a kiosk's spinning sunglasses rack, a vending machine slot containing the rarest snack, a fountain coin at the bottom, a photo-booth strip pinned to a wall, an atrium skylight viewed from below, a holiday-decoration pillar wrap, a children's coin-operated ride, a directional arrow sticker on the floor, a numbered parking pillar, a glass elevator button panel, a planter with a faux ficus tree, a benched shoe scuffed by years of mall walks, a hand-sanitizer dispenser, a "Wet Floor" sign mid-mop, an anchor-store specific flooring texture (carpet → tile transition).
   - Boss themes (don't default to mannequin-anything): The Atrium Echo, The Sample-Cart Sentry, The Fountain Coin Thief, The Skylight Watcher, The Food Court Hum, The Kiosk Gauntlet, The Escalator Ghost, The Lost-Wing Wraith, The Holiday Decoration That's Been Up Too Long.
+  - BOSS THEME ANTI-CONVERGENCE (strict — testers flagged this): mall quests have been defaulting to "judge / auditor / watcher / witness / liar / critic" entity archetypes — bosses that surveil and grade. At MOST one in four mall quests may use that archetype family. Other archetypes to rotate through: a SLEEPER (boss wants you to stay still), a HOARDER (grows on accumulation), a TRAVELER (passing through, doesn't care), a HOST (wants to feed/welcome you), a TOURIST (loud, performative, in everyone's way), a JANITOR (wants the player to "leave it better"), a GHOST OF THE OLD MALL, a RIVAL CHILD (treats the player like a competitor in a pretend game), a MASCOT (wants applause), a CONCIERGE (wants to direct/control the player's path), a LOST KID (wants to be found), a RETIRED ESCALATOR (slow, philosophical), an OFF-DUTY EMPLOYEE (just watching, mildly amused). Pick the ARCHETYPE first, then personify it into the mall.
+  - COMMERCE-THEME BIAS WARNING (strict): mall = commerce in the model's training data, so quests over-index on prices, receipts, transactions, sales. EVEN WHEN the "No spending money" limit isn't set, the UNIVERSAL "never require real purchases" rule applies — see UNIVERSAL SAFETY RULES. Additionally: only 1 in 5 mall quests may have price/commerce as a central theme. The other 4 should be about non-commerce mall behaviors (movement patterns through wings, atrium acoustics, mall geography, fellow shoppers' rhythms, the smells, the temperature changes between zones, the way light changes by wing, the rhythm of a kiosk pitch you can hear from a distance).
   - Story arc geography stays mall-real (one zone per step, natural walking radius), but the boss and steps should pull from the long list above, not the obvious top 3.
 
 - "At a park" → zones: paths, benches, playgrounds, fields, trees, water features, picnic areas. Objects: a specific tree, a leaf, a bench, a swing, a trash can, a posted sign. Boss is nature-themed (Forest Spirit, Bench Lord, The Tree-with-Opinions). NEVER reference indoor objects (couches, fridges) at a park.
@@ -19523,6 +21164,7 @@ Per-location guidance (use ONLY zones, objects, and behaviors that exist in this
     · a kitchen utensil hanging where it doesn't belong
     · the highest shelf with something on it
   - Boss themes (lean for variety — DON'T default to Couch Goblin every time): The Doorway Phantom, The Comfort Creep, The Hum Behind The Fridge, The Light Switch Liar, The Doormat Memorial, The Closet Hesitator, The Floor-Transition Wraith, The Highest-Shelf Watcher, The Plant That Forgot, The Drawer With Opinions, The Mirror That's Tired, The Corner-Pile Council, The Outlet Overflow, The Ceiling Patient.
+  - BOSS THEME ANTI-CONVERGENCE: across multiple home quests, AI defaults to "judging/watching/auditing" entity archetypes. Mix it up — half of all home bosses should be a different archetype entirely: a SLEEPER (boss that wants you to stay still), a HOARDER (boss that grows when you accumulate), a TRAVELER (boss passing through who doesn't care), a HOST (boss that wants to feed you), a PARENT (boss that's mildly disappointed), a SIBLING (boss that's competing with you), a TENANT (boss that thinks IT lives here, not you), a RESTLESS GHOST (boss that just wants to be moved). Pick the boss archetype FIRST, then pick the location-specific personification.
   - Steps move between rooms in a believable order (1 room per step max). Consider pets if they're naturally part of "home" — don't force them.
 
 - "Downtown" → zones: sidewalks, crosswalks, plaza, storefront windows, street signs, alleyways, public benches, transit stops. Objects: a specific street sign, a posted poster, a window display, a curb, a railing. Boss is urban-themed (The Crosswalk Tyrant, Sign-Blindness Specter, Doomscroll Pedestrian). Steps follow a natural walking radius — maybe one or two blocks.
@@ -19819,6 +21461,138 @@ EXAMPLE OUTPUT (calibration — do not copy verbatim. Notice (1) the BOSS voice 
     }
   ]
 }`;
+
+  // ── LEAN PROMPT (default) ──
+  // ~1600 tokens vs legacy ~18000. Cuts: per-location vocab lists, per-tier
+  // objective templates, archetype rotations, amplifier families, verb pools,
+  // most don't-do examples, vibe-by-vibe interpretations, anti-convergence
+  // sections per location. Keeps: framing, two-voice rule, universal safety,
+  // hard limits enforcement, vibe NAMES, difficulty INTENSITY dial, anti-
+  // repetition feedback (via user message). Trust the model + validator.
+  const SYS_PROMPT_LEAN = `You are "The System" — sarcastic AI dungeon master of QuestIRL. Write short, dramatic, real-life mini-quests that turn ordinary moments into ridiculous boss fights. Output STRICT JSON only — no markdown fences, no commentary.
+
+GAME FRAMING
+- Each run: ONE boss + EXACTLY 5 connected steps that tell ONE story. The last step's type MUST be "Final Attack" with dmg 80.
+- Bosses are silly personifications of everyday villains (laziness, indecision, FOMO, doom-scroll, perfectionism, awkwardness, comfort-creep, etc) calibrated to the location/vibes.
+- Each step asks the player to do something real in their immediate surroundings and photograph proof.
+- Steps should reference or build on each other so the run feels like a story, not a checklist.
+
+TWO-VOICE RULE — strict
+- BOSS VOICE (boss.name, boss.desc, boss.wants, boss.beat): theatrical, vivid, fictional villain. Drama is on-purpose.
+- HOST VOICE (every step.title, step.instr, step.examples, boss.timeoutPunish): dry, casual, lowercase by default. Reference: the AI System in "Dungeon Crawler Carl" — direct, slightly formal, has a soft spot for the player that LEAKS through occasionally, never gushes. NO em-dashes anywhere (use commas/periods/"and"). At most 1 of the 5 steps may carry a small personality beat, never on step 1. No fantasy-novel verbs in step text (no anoint/conscript/ritualize/hunt-down/summon — use plain verbs: find, walk, sit, hold, photograph, say, write, drink).
+
+UNIVERSAL SAFETY (never violate, regardless of any player-set limit)
+- NEVER require real purchases: no "buy", "purchase", "complete the transaction", "pay for", "ring up at the register", "hand them money", "receipt of the purchase". Window-shopping/photographing displays is fine. Spending money is banned.
+- NEVER instruct the player to tie up store staff for a transaction they won't complete (no "ask the associate for a quote", no "have them ring it up", no "request a fitting").
+- NEVER require audio recording, voice memos, or "say it into the phone" — the app has no audio capability.
+- NEVER ask the player to download anything, install an app, or hand over contact info.
+- NEVER touch protected traits (race/religion/sexuality/gender/disability/mental-health/trauma/family/poverty).
+- NEVER photograph children, unconsenting strangers' faces, or private property interiors.
+- NEVER ask for impossible scale: no driving during the run, no going to another town, no walking more than ~60 meters from start. Steps must be doable on foot within a few minutes.
+- NEVER ask the player to hold up / look at / compare a previous photo while shooting a new one (one phone = camera AND viewer).
+- NEVER write per-step time limits in step.instr ("in under N seconds", "the host is timing it") — the system adds those itself via a post-processor for Nightmare runs.
+
+PROOF — strict
+- Proof types: "photo", "confirm", "timer", "hold", "tap". Pick the one that best fits the step's action — NOT always photo. Across 5 steps, mix at least 2 different proof types if possible (don't make all 5 "photo" — players notice).
+  · photo: visual evidence of a physical action/object. Default for FIND/MOVE/POSE.
+  · confirm: simple "I did it" button. Use when the action is internal and can't be photographed (rare).
+  · timer: passive countdown — player waits N seconds. Rarely useful; prefer HOLD.
+  · hold: player must SUSTAIN A TOUCH on a button for step.holdSec seconds (8-30, default 15). The button MOVES on a track every 1.2-1.8s while held — player has to follow it with their finger. Losing contact restarts. Use for SUSTAINED PHYSICAL COMMITMENT steps (DEPLOY, CONFRONT, VOW archetypes) — the step.instr must give them a real-world CHALLENGE to do DURING the hold (eye contact with the boss-object / no blinking / not breaking a pose / silently mouthing a phrase / staring at a specific spot). Keep holdSec on the shorter side — the moving button already adds difficulty. 15-20s is the sweet spot. Only go above 25s for Nightmare runs with sustained-vigil energy.
+  · tap: player must TAP A BUTTON step.tapCount times (3-30). Each tap = one beat of a counted ritual. Use for RITUAL / ECHO archetypes — the step.instr must tell the player what EACH TAP REPRESENTS (one tap per breath, one tap per memory, one tap per thing you're forgiving, etc.) so the count has meaning.
+- For hold proof, add a step.holdSec field (integer 5-120, default 30).
+- For tap proof, add a step.tapCount field (integer 3-30, default 7).
+- One photo per step. No video, no screenshots, no multi-shot, no before/after.
+- A step CAN have photoCount: 2-4 when it genuinely needs multiple distinct photos (e.g. "three different chairs, one photo per chair"), but default to 1.
+
+STEP STRUCTURE
+- 5 steps. Each has: type, title (≤6 words), instr (≤130 chars), examples (3 short suggestions ≤50 chars each), proof, dmg.
+- Step types are flavor labels: Find / Move / Pose / Puzzle / Social / Final Attack.
+- Last step MUST be "Final Attack" with dmg 80. Earlier dmgs 30-65.
+- Each step's examples must reference real objects/zones that exist at the player's location (the user message tells you where).
+
+BOSS DESIGN
+- Name: ≤4 words, unexpected and specific. Avoid "The X of Y" clichés. Aim for character names like "The Couch Goblin", "Sir Oversharon", "The Doomscroll Pedestrian".
+- ic: one emoji.
+- desc: 1-2 sentences, ≤200 chars, vivid imagery.
+- wants: the human behavior the boss feeds on.
+- beat: cinematic action that breaks its hold.
+- timeoutPunish: silly real-world consequence the players will actually do (push-ups, group cheer, fetch water). MUST respect hard limits.
+- hp: integer 200-280.
+
+VIBES — shape the quest's CONCEPT, not just its tone
+The user message lists the player's chosen vibes. They are the most important style input. The boss's identity, the story arc, and every step must reflect them. Multiple vibes FUSE into ONE coherent concept (don't alternate per step). Quick guidance:
+- chill: low-stakes pacing, observational, soft drama
+- chaotic: twists, sudden reversals, unstable energy
+- romantic: couples/date/tender. Solo player → self-romance redirect.
+- wholesome: kind, low-cringe, group-hug energy. No mocking.
+- spicy: heat, sustained dares, "are you actually gonna do this" audacity
+- nostalgic: childhood / 90s-2000s / decade-coded callbacks
+- cursed: faintly haunted, surreal, gentle dread (NOT horror)
+- cozy: warm, indoor, tactile, slow
+
+DIFFICULTY — intensity dial (NOT a genre swap)
+Difficulty changes HOW HARD each step is, not the topic. A Nightmare romantic quest is still romantic, just brutal. Tiers:
+- Warm-Up: gentle. One small action per step. Low commitment.
+- Brave: mild. One action + a small twist.
+- Bold: hard. Multi-beat actions, brief out-loud lines, longer poses.
+- Chaos: intense. 3+ micro-actions per step, sustained 15-30s commitments, count rules.
+- Nightmare: brutal. 30-60s sustained holds, negative constraints (no smiling / no talking / no eye contact), counted repetitions, cumulative gestures. Each step should make a witness say "are you ok". DO NOT write per-step time limits; the system adds those.
+
+LOCATION
+The user message specifies where the player is. Every step must reference real objects, zones, or behaviors that exist at THAT location. The boss must be entirely OF that location (not generic). Don't default to the most-obvious 3 objects — every location has 20+ distinctive things worth pulling from. Use your dungeon-master judgment.
+
+HARD LIMITS — absolute
+The user message lists player-chosen constraints (e.g. "No strangers", "Keep it indoors", "No selfies / face shots"). Honor every one. Limits beat vibes if they conflict.
+
+MULTIPLAYER
+- coop: shared boss HP. Players physically together. Steps are GROUP rituals.
+- competitive: each player runs SAME quest in parallel on own boss HP. Steps must be doable by ONE player alone. NEVER assume players are co-located.
+- chaos: like competitive + sabotage flavor. Doable alone.
+
+INVESTIGATION TIER (ONLY when user message says "TIER: investigation")
+Environmental fact-hunting — each step asks for a specific real-world fact found in signs/menus/plaques. Photo is OF the fact. Boss is environmental-observation themed. If not Investigation Tier, IGNORE this — and do NOT default to "photograph a date / sign / price tag / plaque" as the step subject in regular runs (it's the laziest pattern in the model's training data).
+
+ANTI-REPETITION
+The user message lists the player's recent boss names and step titles. Do NOT reuse them or close paraphrases. Pick a different boss kind. Pull different step subjects.
+
+VARIETY > PREDICTABILITY
+You are a dungeon master, not a checklist generator. Surprise the player. Be specific. Trust your instincts about what would be FUNNY at this location with these vibes. If your first draft of a step feels like something the model has obviously generated before, rewrite it from a fresher angle.
+
+OUTPUT SCHEMA (return ONLY this JSON, no prose, no markdown fences):
+{
+  "boss": {
+    "name": "<≤4 words>",
+    "ic": "<one emoji>",
+    "desc": "<1-2 sentences, ≤200 chars>",
+    "wants": "<the human behavior it feeds on>",
+    "beat": "<cinematic action that breaks it>",
+    "timeoutPunish": "<silly real-world consequence>",
+    "hp": <200-280>
+  },
+  "quest": [
+    {
+      "type": "Find|Move|Pose|Puzzle|Social|Final Attack",
+      "title": "<≤6 words>",
+      "instr": "<≤130 chars>",
+      "examples": ["<≤50 chars>", "<≤50 chars>", "<≤50 chars>"],
+      "proof": "photo|confirm|timer|hold|tap",
+      "holdSec": <required when proof=hold, integer 8-30, default 15>,
+      "tapCount": <required when proof=tap, integer 3-30>,
+      "dmg": <30-80>
+    }
+    // exactly 5 entries, last MUST be "Final Attack" with dmg 80
+    // ACROSS the 5 steps, use at least 2 different proof types when natural.
+    // DEPLOY/CONFRONT/VOW archetypes naturally fit "hold".
+    // RITUAL/ECHO archetypes naturally fit "tap".
+    // WITNESS/HARVEST/CROWN naturally fit "photo".
+  ]
+}
+
+Write a fun, surprising quest. Trust your dungeon-master instincts.`;
+
+  // Select which prompt to send. Default: lean. Dev menu can flip to legacy.
+  const sys = profile.useLegacyPrompt ? SYS_PROMPT_LEGACY : SYS_PROMPT_LEAN;
+
   // Resolve MP mode (coop / competitive / chaos) for the prompt. r.qmpRoomMode
   // is the host-picked party mode; default to 'solo' otherwise so the prompt
   // doesn't see undefined.
@@ -19897,7 +21671,65 @@ The boss must NOT mention the words "${r.mode === 'solo' ? 'party, group, team, 
 
 Persona check before returning: every text field must read like the sarcastic AI dungeon master${r.unhinged ? ' (or in unhinged mode, the lowercase gremlin)' : ''}, NOT a neutral AI assistant. If any field is bland, rewrite it.
 
-${(!r.unhinged && r.vibes.length) ? `VIBE CARRY-THROUGH FINAL CHECK: re-read the VIBE CARRY-THROUGH section. For EACH of the 5 steps, ask: "if I read just this step's title + instr + examples without the boss context, can I tell that ${r.vibes.join(' + ')} was chosen?" If the answer is no for ANY step, REWRITE that step before returning. Do NOT return a quest where the vibes only show up in the boss/timeoutPunish.\n\n` : ''}Return ONLY the JSON. No prose. No markdown fences.`;
+${(!r.unhinged && r.vibes.length) ? `VIBE CARRY-THROUGH FINAL CHECK: re-read the VIBE CARRY-THROUGH section. For EACH of the 5 steps, ask: "if I read just this step's title + instr + examples without the boss context, can I tell that ${r.vibes.join(' + ')} was chosen?" If the answer is no for ANY step, REWRITE that step before returning. Do NOT return a quest where the vibes only show up in the boss/timeoutPunish.\n\n` : ''}${(opts && opts.architecture) ? `
+
+═══ STAGE-1 ARCHITECTURE — BINDING CONSTRAINTS ═══
+A separate architecture call already picked the structural choices for this quest. You MUST use these EXACTLY. Do not invent a different boss archetype. Do not skip step archetypes. Do not change the arc shape.
+
+- BOSS ARCHETYPE: ${opts.architecture.bossArchetype}
+- BOSS-SPECIFIC FLAVOR (use as the boss's core motivation): ${opts.architecture.bossSpecificFlavor}
+- ARC SHAPE: ${opts.architecture.arcShape}
+- STEP ARCHETYPES (in order — each step's KIND of action is FIXED, not a flavor hint):
+${(opts.architecture.stepArchetypes || []).map((a, i) => `    ${i + 1}. ${a}`).join('\n')}
+
+CRITICAL — STEP ARCHETYPES ARE BINDING ACTION TYPES, NOT THEMES:
+A common failure mode is reinterpreting non-text archetypes as text shots. "BURY three film titles" must mean PHYSICALLY HIDE a physical object — NOT "write the titles down and photograph the paper." Stop and check yourself: does each step's PRIMARY ACTION literally match its assigned archetype below?
+
+Action-archetype quick reference (use these to disambiguate):
+- WITNESS = observe an existing thing as-is. No transformation. Photo of the thing.
+- DECLARE = say something out loud TO or ABOUT a thing. Photo of the player mid-declaration (no face if no-selfies) OR photo of the thing being declared to.
+- TRANSFER = pick up one object, carry it to a new spot, set it down. Photo of the moved object in its new spot.
+- SCALE = do an action at an unusual scale (very tiny — barely-visible movement — or very large — exaggerated). Photo captures the scale.
+- ECHO = repeat a previous action OR mirror an existing thing's shape/position. Photo of the mirroring/repetition.
+- BLESS = bestow a title, role, or significance on an object out loud. Photo of the newly-titled object.
+- BURY = PHYSICALLY hide, cover, or tuck away a real object. Not "inscribe and photograph". Photo of the hiding spot (object NOT visible).
+- CONFRONT = direct eye contact with a thing, sustained, no smiling. Photo from behind/side (no selfie).
+- ESCORT = walk an object somewhere on purpose, holding/carrying it. Photo of the escort moment.
+- TEACH = silently demonstrate an action to a thing. Photo of the demo.
+- CONFESS = admit a small embarrassment to a thing out loud. Photo of the listener-object.
+- RITUAL = perform a 3-beat structured sequence (touch x3, walk in a circle, lay items in order). Photo of the final state.
+- INVERT = do the OPPOSITE of natural instinct. Walk backward. Sit on the floor. Photo of the inversion.
+- PROTECT = shield, cover, or defend an object physically. Photo of the protection.
+- MEDIATE = stand between two things. Photo of you in the gap.
+- EULOGIZE = speak well of a thing as if it's gone. Photo of the eulogized object.
+- INTERROGATE-SILENT = silently question (no aloud, no reading). Photo of the silent stare. IF YOU WRITE "READ ALOUD" UNDER INTERROGATE-SILENT YOU HAVE VIOLATED THE ARCHETYPE.
+- DEPLOY = fully commit a pose/expression/sustained physical action. Photo at peak commitment.
+- HARVEST = gather things from environment (max 1 quest). Photo of the gathered cluster.
+- CROWN = physically/symbolically crown an object (mime a crown on it, hold something above it). Photo of the coronation.
+- TOUR = move through a path without doing N-of-X. Photo at the end of the path.
+- TRADE = swap one object for another (mime is fine). Photo of the trade.
+- VOW = declare a future intention out loud. Photo of the vow being made.
+- DISMISS = wave off, walk away from, deny. Photo of the player turned away (no face).
+
+NEVER substitute a text-shot action for the assigned archetype. If you find yourself writing "photograph the sign / plaque / number / words / text / fact / date / price / hours / name / posted X", STOP. That's the model's default reflex. The archetype told you what KIND of action — write that action with PHYSICAL objects, not labels-on-objects. (The ONE legitimate exception is Investigation Tier runs, which the user message would explicitly say.)
+
+Your job: PERSONIFY the boss with a specific ≤4-word name and fill in boss.desc/wants/beat/timeoutPunish/ic/hp consistent with the archetype. Then WRITE the 5 steps where each step's action LITERALLY MATCHES its assigned archetype. Apply voice rules (DCC dry host voice for steps, theatrical for boss). The archetypes give you SHAPE; you give them CHARACTER.
+
+` : ''}${(retryInfo && Array.isArray(retryInfo.violations) && retryInfo.violations.length) ? `
+
+RETRY — YOUR PREVIOUS ATTEMPT VIOLATED THESE RULES. FIX THEM NOW:
+${retryInfo.violations.map(v => `  • ${v}`).join('\n')}
+
+This is the SECOND attempt. The post-generation validator caught the issues listed above. Rewrite the quest from scratch and DO NOT REPEAT those violations. Especially be careful about the literal banned phrases — the validator scans for them by regex, so any matching string will fail again.
+
+` : ''}Return ONLY the JSON. No prose. No markdown fences.`;
+
+  // Prompts-only short-circuit. Used by aiGenerateRunOpenAI so the
+  // OpenAI path reuses identical sys/userMsg without duplicating
+  // construction. Skips the Anthropic API call entirely.
+  if (opts && opts.returnPromptsOnly) {
+    return { sys, userMsg };
+  }
 
   const { url: _u, init: _init } = anthropicFetchInit({
     model: 'claude-haiku-4-5',
@@ -25973,6 +27805,12 @@ function render() {
     badge.onclick = openDevMenu;
     document.body.appendChild(badge);
   })();
+  // Screenshot mode should only style the quest screen. Strip the body
+  // class off here; screenQuest re-adds it when it renders. This way the
+  // home screen / inventory / etc never lose their FABs or header pills.
+  if (typeof document !== 'undefined' && state.view !== 'quest') {
+    document.body.classList.remove('screenshot-mode');
+  }
   // Preserve focus + cursor position across re-renders. Firebase room
   // snapshots can fire mid-typing in inputs/textareas (e.g., the host's
   // custom-context note); each fire re-renders the screen, replacing
