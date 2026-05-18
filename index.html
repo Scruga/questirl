@@ -8818,7 +8818,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.18.220';
+const BUILD_VERSION = '2026.05.18.223';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15453,28 +15453,14 @@ function renderProofUI(s, i) {
   // Used for sustained-physical-commitment steps (eye contact, no
   // blinking, prolonged silence). The challenge LIVES in the step.instr
   // text + the moving button forces embodied engagement.
+  // ── HOLD proof — SHELVED (May 18). Was a press-and-hold mechanic
+  // with a moving button on a track. Wouldn't work reliably on iOS
+  // and required deeper investigation than current priorities allow.
+  // If the AI generates proof:"hold" anyway (stale prompt cache, etc),
+  // we fall through to the Confirm Done button below as a safe default.
+  // See IDEAS tab → "Re-enable hold proof" for the rework plan.
   if (s.proof === 'hold') {
-    const holdSec = Math.max(5, Math.min(60, s.holdSec || 15));
-    const proof = r.proofs[i];
-    const completed = !!(proof && proof.completed);
-    // Use a <div role="button"> instead of a <button> element — the
-    // native button styling kept overriding our positioning + transform
-    // CSS on iOS. With a styled div we have full control over events.
-    return `
-      <div class="hold-stage" id="hold-${i}" data-hold-sec="${holdSec}">
-        <div class="hold-label">${completed ? '✓ HELD' : `HOLD FOR ${holdSec}s`}</div>
-        <div class="hold-track">
-          <div class="hold-btn ${completed ? 'done' : ''}" data-hold="${i}" role="button" tabindex="0" aria-label="Press and hold for ${holdSec} seconds" ${completed ? 'aria-disabled="true"' : ''}>
-            <span class="hold-fill" style="width: ${completed ? 100 : 0}%"></span>
-            <span class="hold-text">${completed ? 'COMPLETE' : 'PRESS &amp; HOLD'}</span>
-          </div>
-        </div>
-        <div class="hold-hint">${completed ? '' : 'The button moves. Keep your finger on it.'}</div>
-      </div>
-      <div class="row" style="margin-top:8px;">
-        <button class="btn primary sm" data-complete="${i}" ${completed ? '' : 'disabled'}>${completed ? 'Continue' : 'Hold first'}</button>
-      </div>
-    `;
+    // intentional fall-through to the generic Confirm Done button
   }
   // ── TAP proof — player taps a counter N times. Used for counted-
   // ritual steps where each tap represents something (a breath, a
@@ -15525,13 +15511,11 @@ function bindQuest() {
     openSelfTimerCamera(i, slot);
   });
 
-  // ── HOLD proof handlers ──
-  // Sustain touch on the button for N seconds. Releasing or pointer-
-  // leaving the button resets progress. Marks completion on r.proofs[i]
-  // so a re-render shows the "✓ HELD" state. The System whispers
-  // milestone lines (25/50/75/95/100%) overlaid on the button so the
-  // moment feels like the System is in the room with the player.
-  document.querySelectorAll('[data-hold]').forEach(btn => {
+  // ── HOLD proof handlers — DISABLED (May 18) ──
+  // The hold mechanism is shelved. The `if (false)` block below
+  // preserves the entire handler so re-enabling later is a one-line
+  // flip. See IDEAS tab → "Re-enable hold proof".
+  if (false) document.querySelectorAll('[data-hold]').forEach(btn => {
     const i = +btn.dataset.hold;
     const stage = document.getElementById('hold-' + i);
     const holdSec = +stage.dataset.holdSec || 30;
@@ -20007,6 +19991,8 @@ function spawnAchievementSparkles(anchorEl) {
 /* ---------- Ideas ---------- */
 
 const IDEAS = [
+  { ic: '✋', n: 'Re-enable hold proof (press-and-hold mechanic)', d: 'Hold proof was a press-and-hold-button mechanic — player sustains a touch for N seconds, button shows fill bar, System whispers milestone lines, button moves on a track every 1.2-1.8s so finger has to follow. Shelved May 18 because iOS Safari rendering kept breaking (touch events not registering, CSS overrides from .btn class conflicting with translateX positioning). The code is preserved verbatim — both the renderer (proof === "hold" branch with explicit fall-through to confirm-fallback) AND the handler (wrapped in `if (false)` block in bindQuest). To revive: (1) remove the `if (false)` gate on the handler; (2) restore the renderer branch to its `<div role="button">` implementation; (3) re-add "hold" to the allowed proof types in the AI prompt; (4) most critically — debug WHY iOS Safari was rejecting the touch events. Best guess: the SW was serving stale HTML for hours despite manual hard-refreshes, and the actual CSS fix may have worked but the user never received it. Try first by deleting service worker storage entirely on test device + cache-busting URL. If touch events still don\'t fire, suspect a CSS `pointer-events` cascade somewhere or a parent overflow issue. Once fixed, the mechanic is well-designed — the moving button + System whispers were genuinely fun in concept. Est. 2-3h to debug + restore.' },
+  { ic: '⚡', n: 'Twist cards rework + re-enable', d: 'Twist cards are SHELVED as of May 18 (see maybeTriggerTwistCard early return). They were firing mid-quest with mixed reception — some twists are great (Mirror Mode, Mascot Mode, Bullseye Object), others are jarring or contradict the step that just got assigned (e.g. CLOWN MODE landing on a CONFRONT-archetype Nightmare step that demands no-smiling). The rework before re-enabling: (1) only fire when archetype-compatible — don\'t deal Stare-Down to a CONFESS step that needs face-down posing; (2) tie firing to difficulty — twists ONLY on Chaos/Nightmare runs where the extra layer makes sense (Brave/Bold are crowded enough already); (3) make twists VISIBLE on the quest screen as a "if you accept this you get a damage bonus" optional sidebar instead of forced mid-run shuffles; (4) audit each twist text for AI-voice consistency with the new lean prompt era; (5) add a "twist accepted" feedback signal to the validator so we can track if accepting twists correlates with higher 👍 ratings in Firestore. The code path is intact and tested — gate is a single early-return in maybeTriggerTwistCard. Est. 3-4h for the conditional re-enable.' },
   { ic: '🐺', n: 'Timed charm system (Lone Wolf + future charms)', d: 'Bring back the Lone Wolf Charm and add a class of TIMED CHARMS. Each charm grants a passive bonus for a fixed window — e.g. 7 days of +10% solo reward, or 24 hours of +1 reroll budget per run, or 3 runs of a damage boost. Required pieces: (1) a charms[] array on profile with {id, expiresAt or runsRemaining} entries; (2) reward-calc + setup-modifier code reads from charms[] in addition to inventory and armed items; (3) UI in inventory/store to show active charms with a countdown ("Lone Wolf Charm · expires in 4d 12h"); (4) a way to acquire them — chest drops at high tiers, store purchases, or quest-completion milestones; (5) housekeeping pass on profile load that drops expired charms and decrements runsRemaining. Lone Wolf Charm was the prototype passive-while-owned item but it broke once we added unhinged/competitive modes — too easy to forget you own it, too easy to abuse by stockpiling. A time-boxed version is the right model. Est. 4-6h once the timed-buff infrastructure exists; the first charm is the hard part, subsequent ones are content additions.' },
   { ic: '🎵', n: '🔔 Re-enable Background Music', d: 'Music is OFF by default while we wire up the final track list. Once your MP3s are in place, turn it back on from Settings → BACKGROUND MUSIC. Each login auto-queues a random track.' },
   { ic: '💪', n: '"Too Easy" button', d: 'Mid-quest button that appends a brutal TRUE FINAL phase. Pulled out of the live build until balance is dialed in.' },
@@ -20158,9 +20144,17 @@ function screenWheel() {
           <svg class="wheel" id="wheel" viewBox="0 0 ${SIZE} ${SIZE}">
             <circle cx="${cx}" cy="${cy}" r="${R+2}" fill="#000"/>
             ${slices}
-            <circle cx="${cx}" cy="${cy}" r="28" fill="#0a0518" stroke="var(--gold)" stroke-width="3"/>
-            <text x="${cx}" y="${cy + 4}" text-anchor="middle" dominant-baseline="middle"
-                  fill="var(--gold)" font-family="Press Start 2P" font-size="9">SPIN</text>
+            <!-- Center hub doubles as a spin trigger. Wrapped in a <g>
+                 with id so the click handler binds in one place. The
+                 invisible-fill circle on top widens the hit target so
+                 fingers don't have to land precisely on the SPIN text. -->
+            <g id="wheelHub" style="cursor: pointer;">
+              <circle cx="${cx}" cy="${cy}" r="28" fill="#0a0518" stroke="var(--gold)" stroke-width="3"/>
+              <text x="${cx}" y="${cy + 4}" text-anchor="middle" dominant-baseline="middle"
+                    fill="var(--gold)" font-family="Press Start 2P" font-size="9"
+                    style="pointer-events: none;">SPIN</text>
+              <circle cx="${cx}" cy="${cy}" r="38" fill="transparent"/>
+            </g>
           </svg>
         </div>
         <div class="wheel-tier-legend">
@@ -20179,7 +20173,9 @@ function screenWheel() {
   `;
   bindHeader();
   let spun = false;
-  document.getElementById('spin').onclick = () => {
+  // Spin trigger — bound to BOTH the "PULL THE LEVER" button AND the
+  // central SPIN hub of the wheel so the player can tap either one.
+  const doSpin = () => {
     if (spun) return;
     spun = true;
     if (typeof sfx !== 'undefined' && sfx.wheelSpin) sfx.wheelSpin();
@@ -20211,9 +20207,19 @@ function screenWheel() {
         const btn = document.getElementById('spin');
         btn.textContent = 'BACK TO MAIN MENU';
         btn.onclick = () => failRun('Run failed. Boss survives. Streak reset.');
+        // Center hub is no longer a spin target after the result lands.
+        const hub = document.getElementById('wheelHub');
+        if (hub) {
+          hub.onclick = null;
+          hub.style.cursor = 'default';
+        }
       }, 600);
     }, 4100);
   };
+  // Bind both spin triggers — the lever button and the wheel hub.
+  document.getElementById('spin').onclick = doSpin;
+  const hubEl = document.getElementById('wheelHub');
+  if (hubEl) hubEl.onclick = doSpin;
 }
 
 function applyWheelOutcome(o) {
@@ -21814,13 +21820,12 @@ UNIVERSAL SAFETY (never violate, regardless of any player-set limit)
 - NEVER write per-step time limits in step.instr ("in under N seconds", "the host is timing it") — the system adds those itself via a post-processor for Nightmare runs.
 
 PROOF — strict
-- Proof types: "photo", "confirm", "timer", "hold", "tap". Pick the one that best fits the step's action — NOT always photo. Across 5 steps, mix at least 2 different proof types if possible (don't make all 5 "photo" — players notice).
+- Proof types: "photo", "confirm", "timer", "tap". Pick the one that best fits the step's action — NOT always photo. Across 5 steps, mix at least 2 different proof types if possible (don't make all 5 "photo" — players notice).
   · photo: visual evidence of a physical action/object. Default for FIND/MOVE/POSE.
-  · confirm: simple "I did it" button. Use when the action is internal and can't be photographed (rare).
-  · timer: passive countdown — player waits N seconds. Rarely useful; prefer HOLD.
-  · hold: player must SUSTAIN A TOUCH on a button for step.holdSec seconds (8-30, default 15). The button MOVES on a track every 1.2-1.8s while held — player has to follow it with their finger. Losing contact restarts. Use for SUSTAINED PHYSICAL COMMITMENT steps (DEPLOY, CONFRONT, VOW archetypes) — the step.instr must give them a real-world CHALLENGE to do DURING the hold (eye contact with the boss-object / no blinking / not breaking a pose / silently mouthing a phrase / staring at a specific spot). Keep holdSec on the shorter side — the moving button already adds difficulty. 15-20s is the sweet spot. Only go above 25s for Nightmare runs with sustained-vigil energy.
+  · confirm: simple "I did it" button. Use for actions that genuinely can't be photographed (internal/quiet moments, brief honor-system steps).
+  · timer: passive countdown — player waits N seconds with the screen open.
   · tap: player must TAP A BUTTON step.tapCount times (3-30). Each tap = one beat of a counted ritual. Use for RITUAL / ECHO archetypes — the step.instr must tell the player what EACH TAP REPRESENTS (one tap per breath, one tap per memory, one tap per thing you're forgiving, etc.) so the count has meaning.
-- For hold proof, add a step.holdSec field (integer 5-120, default 30).
+- DO NOT use "hold" as a proof type. The hold mechanism is currently shelved (see IDEAS tab → "Re-enable hold proof"); if you generate proof:"hold" it will be rendered as a plain confirm button as a fallback.
 - For tap proof, add a step.tapCount field (integer 3-30, default 7).
 - One photo per step. No video, no screenshots, no multi-shot, no before/after.
 - A step CAN have photoCount: 2-4 when it genuinely needs multiple distinct photos (e.g. "three different chairs, one photo per chair"), but default to 1.
@@ -21896,14 +21901,12 @@ OUTPUT SCHEMA (return ONLY this JSON, no prose, no markdown fences):
       "title": "<≤6 words>",
       "instr": "<≤130 chars>",
       "examples": ["<≤50 chars>", "<≤50 chars>", "<≤50 chars>"],
-      "proof": "photo|confirm|timer|hold|tap",
-      "holdSec": <required when proof=hold, integer 8-30, default 15>,
+      "proof": "photo|confirm|timer|tap",
       "tapCount": <required when proof=tap, integer 3-30>,
       "dmg": <30-80>
     }
     // exactly 5 entries, last MUST be "Final Attack" with dmg 80
     // ACROSS the 5 steps, use at least 2 different proof types when natural.
-    // DEPLOY/CONFRONT/VOW archetypes naturally fit "hold".
     // RITUAL/ECHO archetypes naturally fit "tap".
     // WITNESS/HARVEST/CROWN naturally fit "photo".
   ]
@@ -24598,6 +24601,15 @@ function openTwistPassPicker(twistWrap, twist, alreadyTransferred) {
    - Only one twist per run (cap)
    - Probability gate */
 function maybeTriggerTwistCard() {
+  // ── TWIST CARDS SHELVED (May 18) ──
+  // Disabled until the system is reworked. The dev call still exists so
+  // the rest of the code path (active-twist banner, validator check,
+  // photo-judge twist enforcement) doesn't break — those all gracefully
+  // handle an empty r.activeTwists array. See IDEAS tab → "Twist cards
+  // rework" for what needs to happen before re-enabling. To turn this
+  // back on, remove the early return below.
+  return;
+  // eslint-disable-next-line no-unreachable
   const r = state.run;
   if (!r || !r.quest) return;
   if (r.twistTriggered) return;  // one per run, locally
