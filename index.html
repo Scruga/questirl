@@ -663,6 +663,18 @@
   .chip:active { transform: translate(2px, 2px); box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 0 0 0 #000; }
   .chip.on { background: var(--neon); color: #fff; text-shadow: 1px 1px 0 #000; }
   .chip.deny.on { background: var(--danger); color: #fff; text-shadow: 1px 1px 0 #000; }
+  /* Allow chips — positive permissions. Gold border + faint glow when
+     off, full gold fill when on. Visually distinct from the deny chips
+     (red on) so the player reads "this UNLOCKS something" instead of
+     "this restricts something". */
+  .chip.allow {
+    border-color: var(--gold);
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 2px 2px 0 #000, 0 0 8px rgba(245, 194, 66, 0.18);
+  }
+  .chip.allow.on {
+    background: var(--gold); color: #1a0d28; text-shadow: 1px 1px 0 rgba(255,255,255,0.25);
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 2px 2px 0 #000, 0 0 14px rgba(245, 194, 66, 0.55);
+  }
   /* Vibe chips that are currently un-pickable (max-3 cap reached, or
      conflict with an already-selected vibe). Still clickable so the
      click handler can fire a toast explaining why. */
@@ -859,6 +871,170 @@
     box-shadow: 2px 2px 0 var(--neon-2), 4px 4px 0 #000;
     animation: blink 1.4s steps(2) infinite;
   }
+
+  /* ── Story Mode in-run palette overrides (build 241) ──
+     Body-level theme classes mounted during boss/quest/recap views.
+     Each theme applies a SUBTLE accent shift — we tune accent colors
+     and add a faint screen-edge tint, but don't apply a global CSS
+     filter (would wreck pixel-art sprites). Visual cohesion comes from
+     prompt voice + boss/step text, not heavy color washing. */
+  body.theme-zombie {
+    --neon-3: #7caa5c;       /* sickly green replaces teal accent */
+  }
+  body.theme-zombie::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background: radial-gradient(120% 80% at 50% 110%, rgba(124, 170, 92, 0.10) 0%, transparent 60%);
+    z-index: 1;
+  }
+  body.theme-scifi {
+    --neon-3: #6ec4ff;       /* cool cyan accent */
+    --neon-2: #4f7bff;
+  }
+  body.theme-scifi::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(110, 196, 255, 0.06) 0%, transparent 30%);
+    z-index: 1;
+  }
+  body.theme-detective {
+    --neon-3: #d0c08c;       /* warm sepia accent */
+    --gold: #e2c87b;
+  }
+  body.theme-detective::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background: radial-gradient(100% 100% at 50% 50%, transparent 50%, rgba(0, 0, 0, 0.18) 100%);
+    z-index: 1;
+  }
+  body.theme-fantasy {
+    --neon-3: #f0c060;       /* rich gold accent */
+    --gold: #ffd56b;
+  }
+  body.theme-fantasy::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background: radial-gradient(80% 60% at 50% 0%, rgba(255, 213, 107, 0.08) 0%, transparent 60%);
+    z-index: 1;
+  }
+  body.theme-spy {
+    --neon-3: #9fb8c6;       /* cold steel accent */
+  }
+  body.theme-spy::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(159, 184, 198, 0.05) 0%, transparent 50%);
+    z-index: 1;
+  }
+
+  /* ── Story Mode toggle (build 241) ──
+     Twin to the unhinged toggle but in gold/teal so it reads as a
+     distinct optional pathway, not a competing version of unhinged.
+     When toggled on, the theme picker card renders below it. */
+  .story-mode-toggle {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 14px; align-items: center;
+    padding: 12px 14px;
+    margin: 14px 0;
+    background: linear-gradient(135deg, rgba(79, 227, 214, 0.10), rgba(123, 92, 255, 0.10));
+    border: 3px solid #000;
+    box-shadow: inset 0 0 0 2px var(--neon-3), 4px 4px 0 #000;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.08s;
+  }
+  .story-mode-toggle:active { transform: translate(2px, 2px); box-shadow: inset 0 0 0 2px var(--neon-3), 2px 2px 0 #000; }
+  .story-mode-toggle .ic {
+    font-size: 28px; text-align: center;
+    filter: drop-shadow(0 0 6px rgba(79, 227, 214, 0.35));
+  }
+  .story-mode-toggle .meta h4 {
+    font-family: var(--px); font-size: 11px; color: var(--neon-3);
+    margin: 0 0 4px; letter-spacing: 1.5px;
+    text-shadow: 2px 2px 0 #000;
+  }
+  .story-mode-toggle .meta p {
+    font-family: var(--term); font-size: 13px; color: var(--ink-dim);
+    line-height: 1.4; margin: 0;
+  }
+  .story-mode-toggle .switch {
+    padding: 8px 14px;
+    font-family: var(--px); font-size: 10px;
+    background: var(--bg-1);
+    border: 2px solid var(--ink-faint);
+    color: var(--ink-faint);
+    letter-spacing: 1px;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 2px 2px 0 #000;
+  }
+  .story-mode-toggle.on {
+    background: linear-gradient(135deg, rgba(245, 194, 66, 0.18), rgba(79, 227, 214, 0.18));
+    box-shadow: inset 0 0 0 2px var(--gold), 4px 4px 0 #000, 0 0 26px rgba(245, 194, 66, 0.25);
+  }
+  .story-mode-toggle.on .meta h4 { color: var(--gold); }
+  .story-mode-toggle.on .meta p { color: var(--ink); }
+  .story-mode-toggle.on .switch {
+    background: var(--gold); color: #1a0d28;
+    border-color: #000;
+    box-shadow: 2px 2px 0 var(--neon-3), 4px 4px 0 #000;
+  }
+
+  /* Theme picker grid — 2-up tile layout below the Story Mode card */
+  .theme-picker-card {
+    margin: -4px 0 16px;
+    padding: 16px 14px 14px;
+    background: var(--card);
+    border: 2px dashed var(--gold);
+    box-shadow: 4px 4px 0 #000;
+  }
+  .theme-picker-label {
+    font-family: var(--px); font-size: 9px;
+    color: var(--gold); letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .theme-picker-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .theme-tile {
+    text-align: left;
+    padding: 12px 12px 14px;
+    background: var(--card);
+    border: 2px solid #000;
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 2px 2px 0 #000;
+    color: var(--ink);
+    cursor: pointer;
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  .theme-tile:active { transform: translate(2px, 2px); box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 0 0 0 #000; }
+  .theme-tile-ic {
+    font-size: 24px; margin-bottom: 4px;
+    line-height: 1;
+  }
+  .theme-tile-name {
+    font-family: var(--px); font-size: 10px;
+    color: var(--gold); letter-spacing: 1px;
+    margin-bottom: 4px;
+    text-shadow: 1px 1px 0 #000;
+  }
+  .theme-tile-short {
+    font-family: var(--term); font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.3;
+  }
+  .theme-tile.on {
+    background: linear-gradient(135deg, rgba(245, 194, 66, 0.20), rgba(79, 227, 214, 0.10));
+    box-shadow: inset 0 0 0 2px var(--gold), 4px 4px 0 #000, 0 0 16px rgba(245, 194, 66, 0.4);
+  }
+  .theme-tile.on .theme-tile-name { color: var(--gold); }
+  .theme-tile.on .theme-tile-short { color: var(--ink); }
 
   /* Run header pill — shown during an unhinged run. The pill flies in
      from the left once on appearance, then breathes with a smooth
@@ -3447,6 +3623,131 @@
     letter-spacing: 1.5px; margin: 20px 0 12px;
     border-left: 4px solid var(--neon);
     padding-left: 10px;
+  }
+  /* Limits wizard step — quick-pick preset row, grouped section titles,
+     emoji icons on each chip, and a live count badge above NEXT. The
+     goal is to let new players one-tap into a sane setup while still
+     giving veterans the granular toggles below. */
+  .limit-presets-row {
+    position: relative;
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin: 24px 0 18px;
+    padding: 14px 12px 12px;
+    background: linear-gradient(135deg, rgba(245, 194, 66, 0.10), rgba(123, 92, 255, 0.10));
+    border: 2px dashed rgba(245, 194, 66, 0.35);
+  }
+  .limit-presets-row::before {
+    content: '▶ QUICK PRESETS';
+    position: absolute;
+    top: -10px; left: 12px;
+    background: var(--bg-0); padding: 2px 8px;
+    font-family: var(--px); font-size: 8px; letter-spacing: 2px;
+    color: var(--gold); border: 1px dashed rgba(245, 194, 66, 0.4);
+  }
+  .limit-preset {
+    flex: 1 1 auto;
+    min-width: calc(50% - 4px);
+    padding: 10px 12px;
+    background: var(--card);
+    border: 2px solid #000;
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.45), 2px 2px 0 #000;
+    color: var(--ink);
+    font-family: var(--px); font-size: 9px;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: transform 0.06s, box-shadow 0.06s;
+    text-align: center;
+  }
+  .limit-preset:active,
+  .limit-preset.limit-preset-flash {
+    transform: translate(2px, 2px);
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.45), 0 0 0 #000;
+  }
+  .limit-preset-clear {
+    background: rgba(255, 87, 100, 0.12);
+    color: var(--danger);
+  }
+  .limit-preset-ic { font-size: 14px; line-height: 1; }
+  .limit-preset-label { white-space: nowrap; }
+  /* Group header — same .section-title styling but tighter top margin
+     when it lives inside the limits step (the first one shouldn't have
+     a big gap below the presets card). */
+  .limit-group-title:first-child { margin-top: 12px; }
+  .limit-chip-group { margin-bottom: 4px; }
+  .limit-chip-ic {
+    font-size: 11px; line-height: 1;
+    margin-right: 2px;
+  }
+  /* Pet picker — inline row that appears below the "Playing with a
+     pet here" allowance chip when toggled on. Visually nested (left
+     border, indented padding) so the link to its parent chip is clear. */
+  .pet-picker {
+    flex-basis: 100%;
+    margin: 4px 0 8px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--gold);
+    background: linear-gradient(135deg, rgba(245, 194, 66, 0.06), rgba(20, 10, 35, 0));
+  }
+  .pet-picker-label {
+    font-family: var(--px); font-size: 8px;
+    color: var(--gold); letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .pet-picker-chips {
+    gap: 6px;
+  }
+  .chip.pet-chip {
+    font-size: 8px;
+    padding: 6px 10px;
+    border-color: rgba(245, 194, 66, 0.45);
+  }
+  .chip.pet-chip.on {
+    background: var(--gold); color: #1a0d28;
+    text-shadow: 1px 1px 0 rgba(255,255,255,0.25);
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4), 2px 2px 0 #000;
+  }
+  /* ALLOWANCES section header — uses the same .section-title pattern
+     but in gold to signal "unlock" rather than the neon-green "restrict"
+     hue used by the deny groups above. */
+  .allow-group-title {
+    color: var(--gold);
+    border-left-color: var(--gold);
+    margin-top: 26px;
+  }
+  .allow-group-sub {
+    font-family: var(--term); font-size: 11px;
+    color: var(--ink-faint); letter-spacing: 0.5px;
+    margin-left: 6px;
+  }
+  /* Count badge — sits between the chips and the wizard's BACK/NEXT
+     row. Subtle when empty, gold when picks exist. */
+  .limits-count {
+    display: flex; align-items: baseline; justify-content: center;
+    gap: 8px;
+    margin: 22px 0 6px;
+    padding: 10px 14px;
+    border: 2px solid var(--line);
+    background: var(--card);
+    font-family: var(--px); letter-spacing: 1.5px;
+    color: var(--ink-faint);
+    transition: color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .limits-count.has-picks {
+    color: var(--gold); border-color: var(--gold);
+    box-shadow: 2px 2px 0 #000, 0 0 12px rgba(245, 194, 66, 0.18);
+  }
+  .limits-count-num { font-size: 18px; }
+  .limits-count-label { font-size: 9px; }
+  /* When the gremlin's running the show, swap the dashed gold accent
+     for a faint cursed green so the preset row still reads as "his". */
+  body.unhinged-run .limit-presets-row {
+    background: linear-gradient(135deg, rgba(124, 252, 0, 0.08), rgba(123, 92, 255, 0.10));
+    border-color: rgba(124, 252, 0, 0.32);
+  }
+  body.unhinged-run .limit-presets-row::before {
+    color: var(--unhinged-green, #7CFC00);
+    border-color: rgba(124, 252, 0, 0.4);
   }
 
   .empty {
@@ -8196,6 +8497,9 @@
       'hostSetup.vibes': [],
       'hostSetup.unhinged': false,
       'hostSetup.limits': [],
+      'hostSetup.allowances': [],
+      'hostSetup.petContext': null,
+      'hostSetup.theme': null,
       'hostSetup.difficulty': null,
       'hostSetup.step': 0,
       // hostSetup.secretTraitor — left untouched so the lobby toggle persists.
@@ -8244,6 +8548,9 @@
         'hostSetup.vibes': [],
         'hostSetup.unhinged': false,
         'hostSetup.limits': [],
+        'hostSetup.allowances': [],
+        'hostSetup.petContext': null,
+        'hostSetup.theme': null,
         'hostSetup.difficulty': null,
         'hostSetup.step': 0,
         // Host going back to lobby = new game cycle. Clear the
@@ -8946,7 +9253,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.19.235';
+const BUILD_VERSION = '2026.05.19.244';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -9335,6 +9642,172 @@ const VIBES = [
 // Max number of vibes selectable per run. More than 3 confuses the
 // quest-gen blend logic and produces muddled output.
 const MAX_VIBES = 3;
+
+// ══════════════════════════════════════════════════════════════════
+// Story-mode themes (build 241).
+// Themes are a TOP-LAYER content overhaul — when one is picked, the
+// player's vibe selection is HIDDEN and the AI auto-rolls 1-2
+// compatible vibes from the theme's compatibleVibes pool. The boss,
+// every step, host voice, loading hints, and validator patterns are
+// all reshaped to fit the theme.
+//
+// Why "themes are a layer above vibes":
+//   Vibes = tone (chill, spicy, cursed, wholesome).
+//   Themes = fictional universe (zombie, sci-fi, detective).
+// A "chill zombie" quest is calm-tone post-outbreak scavenging. A
+// "spicy spy" quest is high-stakes covert intimacy. The combinations
+// stay coherent because the theme's compatibleVibes whitelist filters
+// the random roll.
+//
+// Adding a theme: append a new entry below + add validator patterns in
+// the validateGeneratedQuest theme block + add loading hints. Each
+// theme adds ~200 tokens to the system prompt, so don't go above 8.
+const THEMES = [
+  {
+    id: 'zombie',
+    name: 'Zombie',
+    icon: '🧟',
+    short: 'Survive the outbreak',
+    blurb: 'You\'re scavenging during the apocalypse. The boss is infected or barricaded. Steps focus on survival, scavenging, signaling, barricading.',
+    paletteFilter: 'sepia(0.35) hue-rotate(60deg) saturate(1.2)',
+    compatibleVibes: ['chaotic', 'cursed', 'cozy', 'spicy'],
+    bossArchetypes: [
+      'PATIENT ZERO (the first to turn; defeated by tracing the source)',
+      'THE HOARDER (claims this territory; defeated by sharing)',
+      'THE LAST HUMAN (paranoid recluse; defeated by trust)',
+      'THE INFECTED CASHIER (still working their shift; defeated by closing time)',
+      'THE BARRICADE (refuses entry; defeated by negotiation)',
+    ],
+    stepFraming: 'Each step is a survival action — scavenge, signal, barricade, observe, escape. Reframe ordinary objects as survival tools (a chair = barricade, a bottle = signal flare, a couch = bunker, a lamp = beacon).',
+    hostVoice: 'Apocalypse survivor — practical, urgent but composed. Lowercase. Survivor slang ("the herd", "the bite", "go loud", "stay quiet", "comms down"). Occasional grim humor.',
+    keywords: ['zombie', 'infect', 'outbreak', 'herd', 'survivor', 'bite', 'barricade', 'scaveng', 'apocalyp', 'undead', 'turn', 'horde', 'patient zero'],
+    loadingHints: [
+      'tip: the bite spreads through eye contact apparently. just kidding. probably.',
+      'tip: if it shambles, it counts. document everything.',
+      'tip: barricades are 70% intent, 30% chairs.',
+      'tip: silence travels less than you think. commit to the whisper.',
+    ],
+  },
+  {
+    id: 'scifi',
+    name: 'Sci-fi',
+    icon: '🚀',
+    short: 'Investigate the anomaly',
+    blurb: 'You\'re a field agent investigating an artifact, signal, or breach. Steps focus on samples, scans, decoding, observation.',
+    paletteFilter: 'hue-rotate(210deg) saturate(1.25) brightness(0.96)',
+    compatibleVibes: ['chill', 'nostalgic', 'chaotic', 'cursed'],
+    bossArchetypes: [
+      'THE ANOMALY (something doesn\'t belong; defeated by classification)',
+      'THE VISITOR (silently observing; defeated by greeting)',
+      'THE SIGNAL (broadcasting in plain sight; defeated by decoding)',
+      'THE ARCHITECT (this place was built by them; defeated by altering)',
+      'THE GLITCH (reality misfiring; defeated by patching)',
+    ],
+    stepFraming: 'Each step is a field-agent task — collect sample, scan area, decode signal, observe target, document anomaly. Ordinary objects reclassified as alien tech (lamp = signal beacon, spoon = translator wand, couch = stasis pod).',
+    hostVoice: 'Mission control — clipped, professional, faintly inhuman. Lowercase. Terms like "subject", "anomaly", "sample retrieved", "vector confirmed", "telemetry green". Very little emotion.',
+    keywords: ['anomaly', 'signal', 'sample', 'vector', 'alien', 'artifact', 'scan', 'telemetry', 'subject', 'visitor', 'spacecraft', 'transmission', 'breach', 'agent'],
+    loadingHints: [
+      'tip: half the artifacts here look like household items. probably are.',
+      'tip: the signal repeats every 7 minutes. you have 5.',
+      'tip: command says trust your readings. command lies sometimes.',
+      'tip: if your translator chip glitches, the boss heard everything.',
+    ],
+  },
+  {
+    id: 'detective',
+    name: 'Detective',
+    icon: '🕵️',
+    short: 'Crack the case',
+    blurb: 'You\'re a noir detective solving a mystery on location. Steps focus on clues, surveillance, deduction, suspect profiles.',
+    paletteFilter: 'grayscale(0.25) sepia(0.15) contrast(1.1) brightness(0.92)',
+    compatibleVibes: ['spicy', 'nostalgic', 'wholesome', 'cursed'],
+    bossArchetypes: [
+      'THE SUSPECT (knows something they shouldn\'t; defeated by interrogation)',
+      'THE WITNESS (saw it all; defeated by listening)',
+      'THE PATRON (paying for the case; defeated by exposing the case as fake)',
+      'THE INFORMANT (says too much; defeated by silence)',
+      'THE GHOST (every clue points elsewhere; defeated by inversion)',
+    ],
+    stepFraming: 'Each step is a detective procedure — collect clue, surveil target, photograph evidence, deduce pattern, interview environment. Treat ordinary objects as clues (chair = where they sat, cup = what they drank, napkin = the note they left).',
+    hostVoice: 'Noir detective — observational, cynical. Long sentences. 1940s slang sparingly ("joint", "outfit", "the racket"). Player is "kid" or "partner" or by name.',
+    keywords: ['suspect', 'clue', 'case', 'witness', 'evidence', 'alibi', 'racket', 'tail', 'gumshoe', 'noir', 'mystery', 'investigation', 'lead', 'tip', 'partner'],
+    loadingHints: [
+      'tip: every joint has a tell. find it.',
+      'tip: the suspect always sits with their back to the wall. always.',
+      'tip: if it looks like a clue, it\'s probably bait. follow it anyway.',
+      'tip: the case isn\'t about the case. it never is.',
+    ],
+  },
+  {
+    id: 'fantasy',
+    name: 'Fantasy',
+    icon: '🐉',
+    short: 'Embark on the quest',
+    blurb: 'You\'re an adventurer on a heroic quest. Steps focus on finding, slaying, bartering, ritual, ancient wisdom.',
+    paletteFilter: 'sepia(0.25) saturate(1.15) hue-rotate(-15deg)',
+    compatibleVibes: ['wholesome', 'cozy', 'romantic', 'nostalgic'],
+    bossArchetypes: [
+      'THE DRAGON (hoards in plain sight; defeated by claiming a share)',
+      'THE HAG (offers a trade; defeated by refusing politely)',
+      'THE KNIGHT (challenges all comers; defeated by surrender)',
+      'THE GOBLIN (steals small things; defeated by gift-giving)',
+      'THE ORACLE (gives prophecy; defeated by reframing the riddle)',
+    ],
+    stepFraming: 'Each step is a fantasy beat — find the artifact, brew the potion (mix two drinks), say the incantation, perform the ritual, present the offering. Ordinary objects reframed as fantasy items (cup = chalice, lamp = lantern of guidance, couch = the velvet throne).',
+    hostVoice: 'Fantasy narrator — high-flown but warm, like a tabletop DM. "And so it was that you arrived at...". Lowercase except for sigil words (Quest, Boss, Ritual, Sigil). The player is "hero" or "champion" or by name.',
+    keywords: ['quest', 'hero', 'dragon', 'sigil', 'incantation', 'sword', 'spell', 'ritual', 'chalice', 'champion', 'tavern', 'oracle', 'rune', 'prophecy', 'goblin'],
+    loadingHints: [
+      'tip: every weapon in your hand was once a stick. believe in the stick.',
+      'tip: the boss respects ritual, not violence. perform with care.',
+      'tip: the ancients didn\'t fight every dragon. some they fed.',
+      'tip: the oracle is always right. usually after the fact.',
+    ],
+  },
+  {
+    id: 'spy',
+    name: 'Spy',
+    icon: '🕵️‍♀️',
+    short: 'Run the op',
+    blurb: 'You\'re a field agent executing a covert op. Steps focus on dead drops, extraction, cover identity, decoding.',
+    paletteFilter: 'contrast(1.18) saturate(0.85)',
+    compatibleVibes: ['spicy', 'chaotic', 'chill', 'nostalgic'],
+    bossArchetypes: [
+      'THE MOLE (looks loyal; defeated by patience)',
+      'THE ASSET (you\'re here to extract; defeated by recognition)',
+      'THE HANDLER (sending the orders; defeated by deviation)',
+      'THE TARGET (you were supposed to follow; defeated by being seen)',
+      'THE CIPHER (the whole op is a test; defeated by walking away)',
+    ],
+    stepFraming: 'Each step is a tradecraft beat — dead drop, brush pass, signal flash, cover identity, surveillance detection. Ordinary objects reframed as tradecraft (napkin = signal, chair = drop, cup = countersurveillance check, couch = safehouse).',
+    hostVoice: 'Mission dispatcher — clipped, professional, slightly cold. "Asset, your six is clear. Proceed to drop location." Code-name energy. Player is "agent" or by name.',
+    keywords: ['asset', 'agent', 'op', 'drop', 'cover', 'extraction', 'handler', 'cipher', 'tradecraft', 'comms', 'six', 'safehouse', 'mole', 'brief', 'recon'],
+    loadingHints: [
+      'tip: the handler said "deniable". the handler always says deniable.',
+      'tip: if you can see the asset, the asset can see you.',
+      'tip: the only good drop is the one you don\'t come back to.',
+      'tip: cover identities live or die on the small details. mind your hands.',
+    ],
+  },
+];
+const THEME_BY_ID = Object.fromEntries(THEMES.map(t => [t.id, t]));
+
+// Roll 1-2 vibes from the theme's compatibleVibes pool. Called at
+// quest-gen time when a theme is active — we want each themed run to
+// still have tonal variety even though the player skipped the vibe
+// step. 1 vibe ~70% of the time, 2 vibes ~30% of the time.
+function rollThemeVibes(themeId) {
+  const t = THEME_BY_ID[themeId];
+  if (!t || !Array.isArray(t.compatibleVibes) || !t.compatibleVibes.length) return [];
+  const pool = [...t.compatibleVibes];
+  // Shuffle (Fisher-Yates) so the picks aren't biased toward the first
+  // entries in the compatibleVibes array.
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const count = Math.random() < 0.3 ? 2 : 1;
+  return pool.slice(0, count);
+}
 // Vibe combos the AI cannot blend cleanly. Adjacency in this map is
 // symmetric — block in both directions. The picker dims the conflicting
 // chip and toasts on tap so the player isn't left guessing.
@@ -9362,11 +9835,174 @@ const RISKS = [
   'Photo proof', 'Social challenge', 'Creativity pressure',
 ];
 
+// Hard limits the player can toggle on the wizard. The string values
+// here are the canonical keys — they appear verbatim in r.limits, in
+// every AI prompt, and in the validator. Adding/removing/renaming any
+// of these is a multi-file change; search for the old string before
+// touching it.
+//
+// Build 237: "No strangers" was merged with the former "No filming
+// strangers" (single limit now covers both interaction and photo
+// capture). "No physical punishment" was dropped as vestigial — the
+// AI never generates physical-exertion penalties.
+// Build 238: "No spending money" was dropped because purchases are
+// UNIVERSALLY banned by default in the prompt. Players who WANT a
+// purchase-flavored quest opt-in via r.allowances ("Open to small
+// buys") — see ALLOWANCES below.
 const LIMITS = [
-  'No strangers', 'No spending money', 'No filming strangers',
+  'No strangers',
   'Keep it indoors', 'No running', 'No flirting',
-  'Nothing embarrassing', 'No physical punishment', 'No trespassing',
+  'Nothing embarrassing', 'No trespassing',
   'No selfies / face shots',
+  // Build 239 additions — accessibility + sober/family/quiet contexts.
+  'No food/drinks',
+  'Limited mobility',
+  'Quiet mode',
+];
+
+// Allowances are POSITIVE permissions — they unlock content the
+// universal safety rules would otherwise block. The key string is the
+// canonical reference (mirrors LIMITS — also referenced verbatim in
+// prompts and the run state). Default is empty: nothing is unlocked
+// unless the player explicitly opts in.
+const ALLOWANCES = [
+  'Open to small buys',
+  'Playing with a pet here',
+  'Playing with a partner',
+  'Open to longer runs',
+  'OK with crazy dares',
+];
+const ALLOWANCE_META = {
+  'Open to small buys': {
+    icon: '💸',
+    hint: 'AI may ask you to buy small items (≤$5). Off by default.',
+  },
+  'Playing with a pet here': {
+    icon: '🐕',
+    hint: 'Unlocks pet-themed quest beats. Pick your pet type below.',
+  },
+  'Playing with a partner': {
+    icon: '💑',
+    hint: 'Solo run with a +1 helping in-person. AI may write 1-2 partner beats.',
+  },
+  'Open to longer runs': {
+    icon: '⏱️',
+    hint: 'Quest may stretch 15-30 min with bigger commitments per step.',
+  },
+  'OK with crazy dares': {
+    icon: '🌶️',
+    hint: 'Unlocks really challenging dares (still safe, but bold).',
+  },
+};
+
+// Pet picker options — shown inline below the "Playing with a pet"
+// allowance chip when it's toggled on. Categories, not specific
+// species — keeps the AI prompt predictable while covering ~95% of
+// pet households. "Other" falls through to a neutral "unusual pet"
+// signal in the AI prompt for the long-tail (axolotl / parrot / etc.)
+const PET_TYPES = [
+  { id: 'dog',     icon: '🐕', label: 'Dog' },
+  { id: 'cat',     icon: '🐈', label: 'Cat' },
+  { id: 'small',   icon: '🐹', label: 'Small pet' },
+  { id: 'bird',    icon: '🐦', label: 'Bird' },
+  { id: 'fish',    icon: '🐠', label: 'Fish' },
+  { id: 'reptile', icon: '🦎', label: 'Reptile' },
+  { id: 'large',   icon: '🐴', label: 'Large pet' },
+  { id: 'other',   icon: '✏️', label: 'Other' },
+];
+const PET_TYPE_BY_ID = Object.fromEntries(PET_TYPES.map(p => [p.id, p]));
+
+// Per-limit metadata — emoji icon + grouping bucket. The label is the
+// canonical key (matches strings stored in r.limits and referenced
+// throughout the AI prompts, so changing the wording here is a breaking
+// change). When a new limit is added to LIMITS above, add a row here
+// too — anything missing falls through to the SOCIAL group with no icon.
+const LIMIT_META = {
+  'No strangers':              { icon: '🚷', group: 'privacy' },
+  'No selfies / face shots':   { icon: '🤳', group: 'privacy' },
+  'Keep it indoors':           { icon: '🏠', group: 'setting'  },
+  'No trespassing':            { icon: '🚧', group: 'setting'  },
+  'Quiet mode':                { icon: '🤫', group: 'setting'  },
+  'No running':                { icon: '🏃', group: 'effort'   },
+  'Limited mobility':          { icon: '♿', group: 'effort'   },
+  'No flirting':               { icon: '💋', group: 'social'   },
+  'Nothing embarrassing':      { icon: '😶', group: 'social'   },
+  'No food/drinks':            { icon: '🍴', group: 'social'   },
+};
+// Group display order + headers + their icons. Add a new group key here
+// to introduce a new section above the chips.
+const LIMIT_GROUPS = [
+  { id: 'privacy', icon: '🔒', label: 'PRIVACY' },
+  { id: 'setting', icon: '🏠', label: 'SETTING' },
+  { id: 'effort',  icon: '💪', label: 'EFFORT'  },
+  { id: 'social',  icon: '😶', label: 'SOCIAL'  },
+];
+// Quick-pick presets — a one-tap shortcut for common limit profiles.
+// Presets are ADDITIVE: tapping one merges its limits into the player's
+// current selection (so "First-timer + Public spaces" stacks). The
+// "Clear all" preset is the explicit reset. Each preset stays "applied"
+// only conceptually — there's no toggle-off state because the chips
+// remain the source of truth and can be unchecked individually.
+const LIMIT_PRESETS = [
+  {
+    id: 'firsttimer', icon: '🌱', label: 'First-timer',
+    limits: [
+      'No strangers',
+      'No flirting',
+      'Nothing embarrassing',
+      'No selfies / face shots',
+    ],
+  },
+  {
+    id: 'public', icon: '🚶', label: 'Public-spaces safe',
+    limits: [
+      'No strangers',
+      'No selfies / face shots',
+      'No trespassing',
+    ],
+  },
+  {
+    id: 'indoor', icon: '🛋', label: 'Indoor only',
+    limits: [
+      'Keep it indoors',
+      'No running',
+    ],
+  },
+  // Build 239 — new presets for common play contexts. Bundle existing
+  // limits rather than introducing new chips so the screen stays scannable.
+  {
+    id: 'kidfriendly', icon: '👨‍👩‍👧', label: 'Kid-friendly',
+    limits: [
+      'Nothing embarrassing',
+      'No flirting',
+      'No selfies / face shots',
+      'No food/drinks',
+    ],
+  },
+  {
+    id: 'officesafe', icon: '💼', label: 'Office-safe',
+    limits: [
+      'Nothing embarrassing',
+      'No running',
+      'No flirting',
+      'No strangers',
+      'No selfies / face shots',
+      'Quiet mode',
+    ],
+  },
+  {
+    id: 'accessible', icon: '♿', label: 'Accessible',
+    limits: [
+      'Limited mobility',
+      'No running',
+      'No trespassing',
+    ],
+  },
+  {
+    id: 'clear', icon: '✕', label: 'Clear all',
+    limits: [],
+    isClear: true,
+  },
 ];
 
 // Helper: pixel-art place icon (used in setup wizard chips). Falls
@@ -13085,7 +13721,7 @@ document.addEventListener('click', (e) => {
     '.btn, button, .mode-card, .avatar-pick, .mode-pick, .lobby-cta, ' +
     '.frame-cell, .title-cell, .chip, .copy-code, .back-btn, .primary-btn, ' +
     '.cog-btn, [data-tab], [data-buy-btn], [data-buy-frame], ' +
-    '#avatarBtn, .top-bar .brand, [data-diff], #unhingedToggle, ' +
+    '#avatarBtn, .top-bar .brand, [data-diff], #unhingedToggle, #storyModeToggle, [data-theme], ' +
     '.profile-name-edit, .chat-quick .q, #chatSend, #chatClose, ' +
     '.sab-row, [data-sab], .mg-circle, .mg-cell.reachable, ' +
     '.inv-cell, [data-buy-frame-btn]'
@@ -13097,7 +13733,7 @@ document.addEventListener('click', (e) => {
     sfx.difficulty(el.dataset.diff);
     return;
   }
-  if (el.id === 'unhingedToggle') {
+  if (el.id === 'unhingedToggle' || el.id === 'storyModeToggle') {
     // toggling — read state AFTER click handler runs by checking
     // current state. We'll fire the appropriate side from inside the
     // toggle handler instead; here, just suppress the generic click.
@@ -13512,8 +14148,21 @@ function startSetup(mode) {
     contextNote: '',
     vibes: [],
     unhinged: false,     // Unhinged Mode toggle — swaps host to The Gremlin
+    // Story-mode theme id (null = standard, no theme). When set, the
+    // vibe selection is hidden and the AI auto-rolls compatible vibes
+    // at quest-gen time. Mutually exclusive with Unhinged Mode (can't
+    // pick both — toggling one off the other).
+    theme: null,
     risks: [...RISKS],   // user-facing risks chips were removed; default to all
     limits: [],
+    // Allowances — positive opt-in permissions. Empty by default so the
+    // universal safety rules stay in effect (e.g. no spending money
+    // unless 'Open to small buys' is toggled on). See ALLOWANCES const.
+    allowances: [],
+    // Pet context only used when "Playing with a pet here" allowance is
+    // toggled on. Defaults to 'dog' since it's the most common pet —
+    // saves the player a tap when they enable the allowance.
+    petContext: { type: 'dog' },
     difficulty: null,
     players: mpPlayers || (mode === 'party' ? ['You', 'Alex', 'Sam'] : ['You']),
     secretRoles: false,
@@ -13697,7 +14346,20 @@ const VIBE_BLOCKLIST = ['competitive', 'betrayal'];
 
 function setupVibe() {
   const r = state.run;
-  const visibleVibes = VIBES.filter(v => !VIBE_BLOCKLIST.includes(v.id));
+  // "Romantic" only renders in party mode — solo-romantic was producing
+  // weird "self-romance / self-care" arcs that confused players. The
+  // vibe is naturally a 2+ person concept; restrict it to party runs.
+  // Defensive cleanup: if r.vibes contains 'romantic' but we're in solo,
+  // strip it so the user message doesn't end up with a vibe they can't
+  // see anywhere on screen.
+  if (r.mode !== 'party' && Array.isArray(r.vibes) && r.vibes.includes('romantic')) {
+    r.vibes = r.vibes.filter(v => v !== 'romantic');
+  }
+  const visibleVibes = VIBES.filter(v => {
+    if (VIBE_BLOCKLIST.includes(v.id)) return false;
+    if (v.id === 'romantic' && r.mode !== 'party') return false;
+    return true;
+  });
   return `
     <div class="step-head"><div class="sub">${r.unhinged
       ? 'the gremlin handles vibes from here. just pick a difficulty next.'
@@ -13720,17 +14382,48 @@ function setupVibe() {
         <p style="color: var(--ink-dim); font-style: italic;">the gremlin chooses the flavor. surreal. theatrical. faintly cursed. you do not need to pick.</p>
       </div>
     ` : `
-      <div class="section-title">Vibe</div>
-      <div class="chips" id="vibeChips">
-        ${visibleVibes.map(v => {
-          const isOn = r.vibes.includes(v.id);
-          // Dim chips that would either exceed the max-3 cap or conflict
-          // with an already-selected vibe. Click still fires, so the
-          // handler can toast an explanation — the dim is just a hint.
-          const blocked = !isOn && vibeBlockedReason(v.id, r.vibes);
-          return `<div class="chip ${isOn ? 'on' : ''} ${blocked ? 'blocked' : ''}" data-vibe="${v.id}">${v.ic} ${v.name}</div>`;
-        }).join('')}
+      <!-- ── Story Mode card ──────────────────────────────────
+           A second "big optional toggle" that lives next to Unhinged
+           Mode. When ON, vibes are AI-rolled and the entire quest is
+           reframed inside the chosen fictional universe (zombie, sci-fi,
+           detective, fantasy, spy). Mutually exclusive with unhinged.
+           Picked = bordered + glowing chip below the toggle. -->
+      <div class="story-mode-toggle ${r.theme ? 'on' : ''}" id="storyModeToggle" role="button" tabindex="0" aria-pressed="${r.theme ? 'true' : 'false'}">
+        <div class="ic">📽</div>
+        <div class="meta">
+          <h4>STORY MODE ${r.theme ? '· ' + (THEME_BY_ID[r.theme]?.name?.toUpperCase() || '') : ''}</h4>
+          <p>${r.theme
+              ? `${THEME_BY_ID[r.theme]?.icon || ''} ${THEME_BY_ID[r.theme]?.blurb || ''} (Vibes are auto-rolled from a compatible set.)`
+              : 'Wrap the entire quest in a fictional universe — zombie, sci-fi, detective, fantasy, spy. The boss, host voice, and every step get reframed to fit. Vibes are auto-rolled. ⚠ beta.'}</p>
+        </div>
+        <div class="switch">${r.theme ? 'ON' : 'OFF'}</div>
       </div>
+      ${r.theme ? `
+        <div class="theme-picker-card">
+          <div class="theme-picker-label">▶ PICK A STORY</div>
+          <div class="theme-picker-grid" id="themePickerGrid">
+            ${THEMES.map(t => `
+              <button class="theme-tile ${r.theme === t.id ? 'on' : ''}" data-theme="${t.id}" aria-pressed="${r.theme === t.id ? 'true' : 'false'}">
+                <div class="theme-tile-ic">${t.icon}</div>
+                <div class="theme-tile-name">${t.name}</div>
+                <div class="theme-tile-short">${t.short}</div>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      ` : `
+        <div class="section-title">Vibe</div>
+        <div class="chips" id="vibeChips">
+          ${visibleVibes.map(v => {
+            const isOn = r.vibes.includes(v.id);
+            // Dim chips that would either exceed the max-3 cap or conflict
+            // with an already-selected vibe. Click still fires, so the
+            // handler can toast an explanation — the dim is just a hint.
+            const blocked = !isOn && vibeBlockedReason(v.id, r.vibes);
+            return `<div class="chip ${isOn ? 'on' : ''} ${blocked ? 'blocked' : ''}" data-vibe="${v.id}">${v.ic} ${v.name}</div>`;
+          }).join('')}
+        </div>
+      `}
     `}
   `;
 }
@@ -13739,14 +14432,110 @@ function setupRisks() {
   // Step now only shows hard limits — risks were redundant with vibes and
   // every user just defaulted to "all" anyway. Default risks are seeded in
   // startSetup so the AI prompt still receives them as flavor info.
+  //
+  // Layout (build 236): quick-pick presets at top → grouped chip sections
+  // by category (privacy / setting / effort / social) → a live "X limits
+  // active" count badge at the bottom so the player can see how many
+  // they've toggled without having to scan.
   const r = state.run;
+  const selectedCount = (r.limits || []).length;
+  // Group LIMITS by their meta.group field. Any limit missing a meta
+  // entry falls through to 'social' so it still renders somewhere.
+  const grouped = {};
+  for (const g of LIMIT_GROUPS) grouped[g.id] = [];
+  for (const lim of LIMITS) {
+    const meta = LIMIT_META[lim] || { group: 'social', icon: '' };
+    (grouped[meta.group] || grouped.social).push({ label: lim, icon: meta.icon || '' });
+  }
+  const presetsRow = LIMIT_PRESETS.map(p => `
+    <button class="limit-preset ${p.isClear ? 'limit-preset-clear' : ''}" data-preset="${p.id}">
+      <span class="limit-preset-ic">${p.icon}</span>
+      <span class="limit-preset-label">${p.label}</span>
+    </button>
+  `).join('');
+  const sectionsHTML = LIMIT_GROUPS.map(g => {
+    const chips = grouped[g.id] || [];
+    if (!chips.length) return '';
+    return `
+      <div class="section-title limit-group-title">${g.icon} ${g.label}</div>
+      <div class="chips limit-chip-group">
+        ${chips.map(c => `
+          <div class="chip deny ${(r.limits || []).includes(c.label) ? 'on' : ''}" data-limit="${escapeHtml(c.label)}">
+            <span class="limit-chip-ic">${c.icon}</span>${escapeHtml(c.label)}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }).join('');
+  // Allowances chips — positive permissions (opt-in to content the
+  // universal safety rules would otherwise block). Rendered in their
+  // own section below the deny-chips so the visual hierarchy is clear:
+  // first you restrict, then you optionally unlock.
+  // Two-pass render: chips first, then a conditional pet-picker row
+  // injected directly after the "Playing with a pet here" chip when
+  // that allowance is toggled on. Keeps the picker close to its parent
+  // so the visual association is obvious.
+  // Some allowances are mode/player-count gated:
+  //   "Playing with a partner" — only in party mode with exactly 2
+  //     players (the "partner" concept doesn't fit solo or 3+ parties).
+  // Defensive cleanup: if the run state still carries a gated allowance
+  // from a previous configuration (e.g. user switched modes mid-setup),
+  // strip it so the AI prompt doesn't see a permission the player can
+  // no longer see in the UI.
+  const partyPlayerCount = Array.isArray(r.players) ? r.players.length : 0;
+  const partnerAllowed = (r.mode === 'party' && partyPlayerCount === 2);
+  if (!partnerAllowed && Array.isArray(r.allowances) && r.allowances.includes('Playing with a partner')) {
+    r.allowances = r.allowances.filter(a => a !== 'Playing with a partner');
+  }
+  const visibleAllowances = ALLOWANCES.filter(name => {
+    if (name === 'Playing with a partner' && !partnerAllowed) return false;
+    return true;
+  });
+  const petAllowanceOn = (r.allowances || []).includes('Playing with a pet here');
+  const currentPetType = (r.petContext && r.petContext.type) || 'dog';
+  const allowanceChips = visibleAllowances.map(name => {
+    const meta = ALLOWANCE_META[name] || { icon: '', hint: '' };
+    const isOn = (r.allowances || []).includes(name);
+    const chip = `
+      <div class="chip allow ${isOn ? 'on' : ''}" data-allowance="${escapeHtml(name)}" title="${escapeHtml(meta.hint || '')}">
+        <span class="limit-chip-ic">${meta.icon || ''}</span>${escapeHtml(name)}
+      </div>
+    `;
+    // Inject the pet picker directly after the pet allowance chip.
+    if (name === 'Playing with a pet here' && petAllowanceOn) {
+      const petPicker = `
+        <div class="pet-picker">
+          <div class="pet-picker-label">▶ PET TYPE</div>
+          <div class="chips pet-picker-chips">
+            ${PET_TYPES.map(p => `
+              <div class="chip pet-chip ${currentPetType === p.id ? 'on' : ''}" data-pet-type="${p.id}">
+                <span class="limit-chip-ic">${p.icon}</span>${p.label}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      return chip + petPicker;
+    }
+    return chip;
+  }).join('');
   return `
     <div class="step-head">
       <div class="sub">Tap any limit you want the host to respect. Skip the step entirely if you have none.</div>
     </div>
-    <div class="section-title">Hard limits</div>
-    <div class="chips" id="limitChips">
-      ${LIMITS.map(x => `<div class="chip deny ${r.limits.includes(x) ? 'on' : ''}" data-limit="${x}">${x}</div>`).join('')}
+    <div class="limit-presets-row" id="limitPresetsRow">
+      ${presetsRow}
+    </div>
+    <div id="limitChips">
+      ${sectionsHTML}
+    </div>
+    <div class="section-title limit-group-title allow-group-title">🎁 ALLOWANCES <span class="allow-group-sub">(opt-in)</span></div>
+    <div class="chips limit-chip-group allow-chip-group" id="allowanceChips">
+      ${allowanceChips}
+    </div>
+    <div class="limits-count ${selectedCount > 0 ? 'has-picks' : ''}" id="limitsCount">
+      <span class="limits-count-num">${selectedCount}</span>
+      <span class="limits-count-label">${selectedCount === 1 ? 'limit active' : 'limits active'}</span>
     </div>
   `;
 }
@@ -13801,6 +14590,7 @@ function setupReview() {
   const hs = (isMpGuest ? qmpRoomState?.hostSetup : null) || {};
   const dispVibes = isMpGuest ? (hs.vibes || []) : r.vibes;
   const dispLimits = isMpGuest ? (hs.limits || []) : r.limits;
+  const dispAllowances = isMpGuest ? (hs.allowances || []) : (r.allowances || []);
   const dispUnhinged = isMpGuest ? !!hs.unhinged : !!r.unhinged;
   const dispDifficultyId = isMpGuest ? hs.difficulty : r.difficulty?.id;
   const dispDifficulty = isMpGuest
@@ -13943,8 +14733,9 @@ function bindSetup(STEPS) {
   // bindings (further down) still fire for the leave-room path.
   if (isMpGuest) {
     document.querySelectorAll(
-      '#ctxChips .chip, #vibeChips .chip, #limitChips .chip, ' +
-      '[data-vibe], [data-limit], [data-diff], #unhingedToggle, ' +
+      '#ctxChips .chip, #vibeChips .chip, #limitChips .chip, #allowanceChips .chip, ' +
+      '[data-vibe], [data-limit], [data-allowance], [data-pet-type], [data-theme], [data-diff], ' +
+      '#unhingedToggle, #storyModeToggle, ' +
       '#ctxNote'
     ).forEach(el => {
       el.style.pointerEvents = 'none';
@@ -14045,14 +14836,16 @@ function bindSetup(STEPS) {
         r.unhinged = !r.unhinged;
         if (r.unhinged) {
           sfx.unhingedOn();
-          // Clear vibes — the gremlin handles the flavor from here.
+          // Clear vibes AND theme — gremlin + theme are mutually exclusive;
+          // gremlin handles all flavor from here.
           r.vibes = [];
+          r.theme = null;
           toast('🦇 the gremlin awakens. vibes are now gremlin business.');
         } else {
           sfx.unhingedOff();
         }
         if (r.qmpRoomCode && r.qmpIsHost) {
-          window.qmp?.syncHostSetup(r.qmpRoomCode, { vibes: r.vibes, unhinged: r.unhinged });
+          window.qmp?.syncHostSetup(r.qmpRoomCode, { vibes: r.vibes, unhinged: r.unhinged, theme: r.theme });
         }
         render();
       };
@@ -14061,6 +14854,50 @@ function bindSetup(STEPS) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
       };
     }
+    // Story Mode toggle — same on/off pattern as unhinged, but it
+    // doesn't pick a theme by itself. When turning ON, default to the
+    // first theme (zombie) so the player sees the picker grid populated.
+    // Mutually exclusive with unhinged.
+    const stg = document.getElementById('storyModeToggle');
+    if (stg) {
+      const toggleStory = () => {
+        if (r.theme) {
+          r.theme = null;
+          try { sfx.unhingedOff && sfx.unhingedOff(); } catch {}
+        } else {
+          // Auto-disable unhinged when turning story mode on.
+          if (r.unhinged) r.unhinged = false;
+          // Default to zombie if nothing selected yet — players can
+          // tap a different tile after the picker renders.
+          r.theme = THEMES[0].id;
+          r.vibes = [];  // vibes are AI-rolled at gen time for themed runs
+          try { sfx.unhingedOn && sfx.unhingedOn(); } catch {}
+          toast(`${THEME_BY_ID[r.theme].icon} story mode armed. tap a story to change.`);
+        }
+        if (r.qmpRoomCode && r.qmpIsHost) {
+          window.qmp?.syncHostSetup(r.qmpRoomCode, { vibes: r.vibes, unhinged: r.unhinged, theme: r.theme });
+        }
+        render();
+      };
+      stg.onclick = toggleStory;
+      stg.onkeydown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleStory(); }
+      };
+    }
+    // Theme tile picker — single-select. Only rendered when r.theme is
+    // truthy (i.e. story mode is on). Tapping the same tile is a no-op
+    // (preserves current pick); tapping a different tile swaps it.
+    document.querySelectorAll('[data-theme]').forEach(t => t.onclick = () => {
+      const id = t.dataset.theme;
+      if (!THEME_BY_ID[id]) return;
+      if (r.theme === id) return;
+      r.theme = id;
+      try { sfx.tap && sfx.tap(); } catch {}
+      if (r.qmpRoomCode && r.qmpIsHost) {
+        window.qmp?.syncHostSetup(r.qmpRoomCode, { theme: r.theme });
+      }
+      render();
+    });
   }
   if (stepName === 'Limits') {
     // Allowed-risks chips no longer render — see setupRisks(). Risks are
@@ -14072,6 +14909,67 @@ function bindSetup(STEPS) {
       if (r.qmpRoomCode && r.qmpIsHost) {
         window.qmp?.syncHostSetup(r.qmpRoomCode, { limits: r.limits });
       }
+      render();
+    });
+    // Allowance chips — positive permissions. Same toggle logic as
+    // limits but stored in r.allowances. MP sync packages them alongside
+    // limits in the hostSetup snapshot.
+    if (!Array.isArray(r.allowances)) r.allowances = [];
+    document.querySelectorAll('[data-allowance]').forEach(c => c.onclick = () => {
+      const v = c.dataset.allowance;
+      if (r.allowances.includes(v)) r.allowances = r.allowances.filter(x => x !== v);
+      else r.allowances.push(v);
+      // Initialize petContext when the pet allowance is toggled on
+      // and no type is set yet. Default to 'dog' (most common pet).
+      if (v === 'Playing with a pet here' && r.allowances.includes(v)) {
+        if (!r.petContext || !r.petContext.type) r.petContext = { type: 'dog' };
+      }
+      if (r.qmpRoomCode && r.qmpIsHost) {
+        window.qmp?.syncHostSetup(r.qmpRoomCode, {
+          allowances: r.allowances,
+          petContext: r.petContext || null,
+        });
+      }
+      try { sfx.tap && sfx.tap(); } catch {}
+      render();
+    });
+    // Pet type picker — only rendered when the pet allowance is on.
+    // Clicking a pet chip sets r.petContext.type; the rest of the
+    // picker chips lose their .on state on next render.
+    document.querySelectorAll('[data-pet-type]').forEach(c => c.onclick = () => {
+      const id = c.dataset.petType;
+      if (!PET_TYPE_BY_ID[id]) return;
+      r.petContext = { ...(r.petContext || {}), type: id };
+      if (r.qmpRoomCode && r.qmpIsHost) {
+        window.qmp?.syncHostSetup(r.qmpRoomCode, { petContext: r.petContext });
+      }
+      try { sfx.tap && sfx.tap(); } catch {}
+      render();
+    });
+    // Preset buttons — additive merge (preset's limits ∪ current). The
+    // "Clear all" preset is the only one that subtracts (resets r.limits
+    // to []). Presets re-trigger render() so the chips paint their new
+    // "on" state and the count badge updates without manual DOM patches.
+    document.querySelectorAll('[data-preset]').forEach(btn => btn.onclick = () => {
+      const id = btn.dataset.preset;
+      const preset = LIMIT_PRESETS.find(p => p.id === id);
+      if (!preset) return;
+      if (preset.isClear) {
+        r.limits = [];
+      } else {
+        // Additive: drop in any preset limit that isn't already selected.
+        const merged = new Set(r.limits || []);
+        for (const lim of preset.limits) merged.add(lim);
+        r.limits = Array.from(merged);
+      }
+      // Tiny click-feedback flash on the button itself before the
+      // re-render replaces the DOM — easier to see "yep, that did
+      // something" on a fast tap.
+      btn.classList.add('limit-preset-flash');
+      if (r.qmpRoomCode && r.qmpIsHost) {
+        window.qmp?.syncHostSetup(r.qmpRoomCode, { limits: r.limits });
+      }
+      try { sfx.tap && sfx.tap(); } catch {}
       render();
     });
   }
@@ -14249,8 +15147,10 @@ function validateStep(stepName) {
       toast('Type your custom location.'); return false;
     }
   }
-  // Vibes are skipped when unhinged mode is on — the gremlin overrides them.
-  if (stepName === 'Vibe' && !r.unhinged && r.vibes.length === 0) { toast('Pick at least one vibe.'); return false; }
+  // Vibes are skipped when unhinged mode is on (gremlin overrides them)
+  // OR when Story Mode is on (theme overrides them — vibes are auto-rolled
+  // from the theme's compatibleVibes pool at quest-gen time).
+  if (stepName === 'Vibe' && !r.unhinged && !r.theme && r.vibes.length === 0) { toast('Pick at least one vibe.'); return false; }
   // Risks no longer surface in the UI — they are seeded to "all" at run
   // start (startSetup) so the AI prompt still gets the full flavor list.
   // No validation needed for the Limits step; empty limits is valid.
@@ -21093,6 +21993,29 @@ function validateGeneratedQuest(ai, r) {
     violations.push(`"find N of X" pattern in ${stepsWithNOfX} steps — max 1 per quest`);
   }
 
+  // ── Story Mode theme adherence ──
+  // When r.theme is set, the AI MUST keep the whole quest inside the
+  // fictional universe. We check two things: (1) at least 3 of 5 steps
+  // contain a theme keyword in title or instr, and (2) the boss name
+  // OR boss desc mentions a theme keyword. Failure = retry. Skipped
+  // when no theme is active.
+  if (r.theme && THEME_BY_ID[r.theme]) {
+    const theme = THEME_BY_ID[r.theme];
+    const keywords = (theme.keywords || []).map(k => k.toLowerCase());
+    const stepKeywordHits = steps.filter(s => {
+      const text = `${s.title || ''} ${s.instr || ''}`.toLowerCase();
+      return keywords.some(k => text.includes(k));
+    }).length;
+    if (stepKeywordHits < 3) {
+      violations.push(`Story Mode (${theme.name}): only ${stepKeywordHits}/5 steps contain a theme keyword — quest is drifting out of the ${theme.name} universe. Theme keywords: ${keywords.slice(0, 6).join(', ')}.`);
+    }
+    const bossText = `${boss.name || ''} ${boss.desc || ''} ${boss.wants || ''} ${boss.beat || ''}`.toLowerCase();
+    const bossKeywordHit = keywords.some(k => bossText.includes(k));
+    if (!bossKeywordHit) {
+      violations.push(`Story Mode (${theme.name}): boss has no theme keyword in name/desc/wants/beat — boss must be drawn from theme archetypes (${(theme.bossArchetypes || []).slice(0, 3).map(b => b.split(' ')[0]).join(', ')}...).`);
+    }
+  }
+
   return { pass: violations.length === 0, violations };
 }
 
@@ -21215,10 +22138,24 @@ async function aiGenerateArchitecture(r) {
   const recentArcShapes = Array.isArray(profile.recentArcShapes) ? profile.recentArcShapes.slice(-5) : [];
 
   const _playerName = (profile && typeof profile.name === 'string' && profile.name.trim()) || 'Player';
+  // Story-mode theme. When active, roll random compatible vibes (if the
+  // player didn't pick any) so the quest still has tonal variety. Store
+  // them on the run state for downstream consistency (Stage 2 user
+  // message + recap + validator).
+  const _theme = r.theme && THEME_BY_ID[r.theme] ? THEME_BY_ID[r.theme] : null;
+  if (_theme && (!Array.isArray(r.vibes) || !r.vibes.length)) {
+    r.vibes = rollThemeVibes(_theme.id);
+  }
   const userMsg = `LOCATION: ${ctxName}${r.contextNote && r.contextChoice === 'custom' ? ` (custom: "${r.contextNote}")` : ''}
-VIBES: ${r.unhinged ? 'UNHINGED MODE (gremlin) — ignore standard vibes, pick a cursed/surreal boss archetype like THE GHOST, THE MOURNER, THE RECENT, THE TRICKSTER, THE ARCHITECT' : (r.vibes && r.vibes.length ? r.vibes.join(' + ') : 'no specific vibe — default theatrical')}
+${_theme ? `STORY MODE: ${_theme.name.toUpperCase()} (${_theme.icon}) — ${_theme.blurb} This is the FICTIONAL UNIVERSE for the entire quest. Boss MUST be drawn from the theme archetypes below, NOT from the standard archetypes. Every step's title, instruction, and example MUST be reframed inside this universe. Host voice for the run: ${_theme.hostVoice}.
+THEME BOSS ARCHETYPES (pick exactly one):
+${_theme.bossArchetypes.map(b => '- ' + b).join('\n')}
+THEME STEP FRAMING: ${_theme.stepFraming}
+THEME KEYWORDS (each step MUST contain at least one theme keyword in title or instr): ${_theme.keywords.join(', ')}
+` : ''}VIBES: ${r.unhinged ? 'UNHINGED MODE (gremlin) — ignore standard vibes, pick a cursed/surreal boss archetype like THE GHOST, THE MOURNER, THE RECENT, THE TRICKSTER, THE ARCHITECT' : (r.vibes && r.vibes.length ? r.vibes.join(' + ') + (_theme ? ' (auto-rolled inside the theme — these are TONAL flavor on TOP of the theme, not a vibe override)' : '') : (_theme ? 'no extra vibe' : 'no specific vibe — default theatrical'))}
 DIFFICULTY: ${r.difficulty?.name || 'Brave'}
 HARD LIMITS: ${(r.limits && r.limits.length) ? r.limits.join(', ') : 'none'}
+ALLOWANCES (opt-in unlocks): ${(r.allowances && r.allowances.length) ? r.allowances.join(', ') : 'none'}
 MODE: ${mpMode}${r.mode === 'party' ? ` (${playerCount} players)` : ''}
 PLAYER NAME: ${_playerName}${r.mode === 'party' ? ' (host)' : ''}
 
@@ -21503,9 +22440,9 @@ VIBE COMBINATION RULES — strict (when more than one vibe is selected)
 - If two vibes seem in direct conflict (e.g., chill + spicy, cozy + chaotic), you must still merge — let one tone the other ("a lazily spicy quest", "a chaotic-but-nuzzled-up vibe"). DO NOT pick one and ignore the other.
 
 UNIVERSAL SAFETY RULES — never violate regardless of limits, vibes, or difficulty
-These rules apply on EVERY run, regardless of what the player chose in limits/vibes/difficulty. They are NOT optional. The player not picking "No spending money" does NOT unlock commerce steps.
+These rules apply on EVERY run by default. Some rules can ONLY be lifted by a matching player ALLOWANCE in the user message (positive opt-in permissions). They are NOT optional otherwise.
 
-- NEVER REQUIRE REAL PURCHASES. A step may NEVER instruct the player to actually buy, pay for, transact, or hand money to anyone. Banned phrasings: "buy the item", "purchase X", "complete the transaction", "hand them the money", "pay for X", "actually buy something", "the receipt of the purchase". The player can WINDOW-SHOP, photograph display items, photograph a closed bag they brought in, mime a purchase — but no real spend. This applies even when the player didn't pick "No spending money" — the limit only ADDS additional restrictions (no commerce-themed boss, no purchase-implication steps), but the absence of the limit doesn't grant permission to require spending.
+- PURCHASES — REQUIRES "Open to small buys" ALLOWANCE. By default a step may NEVER instruct the player to actually buy, pay for, transact, or hand money to anyone. Banned by default: "buy the item", "purchase X", "complete the transaction", "hand them the money", "pay for X", "actually buy something", "the receipt of the purchase". The player can WINDOW-SHOP, photograph display items, photograph a closed bag they brought in, mime a purchase. IF AND ONLY IF the user message lists "Open to small buys" in ALLOWANCES, you MAY generate ONE step where the player buys a small item (≤$5 strict cap). The purchase must be a PLAYER CHOICE (not a specific brand/product — let the player pick within a category). Proof is the ITEM, never the receipt. The other 4 steps still cannot reference real spending. Vendor-themed bosses (Receipt Reaper, Off-Menu Marauder, Loyalty Card Lich) are permitted on opt-in runs only.
 - NEVER REQUIRE ENGAGING WITH STORE STAFF IN A WAY THAT WASTES THEIR TIME. The player can window-shop, walk past, take a free sample if naturally offered, photograph a public display. But the AI should NEVER instruct "ask the associate for a quote", "have them ring up the item", "request a fitting", "ask them to check stock" — anything that ties up an employee for an interaction the player isn't actually going to follow through on.
 - NEVER REQUIRE DOWNLOADING SOMETHING, INSTALLING AN APP, OR PROVIDING CONTACT INFO TO ANYONE.
 
@@ -21513,7 +22450,6 @@ HARD LIMITS RESHAPE THE STORY (not just filter steps)
 When hard limits are present, they don't just block individual steps — they reshape the entire quest arc.
 - "No strangers" + romantic vibe → the romantic quest becomes a closed-room duet between the players. No date-with-the-barista. The whole story is about the two players noticing each other.
 - "Keep it indoors" → the entire boss/story is INDOOR-themed. The boss is something that feeds on indoor stagnation (Mold Marshal, Ceiling Fan Tyrant). All step zones are inside the current building.
-- "No physical punishment" → boss's timeoutPunish must be social/silly, not physical. No push-ups under any circumstance.
 - "No spending money" → quest never references commerce. The boss can't be commerce-themed. No "buy", "purchase", "order".
 - "Nothing embarrassing" → keep the whole tone gentle. Boss is mild. timeoutPunish is harmless. Vibes like "spicy" or "chaotic" must be expressed THROUGH OBJECTS, not through public player visibility.
 - ALL hard limits must be respected by the BOSS NAME, BOSS DESC, and TIMEOUTPUNISH lines, not just step instructions.
@@ -21797,15 +22733,15 @@ CRITICAL: if MP_MODE is "competitive" or "chaos", DO NOT write any step that req
 HARD LIMITS — ABSOLUTE, ZERO TOLERANCE
 The HARD LIMITS field is a list of constraints the player chose. These are NEVER negotiable — no exceptions, no "soft" interpretations, no "well technically".
 - Read every limit. If a step would touch ANY of them even partially, REWRITE the step. Do not generate it and hope the player overlooks it.
-- "No strangers" → zero stranger interaction. No employees. No waving. No compliments. No asking. Self + environment only.
-- "No spending money" → no buying anything, no entering steps that require payment, no till/menu interactions where purchase is implied.
-- "No filming strangers" → photos must contain ZERO unconsenting human faces. Steps that risk capturing strangers in frame are out.
+- "No strangers" → zero stranger interaction AND zero strangers in any photo. No employees. No waving. No compliments. No asking. Self + environment only. Proof photos must contain ZERO unconsenting human faces — frame to exclude bystanders even in public spaces.
 - "Keep it indoors" → the entire run must execute inside the current building/space. No "step outside", no "head to the parking lot".
 - "No running" → no jogging, sprinting, racing, "fast as you can" framing. Walking pace only.
 - "No flirting" → no romantic energy, no compliments-with-edge, no "ask their number".
 - "Nothing embarrassing" → keep tone playful, not humiliating. No public outbursts, no loud singing, no group cheers.
-- "No physical punishment" → no push-ups, no laps, no stress positions, no penalties involving physical exertion. Use light social/silly forfeits instead.
 - "No trespassing" → no employees-only zones, no "behind the counter", no climbing, no fences.
+- "No food/drinks" → no tasting, eating, drinking, smelling food, buying snacks (note: purchases already gated by universal safety unless "Open to small buys" is on). No "find a flavor", "smell the X", "sample the Y", "take a bite". Proof photos may include food as a background object but never as the player's action target.
+- "Limited mobility" → ground-level access only. No squatting, no crouching, no climbing, no reaching high, no stairs, no bending past 30°. All step objects must be accessible from seated/standing height without floor-level movement. Pair with "No running" automatically — the AI should treat both as active when this is set.
+- "Quiet mode" → no loud declarations, no shouting, no singing, no "say it out loud", no clapping, no audible gestures. Player can whisper, mime, gesture silently. Boss declarations are SILENT — the boss watches but never makes noise. timeoutPunish must be silent too.
 - "No selfies / face shots" → the player does NOT want their face in any photo. ZERO steps may instruct or imply photographing the player's face, a selfie, a mirror self-photo, an eye-contact-with-camera shot, a self-portrait, or any framing where the player is the subject of the photo. ALL photo proof must be of OBJECTS, ENVIRONMENTS, HANDS, FEET, or other body parts that don't identify the player. Replace any tempting "photo of you doing X" with "photo of the OBJECT you did X to" or "photo from over your shoulder showing X" or "photo of your hand holding the napkin." For POSE steps, photograph the held object, the silhouette/shadow, or the floor below the pose — never the face. For SOCIAL steps with employees (if "No strangers" not also set), photograph the shared object or the moment after, never the player's face. NEVER write "selfie", "face on camera", "photo of yourself", "mirror photo", "show your face", "smile for the camera". If a vibe (romantic, spicy) wants a tender face-shot, redirect to a hand-touch, a foot-positioning, or a silhouette instead. This limit applies to BOSS DESC and TIMEOUTPUNISH too — no "selfie penalty" type forfeits.
 If a chosen vibe ever conflicts with a hard limit, the LIMIT WINS. Drop the vibe expression, keep the limit.
 
@@ -21843,7 +22779,7 @@ Vibes pick the THEME of the quest. THIS IS WHAT THE QUEST IS ABOUT. (See VIBE IN
 - Unhinged mode overrides vibes with the gremlin persona.
 
 LAYER 4 — HARD LIMITS (the redactions)
-The HARD LIMITS field reshapes the boss, story, and timeoutPunish. Limits beat vibes if they conflict (a "No physical punishment" + spicy vibe still cannot use push-ups). (See HARD LIMITS RESHAPE THE STORY above.)
+The HARD LIMITS field reshapes the boss, story, and timeoutPunish. Limits beat vibes if they conflict (a "No spending money" + commerce-themed vibe still cannot reference purchases). (See HARD LIMITS RESHAPE THE STORY above.)
 
 LAYER 5 — DIFFICULTY (the intensity dial)
 Difficulty does NOT pick the genre. A Nightmare quest is a more INTENSE version of whatever gamemode + location + vibe-driven concept already exists. It is NEVER automatically "a heist" or "a stealth mission" or "a horror crawl". A Nightmare romantic quest is a sustained, brutal romance — whisper-counting, prolonged eye contact under timer pressure, multi-object affection rituals. NEVER pivot away from the layered concept just because difficulty is high.
@@ -22062,8 +22998,8 @@ TWO-VOICE RULE — strict
 - BOSS VOICE (boss.name, boss.desc, boss.wants, boss.beat): theatrical, vivid, fictional villain. Drama is on-purpose.
 - HOST VOICE (every step.title, step.instr, step.examples, boss.timeoutPunish): dry, casual, lowercase by default. Reference: the AI System in "Dungeon Crawler Carl" — direct, slightly formal, has a soft spot for the player that LEAKS through occasionally, never gushes. NO em-dashes anywhere (use commas/periods/"and"). At most 1 of the 5 steps may carry a small personality beat, never on step 1. No fantasy-novel verbs in step text (no anoint/conscript/ritualize/hunt-down/summon — use plain verbs: find, walk, sit, hold, photograph, say, write, drink).
 
-UNIVERSAL SAFETY (never violate, regardless of any player-set limit)
-- NEVER require real purchases: no "buy", "purchase", "complete the transaction", "pay for", "ring up at the register", "hand them money", "receipt of the purchase". Window-shopping/photographing displays is fine. Spending money is banned.
+UNIVERSAL SAFETY (default — only the PURCHASE rule can be lifted by a matching ALLOWANCE in the user message; the rest are absolute)
+- PURCHASES — DEFAULT BANNED. No "buy", "purchase", "complete the transaction", "pay for", "ring up at the register", "hand them money", "receipt of the purchase". Window-shopping/photographing displays is fine. EXCEPTION: if the user message lists "Open to small buys" in ALLOWANCES, you MAY generate ONE step (out of 5) where the player buys a small item ≤$5. The purchase target must be a player CHOICE within a category (e.g. "the weirdest snack on the shelf", "the smallest coffee size", "the cheapest item in the store"), NEVER a specific named product/brand. Proof is the ITEM, NEVER the receipt. Other 4 steps still cannot reference spending. Vendor-themed bosses are permitted only on opt-in runs.
 - NEVER instruct the player to tie up store staff for a transaction they won't complete (no "ask the associate for a quote", no "have them ring it up", no "request a fitting").
 - NEVER require audio recording, voice memos, or "say it into the phone" — the app has no audio capability.
 - NEVER ask the player to download anything, install an app, or hand over contact info.
@@ -22144,17 +23080,17 @@ The user message lists player-chosen constraints. Honor every one. Limits beat v
 
 - "No selfies / face shots" → CRITICAL. The player\'s face MUST NEVER appear in any step\'s photo proof. NEVER write "smile for the camera", "photo of yourself", "selfie", "show your face", "mirror selfie", "self-portrait", "look at the camera", "make eye contact with the camera", "smile and snap". For POSE archetype steps, the photo target is NOT the player\'s face — it\'s a HAND (holding the object), a FOOT (in position), a SILHOUETTE (against a background), an OBJECT (the thing the player just blessed/named/touched), a REFLECTION (in a window/screen), or a SHADOW (cast on a wall/floor). Examples: instead of "smile while holding the cup" → "photograph the cup from over your shoulder" or "photograph the hand holding the cup, no face in frame". Instead of "selfie with the boss-object" → "photograph the boss-object next to one item that is uniquely yours". For DEPLOY/CONFRONT archetypes that involve eye contact with a thing, the photo is the THING (not the player\'s face). For social-interaction steps (if "No strangers" isn\'t also set), photograph the shared object or the moment after, never the player\'s face.
 
-- "No strangers" → zero stranger interaction. No employees. No waving. No "ask someone". No "the next person who passes". Self + environment ONLY.
+- "No strangers" → zero stranger interaction AND zero strangers in any photo. No employees. No waving. No "ask someone". No "the next person who passes". Self + environment ONLY. Proof photos must contain ZERO unconsenting human faces — frame to exclude bystanders even in public spaces.
 
 - "Keep it indoors" → the entire run must execute inside the current building. No "step outside", no "head to the parking lot", no "find a window facing out and photograph what\'s beyond".
 
-- "No physical punishment" → no push-ups, no laps, no stress positions, no "owe N push-ups" forfeits in boss.timeoutPunish. Use silly social forfeits instead.
-
-- "No spending money" → no buying, no purchases, no entering steps that imply a transaction. No "ask for a free sample" (that\'s borderline coercive).
-
 - "Nothing embarrassing" → keep tone playful, not humiliating. No loud singing, no public outbursts, no costumes that draw attention. Vibes like "spicy" or "chaotic" must be expressed through OBJECTS, not through public player visibility.
 
-- "No filming strangers" → photos must contain ZERO unconsenting human faces. Even in a public space, frame to exclude bystanders.
+- "No food/drinks" → no tasting, eating, drinking, smelling food, "find a flavor", "smell the X", "sample Y", "take a bite". Food can be background in a photo but never the player\'s action target. Crucial for sober/allergy/eating-disorder players.
+
+- "Limited mobility" → ground-level only. No squatting, crouching, climbing, reaching high, stairs, bending past 30°. All step targets accessible from seated or standing position. Treat as "No running" + accessibility-first framing.
+
+- "Quiet mode" → no loud declarations, shouting, singing, "say it out loud", clapping, audible gestures. Whispering, miming, silent gestures are fine. Boss declarations are SILENT. timeoutPunish must be silent too.
 
 MULTIPLAYER
 - coop: shared boss HP. Players physically together. Steps are GROUP rituals.
@@ -22268,10 +23204,12 @@ PLAYER NAME: ${(profile && typeof profile.name === 'string' && profile.name.trim
 LAYER 2 — LOCATION: ${ctxName}${r.contextChoice === 'custom' ? ' (player-typed CUSTOM location — parse this literally for place, objects, people, and constraints; do NOT collapse it to a similar canned location)' : (r.contextNote ? ` (extra note: ${r.contextNote})` : '')}. Re-read the LOCATION INTERPRETATION section. Every step's instruction AND every example in examples[] must reference real objects, zones, or behaviors that exist at THIS location — examples function as in-context hints. The boss must be entirely OF this location, not a generic boss placed there.
 TIER: ${r.questType === 'investigation' ? 'investigation (environmental fact-hunting — each step asks for a specific real-world answer found in signs/menus/plaques/labels)' : 'comfort (story-arc themed around an everyday villain like laziness/indecision/awkwardness)'}.
 
-LAYER 3 — VIBES: ${r.unhinged ? 'GREMLIN OVERRIDE — ignore standard vibes. apply the unhinged persona in full (surreal, theatrical, faintly cursed performance art).' : (r.vibes.length ? `${r.vibes.join(' + ')}. THIS DEFINES WHAT THE QUEST IS ABOUT.${r.vibes.length > 1 ? ` These vibes MUST COMBINE into a single fused tone — don't alternate them per step. The boss's identity must fuse all selected vibes into ONE concept.` : ' This single vibe MUST drive the boss identity, the story arc, and every step\'s framing.'} Re-read the VIBE INTERPRETATION + VIBE COMBINATION RULES + VIBE CARRY-THROUGH sections.${r.vibes.includes('romantic') ? ` ROMANTIC vibe = romance/date/couples quest, NOT heist/stealth/vault/surveillance. ${r.contextChoice === 'home' ? 'Re-read the ROMANTIC AT HOME section — concrete step examples are written there.' : ''}` : ''}${r.vibes.includes('nostalgic') ? ' NOSTALGIC vibe = memory/childhood/era-callback quest.' : ''}${r.vibes.includes('cozy') ? ' COZY vibe = indoor warm tactile-comfort quest.' : ''}${r.vibes.includes('wholesome') ? ' WHOLESOME vibe = kind, low-cringe, hugs-and-affirmations quest.' : ''}${r.vibes.includes('romantic') && r.mode === 'solo' ? ' Solo + romantic = SELF-ROMANCE / self-care quest.' : ''}${r.vibes.includes('romantic') && r.mode === 'party' && playerCount !== 2 ? ` Romantic + ${playerCount} players = matchmaker arc where players pair off temporarily for shared rituals.` : ''}` : 'no specific vibe — go default theatrical')}.
+${r.theme && THEME_BY_ID[r.theme] ? `STORY MODE — ${THEME_BY_ID[r.theme].name.toUpperCase()} ${THEME_BY_ID[r.theme].icon}: This run is set ENTIRELY inside the ${THEME_BY_ID[r.theme].name} fictional universe. ${THEME_BY_ID[r.theme].blurb} The boss MUST be one of these archetypes (pick exactly one): ${THEME_BY_ID[r.theme].bossArchetypes.join(' / ')}. STEP FRAMING: ${THEME_BY_ID[r.theme].stepFraming} HOST VOICE: ${THEME_BY_ID[r.theme].hostVoice} Every step's title, instruction, and example MUST be reframed inside the theme — NO references to "the boss" as a generic concept; use the theme-specific framing. At least 4 of 5 step instructions MUST contain a theme keyword (${THEME_BY_ID[r.theme].keywords.slice(0, 8).join(', ')}). The TIMEOUTPUNISH must also be in-theme.
+` : ''}LAYER 3 — VIBES: ${r.unhinged ? 'GREMLIN OVERRIDE — ignore standard vibes. apply the unhinged persona in full (surreal, theatrical, faintly cursed performance art).' : (r.vibes.length ? `${r.vibes.join(' + ')}.${r.theme ? ' These vibes are auto-rolled inside the active STORY MODE — they are TONAL flavor on top of the theme, not a vibe override. The theme defines the universe; the vibes adjust the tone within it.' : ` THIS DEFINES WHAT THE QUEST IS ABOUT.`}${r.vibes.length > 1 && !r.theme ? ` These vibes MUST COMBINE into a single fused tone — don't alternate them per step. The boss's identity must fuse all selected vibes into ONE concept.` : (!r.theme ? ' This single vibe MUST drive the boss identity, the story arc, and every step\'s framing.' : '')} Re-read the VIBE INTERPRETATION + VIBE COMBINATION RULES + VIBE CARRY-THROUGH sections.${r.vibes.includes('romantic') ? ` ROMANTIC vibe = romance/date/couples quest, NOT heist/stealth/vault/surveillance. ${r.contextChoice === 'home' ? 'Re-read the ROMANTIC AT HOME section — concrete step examples are written there.' : ''}` : ''}${r.vibes.includes('nostalgic') ? ' NOSTALGIC vibe = memory/childhood/era-callback quest.' : ''}${r.vibes.includes('cozy') ? ' COZY vibe = indoor warm tactile-comfort quest.' : ''}${r.vibes.includes('wholesome') ? ' WHOLESOME vibe = kind, low-cringe, hugs-and-affirmations quest.' : ''}${r.vibes.includes('romantic') && r.mode === 'solo' ? ' Solo + romantic = SELF-ROMANCE / self-care quest.' : ''}${r.vibes.includes('romantic') && r.mode === 'party' && playerCount !== 2 ? ` Romantic + ${playerCount} players = matchmaker arc where players pair off temporarily for shared rituals.` : ''}` : (r.theme ? 'no extra vibe — pure theme.' : 'no specific vibe — go default theatrical'))}.
 ALLOWED RISKS: ${r.risks.length ? r.risks.join(', ') : 'all'}.
 
 LAYER 4 — HARD LIMITS (ABSOLUTE — never violate, no exceptions, no soft interpretations): ${r.limits.length ? r.limits.join(', ') : 'none'}.${r.limits.length ? ` Re-read the HARD LIMITS section AND the HARD LIMITS RESHAPE THE STORY section. The limits must be visible in the BOSS, the STORY, and the TIMEOUTPUNISH — not just at the step level. If a step or boss line touches a limit even partially, REWRITE it. The limit beats every other directive including vibes, gamemode, and difficulty.` : ''}
+ALLOWANCES (opt-in unlocks — empty by default; universal safety rules apply unless an entry here grants permission): ${(r.allowances && r.allowances.length) ? r.allowances.join(', ') : 'none'}.${(r.allowances && r.allowances.includes('Open to small buys')) ? ` "Open to small buys" UNLOCKS purchase steps — you MAY generate ONE step where the player buys a small item (≤$5 strict cap). The purchase must be a PLAYER CHOICE (NOT a specific brand or named product — let the player pick within a category like "the weirdest snack on the shelf", "the smallest size coffee", "the cheapest item in the store"). Photo proof is the ITEM itself (or the player holding it), NEVER the receipt. The step's framing should make the purchase part of the COMEDY (an absurd constraint, a vendor-villain beat, a "commit to the bit" moment), not a chore. The other 4 steps still cannot reference spending. Vendor-themed bosses are now PERMITTED for this run only (e.g. "Receipt Reaper", "Off-Menu Marauder", "Loyalty Card Lich").` : ''}${(r.allowances && r.allowances.includes('Playing with a pet here')) ? ` "Playing with a pet here" UNLOCKS pet-themed content. PET TYPE: ${(r.petContext && PET_TYPE_BY_ID[r.petContext.type] && PET_TYPE_BY_ID[r.petContext.type].label.toLowerCase()) || 'pet'}. The boss MAY be pet-themed (e.g. "The Couch Hound", "The Judging Cat", "The Bird That Knows", "The Reptile of Regret"). You MAY include 1-2 step beats where the pet is a CO-STAR — "photograph the ${(r.petContext && PET_TYPE_BY_ID[r.petContext.type] && PET_TYPE_BY_ID[r.petContext.type].label.toLowerCase()) || 'pet'} ignoring you", "narrate what your ${(r.petContext && PET_TYPE_BY_ID[r.petContext.type] && PET_TYPE_BY_ID[r.petContext.type].label.toLowerCase()) || 'pet'} thinks of step 3", "the boss freezes when your ${(r.petContext && PET_TYPE_BY_ID[r.petContext.type] && PET_TYPE_BY_ID[r.petContext.type].label.toLowerCase()) || 'pet'} enters the frame". The pet is a CO-STAR, not a quest object — NEVER instruct anything that could distress, restrain, or harm the pet. NEVER ask the player to do something dangerous with or to the pet. The pet is in-frame for comedy/affection only.` : ''}${(r.allowances && r.allowances.includes('Playing with a partner')) ? ` "Playing with a partner" UNLOCKS in-person co-star beats — the player has +1 helper physically present. You MAY write 1-2 steps that include a PARTNER beat (high-five, mutual eye contact, shared photo with the boss-object, partner holds while player photographs, mutual gesture). MOST steps (3-4 of 5) still default to solo framing. The partner is a CO-STAR, not a co-player — they're not running their own quest, they're helping/witnessing. Refer to them as "your partner" or "the +1" — never assume a gender or relationship type.` : ''}${(r.allowances && r.allowances.includes('Open to longer runs')) ? ` "Open to longer runs" UNLOCKS bigger commitments — quest may stretch to 15-30 minutes total. Step instructions MAY include longer sustained actions (45-90s holds, 5-stage sequences, multi-object rituals). Total quest still has 5 steps but each one can be more elaborate. Do NOT just pad — make the extra time MEANINGFUL with layered theater.` : ''}${(r.allowances && r.allowances.includes('OK with crazy dares')) ? ` "OK with crazy dares" UNLOCKS bold/challenging content the AI would normally play safe on. You MAY write steps that ask for: sustained public commitment (30-60s public poses), theatrical loud declarations, multi-stage commitments ("do X for 30s while holding Y while saying Z"), bold gestures that draw witness attention, performance-art level beats. Stay within UNIVERSAL SAFETY (no illegal, no harming self/others, no harassing strangers, no trespassing unless allowed). The bar shifts from "tasteful" to "memorable" — these dares should make the player slightly nervous before, proud after. Difficulty NIGHTMARE + this allowance = peak intensity.` : ''}
 
 LAYER 5 — DIFFICULTY: ${r.difficulty.name}. ${r.difficulty.id === 'nightmare' ? 'BRUTAL TIER — apply the NIGHTMARE escalation in full (sustained 30-60s commitment, multi-object rituals, counted repetitions, negative constraints, cumulative gestures). Every step should make a witness say "are you ok".' : r.difficulty.id === 'chaos' ? 'INTENSE TIER — full performance art commitment. Multiple beats per step. Sustained poses 15-30s. Counted gestures. Loud commitment.' : r.difficulty.id === 'bold' ? 'HARD TIER — multi-beat actions: do X then Y. Visible commitment. Eye contact with objects, brief out-loud lines, longer poses.' : r.difficulty.id === 'brave' ? 'MILD TIER — one action with a small twist. Light posing or a tiny ritual.' : 'GENTLE TIER — one small action per step. Low commitment. Friendly stakes.'}${r.unhinged ? `
 UNHINGED MODE: ON — apply the GREMLIN persona override IN FULL. Every text field (boss name/desc/wants/beat/timeoutPunish, all step titles, all instructions, all examples) MUST be in lowercase gremlin voice with broken cadence. Boss must sound like a haunted cryptid. Steps must read like cursed performance art instructions. If any field reads "normal," rewrite it. Test each field: would this make a stranger pause and say "what??" — if no, rewrite. NEVER target bystanders. PLAYER-ONLY CRINGE.${r.difficulty.id === 'nightmare' ? ' COMBO: NIGHTMARE + UNHINGED = peak gremlin. Sustained 60-second cursed rituals. Multiple objects honored per step. Counted whispers. Negative constraints (no smiling, no breaking). The player should look like they are in a horror short film starring inanimate furniture.' : ''}` : ''}
@@ -23554,6 +24492,28 @@ function openBossInfoModal() {
         <div class="section-title">HARD LIMITS</div>
         <div class="chips" style="margin-bottom: 12px;">
           ${r.limits.map(l => `<span class="chip deny on">${escapeHtml(l)}</span>`).join('')}
+        </div>
+      ` : ''}
+
+      ${r.allowances && r.allowances.length ? `
+        <div class="section-title" style="color: var(--gold); border-left-color: var(--gold);">ALLOWANCES</div>
+        <div class="chips" style="margin-bottom: 12px;">
+          ${r.allowances.map(a => {
+            // Append pet type inline when this is the pet allowance.
+            if (a === 'Playing with a pet here' && r.petContext && r.petContext.type) {
+              const pt = (typeof PET_TYPE_BY_ID !== 'undefined' && PET_TYPE_BY_ID[r.petContext.type]) || null;
+              const label = pt ? `${a} (${pt.icon} ${pt.label})` : a;
+              return `<span class="chip allow on">${escapeHtml(label)}</span>`;
+            }
+            return `<span class="chip allow on">${escapeHtml(a)}</span>`;
+          }).join('')}
+        </div>
+      ` : ''}
+
+      ${r.theme && typeof THEME_BY_ID !== 'undefined' && THEME_BY_ID[r.theme] ? `
+        <div class="section-title" style="color: var(--gold); border-left-color: var(--gold);">STORY MODE</div>
+        <div class="chips" style="margin-bottom: 12px;">
+          <span class="chip allow on">${THEME_BY_ID[r.theme].icon} ${escapeHtml(THEME_BY_ID[r.theme].name)} — ${escapeHtml(THEME_BY_ID[r.theme].short)}</span>
         </div>
       ` : ''}
 
@@ -25365,6 +26325,47 @@ function detectChatIntent(text) {
   return null;
 }
 
+// Affordability-complaint detector. Fires only on phrases that clearly
+// signal "I can't pay for what this step is asking" — not generic
+// frustration. When matched, sendChat short-circuits the AI host call
+// and rerolls the current step for FREE (no cost, no cap consumption).
+// We trust the player's word here; if they say they can't, they can't.
+function detectAffordabilityComplaint(text) {
+  const t = (text || '').toLowerCase();
+  // Group A — explicit can't-afford phrasing. Tight match to avoid
+  // catching things like "i can't believe this" or "i don't have time".
+  if (/\b(?:can'?t|cannot) afford\b/.test(t)) return true;
+  if (/\b(?:don'?t|do not) (?:have|got) (?:enough )?(?:money|cash|the money|the cash|enough)\b/.test(t)) return true;
+  if (/\bno (?:money|cash)\b/.test(t)) return true;
+  if (/\bi'?m (?:broke|skint)\b|\bi am (?:broke|skint)\b/.test(t)) return true;
+  if (/\bout of (?:money|cash)\b/.test(t)) return true;
+  if (/\btoo expensive\b|\bcan'?t pay\b|\bcannot pay\b/.test(t)) return true;
+  // Group B — "don't want to spend / not buying" intent. Player is
+  // refusing the purchase even if they technically could.
+  if (/\bdon'?t want to (?:spend|pay|buy)\b/.test(t)) return true;
+  if (/\bnot (?:gonna|going to|gunna) (?:buy|spend|pay)\b/.test(t)) return true;
+  if (/\b(?:wallet|cash) (?:at home|in the car|isn'?t with me|left at home)\b/.test(t)) return true;
+  return false;
+}
+
+// Short reassurance lines the host plays before the auto-reroll fires.
+// Two pools so the gremlin keeps his voice. Kept brief — the rebuild
+// itself is the real reassurance; the line just acknowledges the player
+// was heard so the screen doesn't feel like it ate their message.
+const AFFORDABILITY_REPLIES_NORMAL = [
+  "no worries — swapping that out for something free.",
+  "got it. recasting the step, no money involved.",
+  "fair. the boss will accept a non-financial offering.",
+  "all good. rebuilding without the spend.",
+  "say no more. rerolling to a free-of-charge variant.",
+];
+const AFFORDABILITY_REPLIES_UNHINGED = [
+  "ugh fine. money-quests bore me anyway. recasting.",
+  "the gremlin acknowledges economic reality. swapping.",
+  "your wallet is a fiction. the gremlin respects this. rerolling.",
+  "money? in this house? recasting to vibes only.",
+];
+
 async function aiReply(promptText) {
   const r = state.run;
   if (r.chatBusy) return;
@@ -25431,6 +26432,41 @@ async function sendChat(userText, opts = {}) {
   if (!trimmed) return;
   if (r.chatBusy) return;
   pushChat('user', trimmed);
+
+  // Affordability complaint — fires BEFORE the AI call so we save a
+  // round-trip and the player gets an instant rebuild. This path is
+  // FREE (no coin cost, no rerollsUsed bump) — if the player says they
+  // can't pay, we trust them. Caps still apply via the 3-rebuilds-per-
+  // run ceiling (r.aiRebuildsUsed) so this can't be abused indefinitely.
+  if (detectAffordabilityComplaint(trimmed) && r.quest && Array.isArray(r.quest)) {
+    const used = r.aiRebuildsUsed || 0;
+    if (used >= 3) {
+      // Hit the cap. Be honest about why we can't help here.
+      pushChat('host', "i hear you — but i'm out of rebuilds for this run. you can mark this step as skipped from the menu if needed.");
+      renderChatSheet();
+      return;
+    }
+    const pool = r.unhinged ? AFFORDABILITY_REPLIES_UNHINGED : AFFORDABILITY_REPLIES_NORMAL;
+    const reply = pool[Math.floor(Math.random() * pool.length)];
+    pushChat('host', reply);
+    const idx = r.currentStep;
+    const oldTitle = (r.quest[idx] && r.quest[idx].title) || 'Step';
+    r.aiRebuildsUsed = used + 1;
+    try {
+      rerollSingleStep(idx);
+    } catch (e) {
+      console.error('[affordability-reroll] failed', e);
+      pushChat('tag', '▶ rebuild failed — try again or use the reroll button.');
+      renderChatSheet();
+      return;
+    }
+    const newTitle = (r.quest[idx] && r.quest[idx].title) || 'Step';
+    pushChat('tag', `💸 STEP ${idx + 1} REBUILT (free, affordability) · ${oldTitle.toUpperCase()} → ${newTitle.toUpperCase()} · ${r.aiRebuildsUsed}/3 used`);
+    try { sfx.success && sfx.success(); } catch {}
+    if (typeof render === 'function' && state.view === 'quest') render();
+    renderChatSheet();
+    return;
+  }
 
   // Auto-detect intent from natural language and trigger the action
   const intent = detectChatIntent(trimmed);
@@ -26931,6 +27967,13 @@ function seedRunFromRoomForRejoin(data) {
     if (Array.isArray(data.hostSetup.vibes)) state.run.vibes = data.hostSetup.vibes;
     if (typeof data.hostSetup.unhinged === 'boolean') state.run.unhinged = data.hostSetup.unhinged;
     if (Array.isArray(data.hostSetup.limits)) state.run.limits = data.hostSetup.limits;
+    if (Array.isArray(data.hostSetup.allowances)) state.run.allowances = data.hostSetup.allowances;
+    if (data.hostSetup.petContext && typeof data.hostSetup.petContext === 'object') {
+      state.run.petContext = data.hostSetup.petContext;
+    }
+    if (typeof data.hostSetup.theme === 'string' || data.hostSetup.theme === null) {
+      state.run.theme = data.hostSetup.theme;
+    }
     if (data.hostSetup.contextChoice) state.run.contextChoice = data.hostSetup.contextChoice;
     if (data.hostSetup.contextNote)   state.run.contextNote   = data.hostSetup.contextNote;
   }
@@ -27330,6 +28373,13 @@ function handleQmpRoomUpdate(data) {
         if (data.hostSetup.vibes) state.run.vibes = data.hostSetup.vibes;
         if (typeof data.hostSetup.unhinged === 'boolean') state.run.unhinged = data.hostSetup.unhinged;
         if (data.hostSetup.limits) state.run.limits = data.hostSetup.limits;
+        if (Array.isArray(data.hostSetup.allowances)) state.run.allowances = data.hostSetup.allowances;
+        if (data.hostSetup.petContext && typeof data.hostSetup.petContext === 'object') {
+          state.run.petContext = data.hostSetup.petContext;
+        }
+        if (typeof data.hostSetup.theme === 'string' || data.hostSetup.theme === null) {
+          state.run.theme = data.hostSetup.theme;
+        }
         if (data.hostSetup.difficulty && typeof DIFFICULTIES !== 'undefined') {
           const d = DIFFICULTIES.find(x => x.id === data.hostSetup.difficulty);
           if (d) state.run.difficulty = d;
@@ -28173,23 +29223,23 @@ const LOADING_HINTS_UNHINGED = [
 // with the largest `from` that's <= elapsed. Two pools — normal vs
 // unhinged — so the voice stays consistent. Kept short so they don't
 // fight the rotating hint card directly below.
+// First quip fires at 15s — most generations land in 5-12s and the
+// earlier 5s/10s messages were apologizing for a wait that hadn't
+// actually happened. 15s is the threshold where the player is
+// genuinely starting to wonder if something's stuck.
 const LOADING_WAITQUIPS_NORMAL = [
-  { from: 5,  text: 'the host is being picky. give it a sec.' },
-  { from: 10, text: 'still cooking — the right boss is in there.' },
-  { from: 15, text: 'ok, the host is being SPECIFIC tonight.' },
-  { from: 20, text: 'genuinely no idea what\'s taking so long. probably means it\'s a good one.' },
-  { from: 30, text: 'this is unusual. one more sec.' },
-  { from: 45, text: 'if it feels actually stuck, hit reroll from the menu.' },
-  { from: 60, text: '...the host has gone quiet. you can refresh if you want.' },
+  { from: 15, text: 'still cooking — the right boss is in there.' },
+  { from: 25, text: 'the host is being SPECIFIC tonight. give it a sec.' },
+  { from: 40, text: 'this is taking longer than usual. probably means it\'s a good one.' },
+  { from: 60, text: 'if it feels actually stuck, hit reroll from the menu.' },
+  { from: 90, text: '...the host has gone quiet. you can refresh if you want.' },
 ];
 const LOADING_WAITQUIPS_UNHINGED = [
-  { from: 5,  text: 'the gremlin is licking the dice. give it a sec.' },
-  { from: 10, text: 'something cursed was located. cooking with it.' },
   { from: 15, text: 'the gremlin is whispering to itself. respect the process.' },
-  { from: 20, text: 'the radiator is now involved. this took longer than expected.' },
-  { from: 30, text: 'a small offering had to be made. it has been.' },
-  { from: 45, text: 'if the gremlin is genuinely stuck, reroll from the menu.' },
-  { from: 60, text: '...gremlin gone. you can refresh.' },
+  { from: 25, text: 'something cursed was located. cooking with it.' },
+  { from: 40, text: 'the radiator is now involved. this took longer than expected.' },
+  { from: 60, text: 'if the gremlin is genuinely stuck, reroll from the menu.' },
+  { from: 90, text: '...gremlin gone. you can refresh.' },
 ];
 // Pick the highest threshold quip for the elapsed seconds. Returns null
 // when nothing's appropriate yet (i.e. under the first threshold).
@@ -28212,11 +29262,41 @@ function screenGenerating() {
   const ic = isUnhinged
     ? `<div class="gen-icon-laugh"><img src="img/unhinged_head.png" class="unhinged-bat-img" style="width:140px; height:140px;" alt=""></div>`
     : `<div class="gen-icon-laugh">${systemAv.html('smug', 'lg')}</div>`;
-  const title = isUnhinged ? 'CHANNELING THE GREMLIN' : 'SUMMONING BOSS';
-  const sub = isUnhinged
-    ? 'whispering instructions to the radiator hum'
-    : 'forging your quest from the void';
-  const hintPool = isUnhinged ? LOADING_HINTS_UNHINGED : LOADING_HINTS_NORMAL;
+  // Resolve the active story-mode theme first — both the title/subtitle
+  // block AND the hint pool block below need it. (Bug fix: this used to
+  // be declared further down, which crashed the loading screen with a
+  // ReferenceError whenever the title block ran.)
+  const activeTheme = (r && r.theme && typeof THEME_BY_ID !== 'undefined' && THEME_BY_ID[r.theme]) ? THEME_BY_ID[r.theme] : null;
+  // Theme-aware title/subtitle so the loading screen feels in-character
+  // before the quest even renders.
+  let title, sub;
+  if (isUnhinged) {
+    title = 'CHANNELING THE GREMLIN';
+    sub = 'whispering instructions to the radiator hum';
+  } else if (activeTheme) {
+    const themeTitles = {
+      zombie:    { t: 'SECURING PERIMETER',  s: 'cross-referencing the herd movement' },
+      scifi:     { t: 'ESTABLISHING UPLINK', s: 'classifying the anomaly signature' },
+      detective: { t: 'WORKING THE CASE',    s: 'cross-checking the evidence file' },
+      fantasy:   { t: 'CONSULTING THE TOME', s: 'translating the ancient runes' },
+      spy:       { t: 'BRIEFING IN PROGRESS',s: 'encoding the mission packet' },
+    };
+    const m = themeTitles[activeTheme.id] || { t: 'SUMMONING BOSS', s: 'forging your quest from the void' };
+    title = m.t; sub = m.s;
+  } else {
+    title = 'SUMMONING BOSS';
+    sub = 'forging your quest from the void';
+  }
+  // Theme-aware hint pool. When a story-mode theme is active, prefer
+  // its themed hints; fall back to the standard pool. Unhinged hints
+  // still win when both are active (gremlin + theme are mutually
+  // exclusive but defensive priority). activeTheme was already resolved
+  // above so the title block could use it — just reuse it here.
+  let hintPool;
+  if (isUnhinged) hintPool = LOADING_HINTS_UNHINGED;
+  else if (activeTheme && Array.isArray(activeTheme.loadingHints) && activeTheme.loadingHints.length) {
+    hintPool = activeTheme.loadingHints;
+  } else hintPool = LOADING_HINTS_NORMAL;
   const hint = hintPool[Math.floor(Math.random() * hintPool.length)];
   const quipPool = isUnhinged ? LOADING_WAITQUIPS_UNHINGED : LOADING_WAITQUIPS_NORMAL;
   // Party runs get a charging hero-crew banner above the boss-summon icon
@@ -28256,17 +29336,18 @@ function screenGenerating() {
     const elapsed = Math.floor((Date.now() - tickStart) / 1000);
     genTimerEl.textContent = `⏱ ${elapsed}s`;
     // Recolor the timer once we drift into "this is taking a while"
-    // territory. 20s = gold (curious), 45s = red (concerning).
-    genTimerEl.classList.toggle('warn', elapsed >= 20 && elapsed < 45);
-    genTimerEl.classList.toggle('late', elapsed >= 45);
+    // territory. Aligned with the wait-quip cadence: warn at the first
+    // quip threshold (15s), red at the "stuck?" threshold (60s).
+    genTimerEl.classList.toggle('warn', elapsed >= 15 && elapsed < 60);
+    genTimerEl.classList.toggle('late', elapsed >= 60);
     // Update the wait-quip line, mounting it on first non-empty pick.
     const pick = pickWaitQuip(quipPool, elapsed);
     if (pick && pick.text !== lastQuipText) {
       lastQuipText = pick.text;
       genWaitlineEl.textContent = pick.text;
       genWaitlineEl.classList.add('show');
-      genWaitlineEl.classList.toggle('warn', pick.from >= 20 && pick.from < 45);
-      genWaitlineEl.classList.toggle('late', pick.from >= 45);
+      genWaitlineEl.classList.toggle('warn', pick.from >= 25 && pick.from < 60);
+      genWaitlineEl.classList.toggle('late', pick.from >= 60);
     }
     setTimeout(tick, 1000);
   };
@@ -28635,9 +29716,20 @@ function render() {
   }
   // Toggle body-level unhinged class so CSS can retheme accent colors globally
   // during an unhinged run (boss / quest / wheel / reward / recap views).
-  const inUnhingedRun = !!(state.run && state.run.unhinged
-    && ['boss','roleReveal','quest','wheel','vote','accusation','reward','recap'].includes(state.view));
+  const inThemedViews = ['boss','roleReveal','quest','wheel','vote','accusation','reward','recap'].includes(state.view);
+  const inUnhingedRun = !!(state.run && state.run.unhinged && inThemedViews);
   document.body.classList.toggle('unhinged-run', inUnhingedRun);
+  // Story-mode theme body class — same set of views, but adds e.g.
+  // .theme-zombie / .theme-scifi so each theme can apply its palette
+  // filter and accent overrides without leaking into the home/setup UI.
+  // Clear any previous theme class first so switching themes mid-session
+  // doesn't stack them.
+  for (const cls of Array.from(document.body.classList)) {
+    if (cls.startsWith('theme-')) document.body.classList.remove(cls);
+  }
+  if (state.run && state.run.theme && inThemedViews) {
+    document.body.classList.add(`theme-${state.run.theme}`);
+  }
   // Music behavior by view:
   //   setup → ducks to 50% (still playing, just quieter)
   //   everywhere else → 'normal' volume context. Music plays continuously.
