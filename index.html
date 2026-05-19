@@ -1403,9 +1403,47 @@
   .step-card {
     background: var(--card); border: 3px solid #000;
     box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5), 4px 4px 0 #000;
-    border-radius: 0; padding: 18px; margin-bottom: 16px;
+    border-radius: 0; padding: 18px 18px 18px 24px; margin-bottom: 16px;
     position: relative;
   }
+  /* Per-step accent stripe — a colored bar pinned to the left edge of
+     each step card. Ramps cool → warm across the 5 steps to telegraph
+     escalation AND give every step a unique visual anchor so testers
+     can tell "I'm on step 3" at a glance without scanning the number.
+     A soft matching tint also washes the card background ~6% so the
+     cards don't all read as the same dark purple slab. */
+  .step-card::before {
+    content: '';
+    position: absolute;
+    left: -3px; top: -3px; bottom: -3px;
+    width: 6px;
+    background: var(--neon);
+    box-shadow: inset 0 0 0 1px #000;
+    pointer-events: none;
+    z-index: 1;
+  }
+  /* Step 1 → teal (chill opener) */
+  .step-card.step-accent-1::before { background: #4FE3D6; }
+  .step-card.step-accent-1 { background: linear-gradient(135deg, rgba(79, 227, 214, 0.08), rgba(20, 10, 35, 0)), var(--card); }
+  /* Step 2 → purple (getting interesting) */
+  .step-card.step-accent-2::before { background: #7B5CFF; }
+  .step-card.step-accent-2 { background: linear-gradient(135deg, rgba(123, 92, 255, 0.10), rgba(20, 10, 35, 0)), var(--card); }
+  /* Step 3 → hot pink (middle chaos) */
+  .step-card.step-accent-3::before { background: #FF3DA6; }
+  .step-card.step-accent-3 { background: linear-gradient(135deg, rgba(255, 61, 166, 0.10), rgba(20, 10, 35, 0)), var(--card); }
+  /* Step 4 → gold (climbing the ramp) */
+  .step-card.step-accent-4::before { background: #F5C242; }
+  .step-card.step-accent-4 { background: linear-gradient(135deg, rgba(245, 194, 66, 0.10), rgba(20, 10, 35, 0)), var(--card); }
+  /* Step 5 → danger red (final boss energy). If the step is also
+     TRUE FINAL we let the existing red glow rule win (defined below). */
+  .step-card.step-accent-5::before { background: #FF5764; }
+  .step-card.step-accent-5 { background: linear-gradient(135deg, rgba(255, 87, 100, 0.10), rgba(20, 10, 35, 0)), var(--card); }
+  /* TRUE FINAL already has its own red glow + gradient — don't double-
+     paint the stripe. Failed steps get a muted bar so they read as
+     "this one's dead" instead of "this one's the danger color". */
+  .step-card.true-final::before { display: none; }
+  .step-card.failed::before { background: #4a1a1a; box-shadow: inset 0 0 0 1px #000; }
+  .step-card.locked::before { opacity: 0.5; }
   .step-card.locked { opacity: 0.4; filter: grayscale(0.7); }
   /* Horizon Map reveal — a one-shot flash so the player can SEE that the
      item actually did something. Triggered by .horizon-flash being toggled
@@ -3014,32 +3052,41 @@
     border: 1px dashed rgba(255, 61, 166, 0.25);
     pointer-events: none;
   }
+  /* Profile hero layout: avatar on top, name+title+actions stacked
+     vertically below. This keeps the player's full handle visible at
+     every viewport width — at the old 2-column layout the SELECT
+     AVATAR button squeezed names down to "S..." on narrow phones. */
   .profile-hero-row {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 18px;
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    gap: 12px;
+    text-align: center;
   }
-  .profile-hero-row > div { min-width: 0; }
+  .profile-hero-row > div { min-width: 0; max-width: 100%; }
   .profile-hero-name {
     font-family: var(--px); font-size: 18px; color: var(--gold);
     margin-bottom: 4px; letter-spacing: 0.5px;
-    display: flex; align-items: center; gap: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
     text-shadow: 2px 2px 0 #000;
     overflow: hidden;
+    max-width: 100%;
   }
   .profile-hero-name > span:first-child {
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    min-width: 0; flex: 1;
+    min-width: 0; max-width: 100%;
   }
   .profile-hero-title {
     font-family: var(--term); font-size: 14px; color: var(--neon);
     text-transform: uppercase; letter-spacing: 1.5px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 100%;
   }
   .profile-hero-actions {
-    margin-top: 12px;
+    margin-top: 4px;
     display: flex; gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
   }
   .profile-hero-actions .btn {
     max-width: 100%;
@@ -7472,6 +7519,31 @@
     75%  { content: '...'; }
     100% { content: ''; }
   }
+  /* Elapsed-time counter on the generating screen. Tiny, monospace,
+     so the player can see the timer literally ticking — proves the
+     screen isn't frozen even if generation takes 30+ seconds. */
+  .gen-timer {
+    margin-top: 14px;
+    font-family: var(--px); font-size: 10px;
+    color: var(--ink-dim); letter-spacing: 2px;
+    opacity: 0.85;
+  }
+  .gen-timer.warn { color: var(--gold); }
+  .gen-timer.late { color: var(--danger); }
+  /* Escalating wait-quip line. Hidden under 5s (no need to apologize
+     for a fast load) and only mounts once we cross the 5s threshold. */
+  .gen-waitline {
+    margin-top: 10px; padding: 8px 14px;
+    font-family: var(--term); font-size: 15px;
+    color: var(--neon);
+    max-width: min(420px, 84vw);
+    line-height: 1.4; text-align: center;
+    opacity: 0;
+    transition: opacity 0.35s ease-out;
+  }
+  .gen-waitline.show { opacity: 1; }
+  .gen-waitline.warn { color: var(--gold); }
+  .gen-waitline.late { color: var(--danger); }
   .gen-bar {
     margin-top: 30px;
     height: 8px; width: min(280px, 70vw);
@@ -8874,7 +8946,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.18.232';
+const BUILD_VERSION = '2026.05.19.235';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15334,7 +15406,7 @@ function renderStep(s, i) {
   }
   const hasHint = !!(r.hintsUsed && r.hintsUsed[i]);
   return `
-    <div class="step-card ${done ? 'done' : ''} ${locked ? 'locked' : ''} ${trueFinalClass} ${failedClass}" data-step="${i}">
+    <div class="step-card step-accent-${Math.min(5, i + 1)} ${done ? 'done' : ''} ${locked ? 'locked' : ''} ${trueFinalClass} ${failedClass}" data-step="${i}">
       <div class="step-tag">Step ${i+1} · ${s.type}${failedClass ? ' · <img src="img/ui_timeout.png?v=2" class="ui-ic-sm"/>FAILED' : ''}${showStepTimer ? `<span class="step-timer" id="stepTimer-${i}"><img src="img/ui_waiting.png?v=2" class="ui-ic-sm"/>${s.stepTimerSec}s</span>` : ''}${hasHint ? `<span class="step-hint-icon" data-replay-hint="${i}" title="Replay hint"><img src="img/ui_bulb.png?v=2" class="ui-ic-sm"/></span>` : ''}</div>
       <h3>${s.title}</h3>
       ${active || done ? `
@@ -20339,6 +20411,49 @@ function applyWheelOutcome(o) {
 }
 
 /* ---------- Settings modal ---------- */
+// Shared name-change pipeline. Both the settings rename modal and the
+// first-run onboarding name picker call this so the "sarah" easter egg
+// fires either way. Returns true if the name was applied (caller can
+// then close UI / re-render); false if input was empty.
+//   next  — user-typed string, will be trimmed + clamped to 16 chars
+//   opts.silent — skip the success sfx (useful if the caller wants to
+//                 play its own sound or chain into a render)
+function applyNameChange(next, opts = {}) {
+  const trimmed = (next || '').trim();
+  if (!trimmed) { try { sfx.error && sfx.error(); } catch {} return false; }
+  const wasSarah = !!profile.sarahMode;
+  profile.name = trimmed.slice(0, 16);
+  const isSarah = /^sarah$/i.test(trimmed);
+  // ── Easter egg: "sarah" (any case) unlocks Ripley Mode ───────────
+  if (isSarah && !wasSarah) {
+    profile.sarahMode = true;
+    if (!Array.isArray(profile.titles)) profile.titles = [];
+    if (!profile.titles.includes("Ripley's Chosen")) profile.titles.push("Ripley's Chosen");
+    if (!Array.isArray(profile.ownedFrames)) profile.ownedFrames = ['none'];
+    if (!profile.ownedFrames.includes('vetshalo')) profile.ownedFrames.push('vetshalo');
+    profile.activeTitle = "Ripley's Chosen";
+    profile.activeFrame = 'vetshalo';
+    profile.chibiAvatar = '🩺';
+    setTimeout(() => {
+      if (typeof toast === 'function') toast('🐈 a vet tech approaches. Ripley is watching.');
+    }, 200);
+  } else if (!isSarah && wasSarah) {
+    profile.sarahMode = false;
+    if (Array.isArray(profile.ownedFrames)) {
+      profile.ownedFrames = profile.ownedFrames.filter(id => id !== 'vetshalo');
+    }
+    if (profile.activeFrame === 'vetshalo') profile.activeFrame = 'none';
+    if (profile.chibiAvatar === '🩺') profile.chibiAvatar = '🧙';
+    if (profile.activeTitle === "Ripley's Chosen") profile.activeTitle = 'Newcomer';
+    setTimeout(() => {
+      if (typeof toast === 'function') toast('🐾 Ripley\'s gear locked away. Change back to sarah to retrieve.');
+    }, 200);
+  }
+  saveProfile();
+  if (!opts.silent) { try { sfx.success && sfx.success(); } catch {} }
+  return true;
+}
+
 // Themed rename modal — pixel-bordered card with a neon-green input
 // frame, randomize-button, and save / cancel actions. Replaces the
 // stock prompt() so the rename feel matches the cabinet aesthetic.
@@ -20373,42 +20488,8 @@ function openNameChangeModal() {
   setTimeout(() => { input.focus(); input.select(); }, 30);
   const close = () => wrap.remove();
   const save = () => {
-    const next = (input.value || '').trim();
-    if (!next) { sfx.error(); return; }
-    const wasSarah = !!profile.sarahMode;
-    profile.name = next.slice(0, 16);
-    const isSarah = /^sarah$/i.test(next);
-    // ── Easter egg: "sarah" unlocks Ripley Mode (gated by name) ───────
-    if (isSarah && !wasSarah) {
-      profile.sarahMode = true;
-      if (!Array.isArray(profile.titles)) profile.titles = [];
-      if (!profile.titles.includes("Ripley's Chosen")) profile.titles.push("Ripley's Chosen");
-      if (!Array.isArray(profile.ownedFrames)) profile.ownedFrames = ['none'];
-      if (!profile.ownedFrames.includes('vetshalo')) profile.ownedFrames.push('vetshalo');
-      // Auto-equip the easter-egg cosmetics — title + frame + secret avatar.
-      profile.activeTitle = "Ripley's Chosen";
-      profile.activeFrame = 'vetshalo';
-      profile.chibiAvatar = '🩺';
-      setTimeout(() => {
-        if (typeof toast === 'function') toast('🐈 a vet tech approaches. Ripley is watching.');
-      }, 200);
-    } else if (!isSarah && wasSarah) {
-      // Name no longer "sarah" — lock the vet-only goodies back up.
-      profile.sarahMode = false;
-      if (Array.isArray(profile.ownedFrames)) {
-        profile.ownedFrames = profile.ownedFrames.filter(id => id !== 'vetshalo');
-      }
-      if (profile.activeFrame === 'vetshalo') profile.activeFrame = 'none';
-      if (profile.chibiAvatar === '🩺') profile.chibiAvatar = '🧙';
-      // Title stays granted in profile.titles (it's been earned — user can
-      // re-equip it if they switch back to "sarah"). But unequip if active.
-      if (profile.activeTitle === "Ripley's Chosen") profile.activeTitle = 'Newcomer';
-      setTimeout(() => {
-        if (typeof toast === 'function') toast('🐾 Ripley\'s gear locked away. Change back to sarah to retrieve.');
-      }, 200);
-    }
-    saveProfile();
-    sfx.success();
+    const ok = applyNameChange(input.value);
+    if (!ok) return;
     close();
     render();
   };
@@ -26072,12 +26153,12 @@ function maybeShowOnboarding() {
       // forcing the player to manually clear it.
       setTimeout(() => { input.focus(); input.select(); }, 50);
       nextBtn.onclick = () => {
-        const next = (input.value || '').trim().slice(0, 16);
-        if (!next) { try { sfx.error && sfx.error(); } catch {} return; }
-        profile.name = next;
+        // Route through the shared name-change pipeline so the "sarah"
+        // (any case) easter egg fires from the onboarding picker too.
+        const ok = applyNameChange(input.value);
+        if (!ok) return;
         profile.hasChosenName = true;
         saveProfile();
-        try { sfx.success && sfx.success(); } catch {}
         close();
         // Re-render the home screen so the new name shows up in the
         // header strip without requiring a page reload.
@@ -28087,6 +28168,39 @@ const LOADING_HINTS_UNHINGED = [
   '🦇 the gremlin recommends "vibes." the gremlin is not specific.',
 ];
 
+// Escalating wait-quips for the generating screen. Each entry has a
+// `from` (seconds elapsed) and the quip text. Picker chooses the entry
+// with the largest `from` that's <= elapsed. Two pools — normal vs
+// unhinged — so the voice stays consistent. Kept short so they don't
+// fight the rotating hint card directly below.
+const LOADING_WAITQUIPS_NORMAL = [
+  { from: 5,  text: 'the host is being picky. give it a sec.' },
+  { from: 10, text: 'still cooking — the right boss is in there.' },
+  { from: 15, text: 'ok, the host is being SPECIFIC tonight.' },
+  { from: 20, text: 'genuinely no idea what\'s taking so long. probably means it\'s a good one.' },
+  { from: 30, text: 'this is unusual. one more sec.' },
+  { from: 45, text: 'if it feels actually stuck, hit reroll from the menu.' },
+  { from: 60, text: '...the host has gone quiet. you can refresh if you want.' },
+];
+const LOADING_WAITQUIPS_UNHINGED = [
+  { from: 5,  text: 'the gremlin is licking the dice. give it a sec.' },
+  { from: 10, text: 'something cursed was located. cooking with it.' },
+  { from: 15, text: 'the gremlin is whispering to itself. respect the process.' },
+  { from: 20, text: 'the radiator is now involved. this took longer than expected.' },
+  { from: 30, text: 'a small offering had to be made. it has been.' },
+  { from: 45, text: 'if the gremlin is genuinely stuck, reroll from the menu.' },
+  { from: 60, text: '...gremlin gone. you can refresh.' },
+];
+// Pick the highest threshold quip for the elapsed seconds. Returns null
+// when nothing's appropriate yet (i.e. under the first threshold).
+function pickWaitQuip(pool, elapsedSec) {
+  let pick = null;
+  for (const q of pool) {
+    if (elapsedSec >= q.from) pick = q; else break;
+  }
+  return pick;
+}
+
 function screenGenerating() {
   const r = state.run;
   // For guests, our local r.unhinged isn't synced from host until status flips
@@ -28104,6 +28218,7 @@ function screenGenerating() {
     : 'forging your quest from the void';
   const hintPool = isUnhinged ? LOADING_HINTS_UNHINGED : LOADING_HINTS_NORMAL;
   const hint = hintPool[Math.floor(Math.random() * hintPool.length)];
+  const quipPool = isUnhinged ? LOADING_WAITQUIPS_UNHINGED : LOADING_WAITQUIPS_NORMAL;
   // Party runs get a charging hero-crew banner above the boss-summon icon
   // so the loading screen feels like the team is sprinting toward the boss.
   const isParty = !!(r?.qmpRoomCode || r?.mode === 'party');
@@ -28118,10 +28233,44 @@ function screenGenerating() {
       <div class="gen-title">${title}</div>
       <div class="gen-status">${sub}<span class="gen-dots"></span></div>
       <div class="gen-bar"></div>
+      <div class="gen-timer" id="genTimer">⏱ 0s</div>
+      <div class="gen-waitline" id="genWaitline"></div>
       <div class="gen-hint"><img src="img/${isUnhinged ? 'unhinged_head' : 'ui_hint'}.png" class="gen-hint-ic" alt=""/> <span class="gen-hint-text">${escapeHtml(hint.replace(/^[💡🦇]\s*/u, ''))}</span></div>
     </div>
   `;
   bindHeader();
+  // ── Elapsed-time tick + escalating wait-quip loop ──────────────────
+  // Mount-time anchor for the elapsed counter. Self-clears when the
+  // gen-screen element leaves the DOM, so a successful generation
+  // (which re-renders into the run screen) automatically stops the tick.
+  const genTimerEl = document.getElementById('genTimer');
+  const genWaitlineEl = document.getElementById('genWaitline');
+  const tickStart = Date.now();
+  // Track last shown quip so we don't churn the DOM every second when
+  // the elapsed time hasn't crossed a new threshold yet.
+  let lastQuipText = '';
+  const tick = () => {
+    // If the gen-screen unmounted (run started, error toast, navigation
+    // away, etc.), stop the loop — nothing to update.
+    if (!document.body.contains(genTimerEl)) return;
+    const elapsed = Math.floor((Date.now() - tickStart) / 1000);
+    genTimerEl.textContent = `⏱ ${elapsed}s`;
+    // Recolor the timer once we drift into "this is taking a while"
+    // territory. 20s = gold (curious), 45s = red (concerning).
+    genTimerEl.classList.toggle('warn', elapsed >= 20 && elapsed < 45);
+    genTimerEl.classList.toggle('late', elapsed >= 45);
+    // Update the wait-quip line, mounting it on first non-empty pick.
+    const pick = pickWaitQuip(quipPool, elapsed);
+    if (pick && pick.text !== lastQuipText) {
+      lastQuipText = pick.text;
+      genWaitlineEl.textContent = pick.text;
+      genWaitlineEl.classList.add('show');
+      genWaitlineEl.classList.toggle('warn', pick.from >= 20 && pick.from < 45);
+      genWaitlineEl.classList.toggle('late', pick.from >= 45);
+    }
+    setTimeout(tick, 1000);
+  };
+  setTimeout(tick, 1000);
   // Kick the laughing animation while the boss + quest are being
   // summoned. System AI in normal runs, gremlin-bat in unhinged runs.
   // Party runs skip this — they show the charging hero-crew banner instead.
