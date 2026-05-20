@@ -9397,7 +9397,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.260';
+const BUILD_VERSION = '2026.05.20.261';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -22481,7 +22481,7 @@ ${ARC_SHAPES.map(a => '- ' + a).join('\n')}
 STEP ARCHETYPES (pick 5, ALL DIFFERENT, in order):
 ${STEP_ARCHETYPES.map(a => '- ' + a).join('\n')}
 
-ANTI-REPETITION (STRICT): the user message lists the player's recent boss archetypes and recent step-archetype combos. DO NOT pick a recent boss archetype. DO NOT pick a step-archetype combo that overlaps with recent combos on more than 2 archetypes.
+ANTI-REPETITION (STRICT): the user message lists the player's recent boss archetypes, recent step-archetype combos, recent OPENING archetypes, and overused archetypes. DO NOT pick a recent boss archetype. DO NOT pick a step-archetype combo that overlaps with recent combos on more than 2 archetypes. Step 1's archetype MUST differ from EVERY recent opening archetype — never default to the same opener run after run. Pick at most ONE archetype from the overused list (ideally none).
 
 Pick fresh. Pick on-vibe. Stop talking. Output JSON.`;
 
@@ -22497,6 +22497,13 @@ async function aiGenerateArchitecture(r) {
   const recentBossArchetypes = Array.isArray(profile.recentBossArchetypes) ? profile.recentBossArchetypes.slice(-12) : [];
   const recentCombos = Array.isArray(profile.recentStepArchetypeCombos) ? profile.recentStepArchetypeCombos.slice(-6) : [];
   const recentArcShapes = Array.isArray(profile.recentArcShapes) ? profile.recentArcShapes.slice(-5) : [];
+  // Step-1 (opening) archetypes from recent combos, plus archetypes used
+  // in 2+ recent quests — both feed the prompt so the architect rotates
+  // the opener and stops leaning on the same few archetypes every run.
+  const recentOpeners = recentCombos.map(c => Array.isArray(c) ? c[0] : null).filter(Boolean);
+  const _archFreq = {};
+  recentCombos.forEach(c => (Array.isArray(c) ? c : []).forEach(a => { _archFreq[a] = (_archFreq[a] || 0) + 1; }));
+  const overusedArchetypes = Object.keys(_archFreq).filter(a => _archFreq[a] >= 2);
 
   const _playerName = (profile && typeof profile.name === 'string' && profile.name.trim()) || 'Player';
   // Story-mode theme. When active, roll random compatible vibes (if the
@@ -22523,6 +22530,8 @@ PLAYER NAME: ${_playerName}${r.mode === 'party' ? ' (host)' : ''}
 RECENT (AVOID THESE — STRICT):
 - Recent boss archetypes: ${recentBossArchetypes.length ? recentBossArchetypes.join(', ') : 'none'}
 - Recent step-archetype combos: ${recentCombos.length ? recentCombos.map(c => '[' + c.join(',') + ']').join(' | ') : 'none'}
+- Recent OPENING archetypes (step 1): ${recentOpeners.length ? recentOpeners.join(', ') : 'none'} → step 1 MUST use an archetype NOT in this list — rotate the opener every run.
+- Overused recently — pick AT MOST ONE of these, ideally zero: ${overusedArchetypes.length ? overusedArchetypes.join(', ') : 'none'}
 - Recent arc shapes: ${recentArcShapes.length ? recentArcShapes.join(', ') : 'none'}
   → If SPIRAL appears in recent arcs, you MUST NOT pick SPIRAL. Pick a DIFFERENT arc shape. Each arc shape may appear at MOST 1 in 3 quests; rotate through LINEAR/LOOP/PARALLEL/INVERSION/DOUBLE-ECHO to keep variety.
 
@@ -23537,6 +23546,12 @@ Write a fun, surprising quest. Trust your dungeon-master instincts.`;
   // a single noun from the instruction.
   const recentBossNames = Array.isArray(profile.recentBossNames) ? profile.recentBossNames.slice(-15) : [];
   const recentStepSubjects = Array.isArray(profile.recentStepSubjects) ? profile.recentStepSubjects.slice(-25) : [];
+  // Leading verb of each recent step title — a concrete verb-level ban.
+  // Titles paraphrase ("bury the marker" vs "bury the log"), but
+  // "do not open a step with the verb BURY" is unambiguous.
+  const recentStepVerbs = [...new Set(recentStepSubjects
+    .map(t => (String(t).trim().split(/\s+/)[0] || '').toLowerCase())
+    .filter(w => w.length > 2))];
   const userMsg = `Generate ONE QuestIRL run for a ${r.mode === 'party' ? `party of ${playerCount} players` : 'solo player'}. Apply the layers in this exact order: GAMEMODE → LOCATION → VIBES → HARD LIMITS → DIFFICULTY. Re-read the QUEST CONCEPT PRECEDENCE section.
 
 VARIETY SEED: ${_seed}. Use this seed to pick a DIFFERENT boss concept, a DIFFERENT story-arc framing, and DIFFERENT step verbs than you would for seed (${_seed} - 1). Players cycle through difficulties with the same vibes and the same location; if two runs feel like rephrased copies of each other the player feels cheated. Variety is mandatory.${recentBossNames.length || recentStepSubjects.length ? `
@@ -23549,7 +23564,8 @@ The player has already played the runs below recently. Their boss names and thei
   · if "gather the forgotten three" is in the list → DO NOT write "gather the warm things", "collect the warm trio", "line up three objects", "find and arrange N items", or anything in the "collect N objects and photograph the lineup" family. The archetype is "lineup of N items" — banned.
   · if "interrogate the oldest thing" is in the list → DO NOT write "narrate the numbers", "find the earliest date", "speak to the oldest item", "address the antique", or anything in the "speak to/photograph the oldest item" family. The archetype is "oldest-item ritual" — banned.
   · if "walk the perimeter of forgetting" is in the list → DO NOT write any "walk N rooms counting items" step. The archetype is "room-walk inventory" — banned.
-  When in doubt, ask yourself: if I described both steps to a friend in one sentence each, would the sentences be similar? If yes, you have repeated. Rewrite.` : ''}
+  When in doubt, ask yourself: if I described both steps to a friend in one sentence each, would the sentences be similar? If yes, you have repeated. Rewrite.
+- RECENT STEP-OPENING VERBS — these have been used too much across recent runs. Do NOT begin any step title with these verbs: ${recentStepVerbs.join(', ') || 'none'}. Reach for a verb that is NOT in this list.` : ''}
 If you can't think of a different archetype within the location's possibility space, you are not trying hard enough. Every location has 20+ distinct archetype families (object rituals, movement patterns, sensory tasks, social moments, environmental witnessing, posed performances, etc). Reach further.` : ''}
 
 OBJECTIVE FOR THIS TIER (${r.difficulty.name}): ${_objectiveBrief} Read the DIFFICULTY × OBJECTIVE DIFFERENTIATION section. Do NOT borrow verbs or arc templates from a different tier. If the player just played this same vibe/location combo at a different difficulty, the two runs must look STRUCTURALLY different (different boss kind, different first-step verb family, different arc shape), not just different intensity.${_highTier && !r.unhinged && r.vibes.length ? `
