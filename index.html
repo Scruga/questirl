@@ -7939,6 +7939,14 @@
     0%, 100% { transform: translateY(0); }
     50%      { transform: translateY(-14px); }
   }
+  /* Animated per-style/story loading character — a 4-frame sprite loop
+     (load_<key>_0..3.png) frame-swapped in JS. */
+  .gen-anim-img {
+    height: 150px; width: auto;
+    image-rendering: pixelated;
+    display: block; margin: 0 auto 22px;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,0.55));
+  }
   .gen-title {
     font-family: var(--px); font-size: 16px;
     color: var(--neon); letter-spacing: 3px;
@@ -9397,7 +9405,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.266';
+const BUILD_VERSION = '2026.05.20.267';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -29703,6 +29711,19 @@ function pickWaitQuip(pool, elapsedSec) {
   return pick;
 }
 
+// Per-style/story animated loading character. Each ready key ships a
+// 4-frame loop as load_<key>_0..3.png; keys not yet in this set fall
+// back to the host-face loader. Add a key here as its frames land.
+const LOADING_ANIM_READY = new Set(['zombie']);
+function loadingAnimKey(r) {
+  if (!r) return null;
+  if (r.theme) return LOADING_ANIM_READY.has(r.theme) ? r.theme : null;
+  if (r.unhinged) return LOADING_ANIM_READY.has('unhinged') ? 'unhinged' : null;
+  const p = (typeof matchedStylePreset === 'function') ? matchedStylePreset() : null;
+  if (p && p.indexOf('story:') !== 0 && LOADING_ANIM_READY.has(p)) return p;
+  return null;
+}
+
 function screenGenerating() {
   const r = state.run;
   // For guests, our local r.unhinged isn't synced from host until status flips
@@ -29711,9 +29732,14 @@ function screenGenerating() {
   // Non-unhinged path uses the laughing System AI face (kicks off via
   // .gen-icon-laugh, mounted below). Unhinged keeps the bat emoji
   // until the bat animation rig is ready.
-  const ic = isUnhinged
-    ? `<div class="gen-icon-laugh"><img src="img/unhinged_head.png" class="unhinged-bat-img" style="width:140px; height:140px;" alt=""></div>`
-    : `<div class="gen-icon-laugh">${systemAv.html('smug', 'lg')}</div>`;
+  // Animated loading character when the run's style/story has shipped
+  // frames; otherwise the existing laughing host face.
+  const animKey = loadingAnimKey(r);
+  const ic = animKey
+    ? `<img id="genAnimImg" class="gen-anim-img" src="img/load_${animKey}_0.png" alt="">`
+    : isUnhinged
+      ? `<div class="gen-icon-laugh"><img src="img/unhinged_head.png" class="unhinged-bat-img" style="width:140px; height:140px;" alt=""></div>`
+      : `<div class="gen-icon-laugh">${systemAv.html('smug', 'lg')}</div>`;
   // Resolve the active story-mode theme first — both the title/subtitle
   // block AND the hint pool block below need it. (Bug fix: this used to
   // be declared further down, which crashed the loading screen with a
@@ -29761,7 +29787,7 @@ function screenGenerating() {
     ${header()}
     <div class="screen gen-screen">
       ${charge}
-      ${isParty ? '' : `<div class="gen-icon">${ic}</div>`}
+      ${isParty ? '' : (animKey ? ic : `<div class="gen-icon">${ic}</div>`)}
       <div class="gen-title">${title}</div>
       <div class="gen-status">${sub}<span class="gen-dots"></span></div>
       <div class="gen-bar"></div>
@@ -29808,7 +29834,20 @@ function screenGenerating() {
   // summoned. System AI in normal runs, gremlin-bat in unhinged runs.
   // Party runs skip this — they show the charging hero-crew banner instead.
   if (!isParty) {
-    if (isUnhinged) {
+    if (animKey) {
+      // 4-frame walk/idle/action loop for the style/story character.
+      const animImg = document.getElementById('genAnimImg');
+      if (animImg) {
+        let f = 0;
+        const animTick = () => {
+          if (!document.body.contains(animImg)) return;
+          f = (f + 1) % 4;
+          animImg.src = `img/load_${animKey}_${f}.png`;
+          setTimeout(animTick, 180);
+        };
+        setTimeout(animTick, 180);
+      }
+    } else if (isUnhinged) {
       const bat = document.querySelector('.gen-icon .unhinged-bat-img');
       if (bat) unhingedAv.laughAt(bat);
     } else {
