@@ -9397,7 +9397,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.257';
+const BUILD_VERSION = '2026.05.20.258';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -9825,7 +9825,7 @@ const THEMES = [
       'THE INFECTED CASHIER (still working their shift; defeated by closing time)',
       'THE BARRICADE (refuses entry; defeated by negotiation)',
     ],
-    stepFraming: 'Each step is a survival action — scavenge, signal, barricade, observe, escape. Reframe ordinary objects as survival tools (a chair = barricade, a bottle = signal flare, a couch = bunker, a lamp = beacon).',
+    stepFraming: 'Each step is a DIFFERENT survival action — deliberately vary them across the quest: scavenge, signal, decontaminate, quarantine, distract the herd, rig a trap, tend a survivor, trace the source, broadcast, scout ahead, barricade, escape. CRITICAL: never reuse the same survival verb twice in one quest — in particular, AT MOST ONE step may be a "barricade" step. Reframe ordinary objects as survival tools (a chair = barricade, a bottle = signal flare, a couch = bunker, a lamp = beacon).',
     hostVoice: 'Apocalypse survivor — practical, urgent but composed. Lowercase. Survivor slang ("the herd", "the bite", "go loud", "stay quiet", "comms down"). Occasional grim humor.',
     keywords: ['zombie', 'infect', 'outbreak', 'herd', 'survivor', 'bite', 'barricade', 'scaveng', 'apocalyp', 'undead', 'turn', 'horde', 'patient zero'],
     loadingHints: [
@@ -15520,27 +15520,41 @@ async function generateRunInner() {
       // keep the better of the two attempts (fewer violations wins).
       // Logs the result so a dev can see what the validator caught.
       let validation = (ai && ai.boss && ai.quest) ? validateGeneratedQuest(ai, r) : { pass: false, violations: ['malformed output'] };
-      if (ai && ai.boss && ai.quest && !validation.pass) {
-        console.warn('[QuestIRL validator] Attempt 1 failed:', validation.violations);
+      // Hard violations = limit breaches / safety issues that must NOT
+      // ship (a face-shot step when the player banned face shots, a real
+      // purchase, a text-shot). Soft = repetition / style. We always
+      // retry once on any failure; a SECOND retry fires only when a hard
+      // violation survives the first — so the extra API call is spent
+      // only when something genuinely shouldn't reach the player.
+      const HARD_VIOLATION_RE = /face-shot|real-purchase|text-shot/i;
+      const hasHardViolation = (v) =>
+        Array.isArray(v.violations) && v.violations.some(s => HARD_VIOLATION_RE.test(String(s)));
+      let _retries = 0;
+      while (ai && ai.boss && ai.quest && !validation.pass && _retries < 2) {
+        // Stop after the first retry unless a hard violation remains.
+        if (_retries === 1 && !hasHardViolation(validation)) break;
+        console.warn(`[QuestIRL validator] failed (retry ${_retries + 1}):`, validation.violations);
         try {
           const retryAi = await aiGenerateRun(r, { violations: validation.violations });
           if (retryAi && retryAi.boss && retryAi.quest) {
-            const retryValidation = validateGeneratedQuest(retryAi, r);
-            console.log('[QuestIRL validator] Attempt 2:', retryValidation.pass ? 'PASS' : `FAIL (${retryValidation.violations.length} violations)`);
+            const rv = validateGeneratedQuest(retryAi, r);
+            console.log(`[QuestIRL validator] retry ${_retries + 1}:`, rv.pass ? 'PASS' : `FAIL (${rv.violations.length} violations)`);
             // Keep whichever attempt has fewer violations.
-            if (retryValidation.violations.length < validation.violations.length) {
+            if (rv.violations.length < validation.violations.length) {
               ai = retryAi;
-              validation = retryValidation;
+              validation = rv;
             }
           }
         } catch (retryErr) {
-          console.warn('[QuestIRL validator] Retry call failed:', retryErr);
+          console.warn('[QuestIRL validator] retry call failed:', retryErr);
+          break;
         }
-        if (!validation.pass) {
-          console.warn('[QuestIRL validator] Shipping anyway with', validation.violations.length, 'remaining violations:', validation.violations);
-        }
+        _retries++;
+      }
+      if (ai && ai.boss && ai.quest && !validation.pass) {
+        console.warn('[QuestIRL validator] Shipping with', validation.violations.length, 'remaining violations:', validation.violations);
       } else if (validation.pass) {
-        console.log('[QuestIRL validator] Attempt 1 PASS');
+        console.log('[QuestIRL validator] PASS');
       }
       if (ai && ai.boss && ai.quest && aiQuestLooksReasonable(ai)) {
         r.boss = ai.boss;
@@ -23690,7 +23704,7 @@ async function aiJudgePhoto(dataUrl, step) {
   // before/after / no multi-shot), creative interpretations pass, only
   // fail when the photo is clearly unrelated. The judge keeps the run
   // moving — false fails frustrate players more than false passes.
-  const JUDGE_RULES = ` HARD RULES: (1) The player submits exactly ONE photo per step. NEVER ask for "before and after", "two photos", "a video", or anything multi-shot — that's not possible in the UI. (2) The step's "examples" are SUGGESTIONS, not requirements. If the player did something different that still hits the spirit of the step's instruction, PASS. (3) Lean toward PASS. Only fail when the photo is clearly unrelated to the step instruction — not just when it didn't match an example. (4) Your comment must NEVER mention before/after, multiple photos, video, retakes, or any feature that doesn't exist. (5) Keep it under 140 chars. (6) UNVERIFIABLE-SEQUENCE LENIENCE: if the step asks for a SEQUENCE of actions (touch N things, walk to N zones, say N words to N objects) but the player can only submit ONE photo, you CANNOT verify the prior N-1 actions. In that case, PASS the photo if it shows the player was plausibly AT THE FINAL STEP of the sequence — don't fail with "no evidence you did the previous actions." That's a quest-gen failure, not a player failure. Be generous when the step's verification ask exceeds what one photo can show. (7) BACKGROUND IS NEVER A FAILURE: judge ONLY the photo's subject against the instruction. Never fail because of background clutter, mess, a desk, furniture, or other objects around the subject. If the thing the step asked for is clearly in frame, the surrounding environment is irrelevant — do not mention it. (8) FRAMING LENIENCE: do not be pedantic about exact angle, distance, or precise positioning (e.g. whether the player is exactly "in" a doorway or standing in an exact spot). If the photo plausibly shows the player did the thing, PASS — never fail over imperfect framing or the player not being perfectly positioned. (9) TONE ON FAIL: when you FAIL a photo, do NOT mock, insult, or be sarcastic. The comment must be a brief, friendly, SPECIFIC hint about what is missing or how to reshoot. Snark is for PASSES and obvious joke-flops only — being cruel on a borderline fail makes players quit.`;
+  const JUDGE_RULES = ` HARD RULES: (1) The player submits exactly ONE photo per step. NEVER ask for "before and after", "two photos", "a video", or anything multi-shot — that's not possible in the UI. (2) The step's "examples" are SUGGESTIONS, not requirements. If the player did something different that still hits the spirit of the step's instruction, PASS. (3) Lean toward PASS. Only fail when the photo is clearly unrelated to the step instruction — not just when it didn't match an example. (4) Your comment must NEVER mention before/after, multiple photos, video, retakes, or any feature that doesn't exist. (5) Keep it under 140 chars. (6) UNVERIFIABLE-SEQUENCE LENIENCE: if the step asks for a SEQUENCE of actions (touch N things, walk to N zones, say N words to N objects) but the player can only submit ONE photo, you CANNOT verify the prior N-1 actions. In that case, PASS the photo if it shows the player was plausibly AT THE FINAL STEP of the sequence — don't fail with "no evidence you did the previous actions." That's a quest-gen failure, not a player failure. Be generous when the step's verification ask exceeds what one photo can show. (7) BACKGROUND IS NEVER A FAILURE: judge ONLY the photo's subject against the instruction. Never fail because of background clutter, mess, a desk, furniture, or other objects around the subject. If the thing the step asked for is clearly in frame, the surrounding environment is irrelevant — do not mention it. (8) FRAMING LENIENCE: do not be pedantic about exact angle, distance, or precise positioning (e.g. whether the player is exactly "in" a doorway or standing in an exact spot). If the photo plausibly shows the player did the thing, PASS — never fail over imperfect framing or the player not being perfectly positioned. (9) TONE ON FAIL: when you FAIL a photo, do NOT mock, insult, or be sarcastic. The comment must be a brief, friendly, SPECIFIC hint about what is missing or how to reshoot. Snark is for PASSES and obvious joke-flops only — being cruel on a borderline fail makes players quit. (10) "AND ALSO" HONOR-SYSTEM BITS: a step instruction may carry a secondary clause after "AND ALSO:". If that clause asks for something a single photo CANNOT show — silence, counting out loud, narrating, whispering, holding a pose for a timed count, push-ups owed at recap, or anything about what happens before/after the shutter — treat it as honor-system: do NOT fail the photo for it, and never mention it in your comment. Only enforce an "AND ALSO" clause when it describes something VISIBLE in the frame (a pose, an object in shot, a facial expression, a framing choice).`;
   // Pull photo-verifiable active twists onto the judge's checklist. Any
   // twist flagged photoVisible:false (Narrator, Phone Swap, Vow of
   // Silence) is audio/behavior-only — honor-system, not enforced here.
