@@ -270,6 +270,21 @@
     position: relative; overflow: hidden;
     text-align: center;
   }
+  /* hero-slim (build 250): a compact logo strip so the Party/Solo
+     play cards sit at the top of the screen, not below the fold. */
+  .hero.hero-slim { margin: 2px 0 14px; padding: 12px 16px 14px; }
+  .hero.hero-slim .hero-scroll-img { max-width: 250px; }
+  /* Insert-coin easter egg — demoted from the hero to a quiet line at
+     the bottom of the home screen so it stops competing with PLAY. */
+  .coin-egg {
+    display: block; text-align: center;
+    margin: 18px 0 4px;
+    font-family: var(--px); font-size: 9px;
+    color: var(--ink-faint); letter-spacing: 1px;
+    cursor: pointer; opacity: 0.5;
+    transition: opacity 0.2s;
+  }
+  .coin-egg:hover { opacity: 0.9; }
   .hero h1 {
     font-size: 18px; line-height: 1.6; margin: 0;
     color: var(--gold);
@@ -9366,7 +9381,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.250';
+const BUILD_VERSION = '2026.05.20.251';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -14199,37 +14214,15 @@ function screenHome() {
     `<span class="run-sitter sitter-${idx % 3}" aria-hidden="true"><span class="sitter-emoji">${qmpAvatarHTML(emoji)}</span></span>`;
   const target = ensureArcadeShell('home');
   target.innerHTML = `
-    <div class="hero">
+    <div class="hero hero-slim">
       <span class="hero-sparkle hs-1" aria-hidden="true"></span>
       <span class="hero-sparkle hs-2" aria-hidden="true"></span>
       <span class="hero-sparkle hs-3" aria-hidden="true"></span>
       <span class="hero-sparkle hs-4" aria-hidden="true"></span>
       <span class="hero-sparkle hs-5" aria-hidden="true"></span>
       <img class="hero-scroll-img" src="img/quest_irl_logo.png" alt="Quest IRL" draggable="false"/>
-      <div class="tag">Step into the arcade.<br/>Silly bosses. Real-life quests.</div>
-      <span class="blink" id="heroInsertCoin" style="cursor:pointer;" title="Drop a coin in the slot">▼ INSERT COIN ▼</span>
+      <div class="tag">Silly bosses. Real-life quests.</div>
     </div>
-
-    <div class="welcome-bubble ${profile.lastUnhinged ? 'unhinged' : ''}" id="welcomeBubble">
-      <div class="av">${profile.lastUnhinged
-        ? '<img src="img/unhinged_head.png" class="unhinged-bat-img sm" alt="">'
-        : systemAv.html('idle', 'sm')}</div>
-      <div class="welcome-content">
-        <div class="welcome-tag">${profile.lastUnhinged
-          ? '<img src="img/unhinged_head.png" class="unhinged-bat-img tiny" alt=""> THE GREMLIN'
-          : '▶ THE SYSTEM'}</div>
-        <div class="text" id="welcomeText">${pick(profile.lastUnhinged ? UNHINGED_WELCOME_LINES : WELCOME_LINES)}</div>
-      </div>
-    </div>
-
-    ${profile.streak > 0 ? `
-    <div class="streak-card">
-      <div class="fire"><img src="img/items/innerfire.png" class="streak-fire-img" alt=""/></div>
-      <div class="info">
-        <h4>${profile.streak}× STREAK</h4>
-        <p>Win rate ${winRate}% · Best ${profile.bestStreak}</p>
-      </div>
-    </div>` : ''}
 
     <div id="reconnectSlot"></div>
     <div id="resumeSlot"></div>
@@ -14258,6 +14251,27 @@ function screenHome() {
       </div>
     </div>
 
+    <div class="welcome-bubble ${profile.lastUnhinged ? 'unhinged' : ''}" id="welcomeBubble">
+      <div class="av">${profile.lastUnhinged
+        ? '<img src="img/unhinged_head.png" class="unhinged-bat-img sm" alt="">'
+        : systemAv.html('idle', 'sm')}</div>
+      <div class="welcome-content">
+        <div class="welcome-tag">${profile.lastUnhinged
+          ? '<img src="img/unhinged_head.png" class="unhinged-bat-img tiny" alt=""> THE GREMLIN'
+          : '▶ THE SYSTEM'}</div>
+        <div class="text" id="welcomeText">${pick(profile.lastUnhinged ? UNHINGED_WELCOME_LINES : WELCOME_LINES)}</div>
+      </div>
+    </div>
+
+    ${profile.streak > 0 ? `
+    <div class="streak-card">
+      <div class="fire"><img src="img/items/innerfire.png" class="streak-fire-img" alt=""/></div>
+      <div class="info">
+        <h4>${profile.streak}× STREAK</h4>
+        <p>Win rate ${winRate}% · Best ${profile.bestStreak}</p>
+      </div>
+    </div>` : ''}
+
     ${profile.runs > 0 ? `
     <div class="stats-grid">
       <div class="stat-cell"><div class="v">${profile.bossesDefeated}</div><div class="l">SLAIN</div></div>
@@ -14273,6 +14287,8 @@ function screenHome() {
         <p>${profile.history[profile.history.length-1].mode === 'party' ? 'Party' : 'Solo'} · ${profile.history[profile.history.length-1].diff} · ${profile.history[profile.history.length-1].result}${profile.history[profile.history.length-1].recap ? ` · ${formatRunTime(profile.history[profile.history.length-1].recap.timeTaken || 0)}` : ''}</p>
       </div>`
     }
+
+    <div class="coin-egg" id="heroInsertCoin" title="Drop a coin in the slot">▼ insert coin ▼</div>
   `;
   applyTabTransition();
   document.getElementById('modeParty').onclick = () => zoomIntoArcadeScreen(() => enterPartyLobby());
