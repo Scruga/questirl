@@ -1,26 +1,30 @@
-// QuestIRL → Anthropic relay (Cloudflare Worker).
+// QuestIRL → AI provider relay (Cloudflare Worker).
 //
-// Why: the Anthropic API key cannot live in the QuestIRL client. Anyone
-// who opens the page can view source and steal it. This Worker holds the
-// key as an env var, accepts requests from the QuestIRL client, and
-// forwards them to Anthropic. Client never sees the key.
+// Why: AI provider keys cannot live in the QuestIRL client. Anyone who
+// opens the page can view source and steal them. This Worker holds the
+// keys as env vars, accepts requests from the QuestIRL client, and
+// forwards them to the appropriate provider. Client never sees the key.
 //
 // Env vars (set via `wrangler secret put`):
 //   ANTHROPIC_API_KEY  — your sk-ant-... key
+//   OPENAI_API_KEY     — your sk-proj-... key (optional; only required
+//                        when the client routes through /openai)
 //   ALLOWED_ORIGINS    — comma-separated list of origins allowed to call
 //                        this worker (e.g. "https://questirl.gg").
 //                        Use "*" only for local testing.
 //
-// Endpoint:
-//   POST /  — body forwarded verbatim to https://api.anthropic.com/v1/messages
-//   GET  /healthz — returns 200 + "ok" for uptime checks
+// Endpoints:
+//   POST /          — body forwarded to https://api.anthropic.com/v1/messages
+//   POST /openai    — body forwarded to https://api.openai.com/v1/chat/completions
+//   GET  /healthz   — returns 200 + "ok" for uptime checks
 //
-// Rate limiting (P0 stub): we rely on the Anthropic daily-spend cap as
+// Rate limiting (P0 stub): we rely on each provider's daily-spend cap as
 // the primary cost ceiling. Per-IP rate limiting can be added in P1 when
 // we have proper auth + sessions. The cf-ray header + Cloudflare
 // firewall rules cover bot abuse for now.
 
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
+const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
 export default {
   async fetch(request, env) {
@@ -77,6 +81,45 @@ export default {
       });
     }
 
+    // Route by pathname. Default ("/") is Anthropic for backwards-compat
+    // with the existing client. "/openai" is the OpenAI passthrough.
+    const isOpenAI = url.pathname === '/openai' || url.pathname === '/openai/';
+
+    if (isOpenAI) {
+      if (!env.OPENAI_API_KEY) {
+        return new Response(JSON.stringify({ error: 'relay_misconfigured', detail: 'OPENAI_API_KEY not set on worker' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+      const body = await request.text();
+      let upstreamRes;
+      try {
+        upstreamRes = await fetch(OPENAI_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${env.OPENAI_API_KEY}`,
+          },
+          body,
+        });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: 'upstream_unreachable', detail: String(e) }), {
+          status: 502,
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        });
+      }
+      const respHeaders = {
+        'Content-Type': upstreamRes.headers.get('Content-Type') || 'application/json',
+        ...corsHeaders,
+      };
+      return new Response(upstreamRes.body, {
+        status: upstreamRes.status,
+        headers: respHeaders,
+      });
+    }
+
+    // ── Default: Anthropic passthrough ──
     if (!env.ANTHROPIC_API_KEY) {
       return new Response(JSON.stringify({ error: 'relay_misconfigured' }), {
         status: 500,

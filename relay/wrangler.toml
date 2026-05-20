@@ -12,6 +12,11 @@ workers_dev = true
 [vars]
 ALLOWED_ORIGINS = "https://questirl.gg,https://sage-crumble-a39c95.netlify.app"
 
-# ANTHROPIC_API_KEY is a SECRET — set it via:
-#   wrangler secret put ANTHROPIC_API_KEY
-# Do NOT put it in this file or commit it anywhere.
+# API keys are SECRETS — set them via wrangler secret put.
+# Never put them in this file. Never commit them anywhere.
+#   wrangler secret put ANTHROPIC_API_KEY    # required for / route
+#   wrangler secret put OPENAI_API_KEY       # optional; required for /openai route
+#
+# For LOCAL dev (wrangler dev), create relay/.dev.vars (gitignored):
+#   ANTHROPIC_API_KEY=sk-ant-...
+#   OPENAI_API_KEY=sk-proj-...

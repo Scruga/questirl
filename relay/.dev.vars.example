@@ -1,0 +1,14 @@
+# Local-only dev secrets for `wrangler dev`. NEVER commit this file with
+# real keys. The actual .dev.vars is gitignored. Copy this to .dev.vars
+# in the same folder and fill in real keys.
+#
+# To use:
+#   1. cp .dev.vars.example .dev.vars
+#   2. Edit .dev.vars and paste your real keys
+#   3. Run `wrangler dev` from the relay/ folder
+#   4. Point the client at http://localhost:8787 (see RELAY_URL override
+#      in the dev menu)
+
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+OPENAI_API_KEY=sk-proj-your-key-here
+ALLOWED_ORIGINS=*
