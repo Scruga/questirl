@@ -432,9 +432,13 @@
      same offset drop shadow as the emoji icons. */
   .mode-card .ic.ic-pixel {
     font-size: 0; line-height: 0;
+    /* Fixed-height icon row + bottom-anchored art so the Party and
+       Solo cards stay identical height — the Solo versus-art layout
+       box (110px) is taller than the Party trio's default 72px box. */
+    height: 110px;
+    display: flex; align-items: flex-end;
     filter: drop-shadow(4px 4px 0 #000);
-    /* Override the default 1.4s emoji-card bob with a slower, gentler
-       float so the pixel-art icons feel like they're hovering. */
+    /* Slower, gentler float than the default emoji-card bob. */
     animation: pixelFloat 3.2s ease-in-out infinite;
   }
   @keyframes pixelFloat {
@@ -450,11 +454,9 @@
     object-fit: contain;
     display: block;
   }
-  /* Both icons share the SAME 72x72 layout box so the two mode cards
-     stay identical height. The PNG carries transparent padding around
-     the artwork, so a transform: scale visually enlarges the swords
-     to match the bullseye's edge-to-edge fill — this changes only the
-     painted pixels, not the layout box. */
+  /* Solo's versus-art uses a wider/taller box than the Party trio;
+     the fixed 110px row height on .ic-pixel above keeps both cards
+     the same height regardless of each icon's box size. */
   .mode-card .ic.ic-pixel .ic-pixel-img {
     /* Default: just upscale; per-icon transforms below add nudges. */
     transform: scale(2.25);
@@ -9395,7 +9397,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.256';
+const BUILD_VERSION = '2026.05.20.257';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
