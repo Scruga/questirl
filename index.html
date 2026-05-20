@@ -271,8 +271,14 @@
     text-align: center;
   }
   /* hero-slim (build 250): a compact logo strip so the Party/Solo
-     play cards sit at the top of the screen, not below the fold. */
-  .hero.hero-slim { margin: 2px 0 14px; padding: 12px 16px 14px; }
+     play cards sit at the top of the screen, not below the fold.
+     Build 252 — no box: just the transparent logo, the tagline and
+     the floating sparkles sitting on the page background. */
+  .hero.hero-slim {
+    margin: 2px 0 14px; padding: 10px 16px 12px;
+    border: 0; background: none; box-shadow: none;
+    overflow: visible;
+  }
   .hero.hero-slim .hero-scroll-img { max-width: 250px; }
   /* Insert-coin easter egg — demoted from the hero to a quiet line at
      the bottom of the home screen so it stops competing with PLAY. */
@@ -9381,7 +9387,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.251';
+const BUILD_VERSION = '2026.05.20.252';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
