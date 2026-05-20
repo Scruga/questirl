@@ -9395,7 +9395,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.255';
+const BUILD_VERSION = '2026.05.20.256';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -9507,7 +9507,7 @@ function isDevMode() { return !!profile.devMode; }
       buf = '';
     }
   });
-  // Mobile: 7 rapid taps on the "★ MAGICAL ARCADE ★" marquee at the top
+  // Mobile: 7 rapid taps on the "★ QUEST IRL ★" marquee at the top
   // of the arcade shell. Same gesture as Android's "tap Build Number 7×".
   // Uses event delegation since the marquee re-renders.
   let tapCount = 0;
@@ -14019,7 +14019,7 @@ function ensureArcadeShell(activeTab) {
     // First mount (or coming back from a non-tab view that nuked the DOM).
     app().innerHTML = `
       <div id="arcadeShell" class="arcade-cabinet">
-        <div class="arcade-marquee">★ MAGICAL ARCADE ★</div>
+        <div class="arcade-marquee">★ QUEST IRL ★</div>
         ${header()}
         <div class="arcade-screen-wrap">
           <div class="screen"></div>
