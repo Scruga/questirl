@@ -954,6 +954,10 @@
     font-size: 28px; text-align: center;
     filter: drop-shadow(0 0 6px rgba(79, 227, 214, 0.35));
   }
+  .story-mode-ic-img {
+    width: 44px; height: 44px; object-fit: contain;
+    image-rendering: pixelated;
+  }
   .story-mode-toggle .meta h4 {
     font-family: var(--px); font-size: 11px; color: var(--neon-3);
     margin: 0 0 4px; letter-spacing: 1.5px;
@@ -9358,7 +9362,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.248';
+const BUILD_VERSION = '2026.05.20.249';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -14629,7 +14633,7 @@ function setupVibe() {
            detective, fantasy, spy). Mutually exclusive with unhinged.
            Picked = bordered + glowing chip below the toggle. -->
       <div class="story-mode-toggle ${r.theme ? 'on' : ''}" id="storyModeToggle" role="button" tabindex="0" aria-pressed="${r.theme ? 'true' : 'false'}">
-        <div class="ic">📽</div>
+        <div class="ic"><img src="img/story_mode.png?v=1" class="story-mode-ic-img" alt=""></div>
         <div class="meta">
           <h4>STORY MODE ${r.theme ? '· ' + (THEME_BY_ID[r.theme]?.name?.toUpperCase() || '') : ''}</h4>
           <p>${r.theme
