@@ -9397,7 +9397,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.263';
+const BUILD_VERSION = '2026.05.20.264';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -22485,7 +22485,37 @@ ANTI-REPETITION (STRICT): the user message lists the player's recent boss archet
 
 Pick fresh. Pick on-vibe. Stop talking. Output JSON.`;
 
-async function aiGenerateArchitecture(r) {
+// Code-level anti-repetition gate. Stage 1's prompt only BIASES the
+// model; this is the deterministic floor — it inspects a fresh
+// architecture pick against the normalized recent-run cache and, if the
+// pick is egregiously close (same boss archetype / same opener / 4+ of
+// 5 step archetypes shared with one of the last 3 runs), returns a
+// reason string so the caller re-rolls Stage 1.
+function architectureTooSimilar(arch) {
+  if (!arch || !Array.isArray(arch.stepArchetypes)) return null;
+  // The cache stores normalized keys ("THE SLEEPER", not the full
+  // parenthetical) — normalize the fresh pick the same way to compare.
+  const norm = (s) => String(s || '').split('(')[0].split('—')[0].trim();
+  const combos = (Array.isArray(profile.recentStepArchetypeCombos) ? profile.recentStepArchetypeCombos : []).slice(-3);
+  const bosses = (Array.isArray(profile.recentBossArchetypes) ? profile.recentBossArchetypes : []).slice(-3);
+  const bossKey = norm(arch.bossArchetype);
+  if (bossKey && bosses.includes(bossKey)) {
+    return `boss archetype "${bossKey}" used in the last 3 runs`;
+  }
+  const steps = arch.stepArchetypes.map(norm);
+  const openers = combos.map(c => (Array.isArray(c) ? c[0] : null)).filter(Boolean);
+  if (steps[0] && openers.includes(steps[0])) {
+    return `opening archetype "${steps[0]}" reused from a recent run`;
+  }
+  for (const combo of combos) {
+    if (!Array.isArray(combo)) continue;
+    const overlap = steps.filter(s => combo.includes(s)).length;
+    if (overlap >= 4) return `step combo overlaps a recent run on ${overlap}/5 archetypes`;
+  }
+  return null;
+}
+
+async function aiGenerateArchitecture(r, rejectInfo) {
   // Stage 1 — architecture pick. Tiny prompt, tiny output, focused job.
   const ctxObj = CONTEXTS.find(c => c.id === r.contextChoice);
   const ctxName = ctxObj
@@ -22534,7 +22564,11 @@ RECENT (AVOID THESE — STRICT):
 - Overused recently — pick AT MOST ONE of these, ideally zero: ${overusedArchetypes.length ? overusedArchetypes.join(', ') : 'none'}
 - Recent arc shapes: ${recentArcShapes.length ? recentArcShapes.join(', ') : 'none'}
   → If SPIRAL appears in recent arcs, you MUST NOT pick SPIRAL. Pick a DIFFERENT arc shape. Each arc shape may appear at MOST 1 in 3 quests; rotate through LINEAR/LOOP/PARALLEL/INVERSION/DOUBLE-ECHO to keep variety.
-
+${rejectInfo && Array.isArray(rejectInfo.rejected) && rejectInfo.rejected.length ? `
+REJECTED THIS TURN — you already proposed ${rejectInfo.rejected.length} architecture(s) and each was REJECTED by a hard similarity check against recent runs. Do NOT propose anything close to these again:
+${rejectInfo.rejected.map((a, i) => `  ${i + 1}. boss "${a.bossArchetype}" / arc ${a.arcShape} / steps [${(a.stepArchetypes || []).join(', ')}]`).join('\n')}
+Pick a DIFFERENT boss archetype, a DIFFERENT opening step archetype, and a combo sharing at most 2 archetypes with any rejected pick.
+` : ''}
 Pick the architecture. JSON only.`;
 
   const { url, init } = anthropicFetchInit({
@@ -22565,7 +22599,21 @@ async function aiGenerateRunMultiStage(r, retryInfo) {
   let arch;
   try {
     arch = await aiGenerateArchitecture(r);
-    console.log('[multi-stage] Stage 1 architecture:', arch);
+    // Code-level anti-repetition floor: if Stage 1's pick is too close
+    // to recent runs, reject it and re-roll — telling the model exactly
+    // what was rejected. Capped at 2 re-rolls (Stage 1 is a tiny, fast
+    // call). The prompt only biases; this guarantees the architecture
+    // actually rotated. After the cap it ships the last pick anyway.
+    const _rejected = [];
+    let _why = architectureTooSimilar(arch);
+    while (_why && _rejected.length < 2) {
+      console.warn(`[multi-stage] architecture rejected (${_why}) — reroll ${_rejected.length + 1}`);
+      _rejected.push(arch);
+      arch = await aiGenerateArchitecture(r, { rejected: _rejected });
+      _why = architectureTooSimilar(arch);
+    }
+    console.log('[multi-stage] Stage 1 architecture:', arch,
+      _rejected.length ? `(after ${_rejected.length} reroll${_rejected.length > 1 ? 's' : ''})` : '');
   } catch (e) {
     console.warn('[multi-stage] Stage 1 failed, falling back to single-stage:', e);
     // Bail out: let aiGenerateRun's single-stage path handle it.
