@@ -9405,7 +9405,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.267';
+const BUILD_VERSION = '2026.05.20.268';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -29839,13 +29839,15 @@ function screenGenerating() {
       const animImg = document.getElementById('genAnimImg');
       if (animImg) {
         let f = 0;
+        // 360ms/frame — a slow, deliberate loop (half the 180ms the
+        // hero-charge strip uses) so the shamble reads as a shamble.
         const animTick = () => {
           if (!document.body.contains(animImg)) return;
           f = (f + 1) % 4;
           animImg.src = `img/load_${animKey}_${f}.png`;
-          setTimeout(animTick, 180);
+          setTimeout(animTick, 360);
         };
-        setTimeout(animTick, 180);
+        setTimeout(animTick, 360);
       }
     } else if (isUnhinged) {
       const bat = document.querySelector('.gen-icon .unhinged-bat-img');
