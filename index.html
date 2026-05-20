@@ -9397,7 +9397,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.262';
+const BUILD_VERSION = '2026.05.20.263';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -9900,7 +9900,7 @@ const THEMES = [
       'THE GOBLIN (steals small things; defeated by gift-giving)',
       'THE ORACLE (gives prophecy; defeated by reframing the riddle)',
     ],
-    stepFraming: 'Each step is a DIFFERENT fantasy beat — deliberately vary them: find an artifact, brew a potion (mix two drinks), say an incantation, perform a ritual, present an offering, slay a beast, barter with a merchant, decipher a rune, forge a weapon, swear an oath. CRITICAL: never reuse the same beat verb twice in one quest, and use the words "artifact" and "ritual" AT MOST ONCE EACH across the whole quest. Reframe ordinary objects as fantasy items (cup = chalice, lamp = lantern of guidance, couch = the velvet throne).',
+    stepFraming: 'Each step is a DIFFERENT fantasy beat — deliberately vary them: find an artifact, brew a potion (combine a couple of found liquids), say an incantation, perform a ritual, present an offering, slay a beast, barter with a merchant, decipher a rune, forge a weapon, swear an oath. CRITICAL: never reuse the same beat verb twice in one quest, and use the words "potion", "chalice" and "sigil" AT MOST ONCE EACH across the whole quest — do NOT make a "potion of two waters" step every run. Reframe ordinary objects as fantasy items (cup = chalice, lamp = lantern of guidance, couch = the velvet throne).',
     hostVoice: 'Fantasy narrator — high-flown but warm, like a tabletop DM. "And so it was that you arrived at...". Lowercase except for sigil words (Quest, Boss, Ritual, Sigil). The player is "hero" or "champion" or by name.',
     keywords: ['quest', 'hero', 'dragon', 'sigil', 'incantation', 'sword', 'spell', 'ritual', 'chalice', 'champion', 'tavern', 'oracle', 'rune', 'prophecy', 'goblin'],
     loadingHints: [
