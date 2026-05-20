@@ -1022,6 +1022,10 @@
     font-size: 24px; margin-bottom: 4px;
     line-height: 1;
   }
+  .theme-tile-img {
+    width: 40px; height: 40px; object-fit: contain;
+    image-rendering: pixelated;
+  }
   .theme-tile-name {
     font-family: var(--px); font-size: 10px;
     color: var(--gold); letter-spacing: 1px;
@@ -9362,7 +9366,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.249';
+const BUILD_VERSION = '2026.05.20.250';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -14637,7 +14641,7 @@ function setupVibe() {
         <div class="meta">
           <h4>STORY MODE ${r.theme ? '· ' + (THEME_BY_ID[r.theme]?.name?.toUpperCase() || '') : ''}</h4>
           <p>${r.theme
-              ? `${THEME_BY_ID[r.theme]?.icon || ''} ${THEME_BY_ID[r.theme]?.blurb || ''} (Vibes are auto-rolled from a compatible set.)`
+              ? `${THEME_BY_ID[r.theme]?.blurb || ''} (Vibes are auto-rolled from a compatible set.)`
               : 'Wrap the entire quest in a fictional universe — zombie, sci-fi, detective, fantasy, spy. The boss, host voice, and every step get reframed to fit. Vibes are auto-rolled. ⚠ beta.'}</p>
         </div>
         <div class="switch">${r.theme ? 'ON' : 'OFF'}</div>
@@ -14648,7 +14652,7 @@ function setupVibe() {
           <div class="theme-picker-grid" id="themePickerGrid">
             ${THEMES.map(t => `
               <button class="theme-tile ${r.theme === t.id ? 'on' : ''}" data-theme="${t.id}" aria-pressed="${r.theme === t.id ? 'true' : 'false'}">
-                <div class="theme-tile-ic">${t.icon}</div>
+                <div class="theme-tile-ic"><img src="img/story_${t.id}.png?v=1" class="theme-tile-img" alt=""></div>
                 <div class="theme-tile-name">${t.name}</div>
                 <div class="theme-tile-short">${t.short}</div>
               </button>
