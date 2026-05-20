@@ -3811,6 +3811,13 @@
     width: 46px; height: 46px; object-fit: contain;
     image-rendering: pixelated;
   }
+  /* Painted pixel-art symbol icons inside limit / allowance / preset /
+     pet chips (build 247 — replaced the old emoji). */
+  .chip-ic-img {
+    width: 16px; height: 16px; object-fit: contain;
+    image-rendering: pixelated; vertical-align: middle;
+  }
+  .limit-preset-ic .chip-ic-img { width: 18px; height: 18px; }
   .style-card-name {
     font-family: var(--px); font-size: 11px; letter-spacing: 1px;
     color: var(--ink); margin-top: 2px;
@@ -9351,7 +9358,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.247';
+const BUILD_VERSION = '2026.05.20.248';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -9977,25 +9984,26 @@ const ALLOWANCES = [
   'Open to longer runs',
   'OK with crazy dares',
 ];
+const _alwIc = (slug) => `<img src="img/alw_${slug}.png?v=1" class="chip-ic-img" alt="">`;
 const ALLOWANCE_META = {
   'Open to small buys': {
-    icon: '💸',
+    icon: _alwIc('buys'),
     hint: 'AI may ask you to buy small items (≤$5). Off by default.',
   },
   'Playing with a pet here': {
-    icon: '🐕',
+    icon: _alwIc('pet'),
     hint: 'Unlocks pet-themed quest beats. Pick your pet type below.',
   },
   'Playing with a partner': {
-    icon: '💑',
+    icon: _alwIc('partner'),
     hint: 'Solo run with a +1 helping in-person. AI may write 1-2 partner beats.',
   },
   'Open to longer runs': {
-    icon: '⏱️',
+    icon: _alwIc('longer'),
     hint: 'Quest may stretch 15-30 min with bigger commitments per step.',
   },
   'OK with crazy dares': {
-    icon: '🌶️',
+    icon: _alwIc('dares'),
     hint: 'Unlocks really challenging dares (still safe, but bold).',
   },
 };
@@ -10005,15 +10013,16 @@ const ALLOWANCE_META = {
 // species — keeps the AI prompt predictable while covering ~95% of
 // pet households. "Other" falls through to a neutral "unusual pet"
 // signal in the AI prompt for the long-tail (axolotl / parrot / etc.)
+const _petIc = (id) => `<img src="img/pet_${id}.png?v=1" class="chip-ic-img" alt="">`;
 const PET_TYPES = [
-  { id: 'dog',     icon: '🐕', label: 'Dog' },
-  { id: 'cat',     icon: '🐈', label: 'Cat' },
-  { id: 'small',   icon: '🐹', label: 'Small pet' },
-  { id: 'bird',    icon: '🐦', label: 'Bird' },
-  { id: 'fish',    icon: '🐠', label: 'Fish' },
-  { id: 'reptile', icon: '🦎', label: 'Reptile' },
-  { id: 'large',   icon: '🐴', label: 'Large pet' },
-  { id: 'other',   icon: '✏️', label: 'Other' },
+  { id: 'dog',     icon: _petIc('dog'),     label: 'Dog' },
+  { id: 'cat',     icon: _petIc('cat'),     label: 'Cat' },
+  { id: 'small',   icon: _petIc('small'),   label: 'Small pet' },
+  { id: 'bird',    icon: _petIc('bird'),    label: 'Bird' },
+  { id: 'fish',    icon: _petIc('fish'),    label: 'Fish' },
+  { id: 'reptile', icon: _petIc('reptile'), label: 'Reptile' },
+  { id: 'large',   icon: _petIc('large'),   label: 'Large pet' },
+  { id: 'other',   icon: _petIc('other'),   label: 'Other' },
 ];
 const PET_TYPE_BY_ID = Object.fromEntries(PET_TYPES.map(p => [p.id, p]));
 
@@ -10022,17 +10031,19 @@ const PET_TYPE_BY_ID = Object.fromEntries(PET_TYPES.map(p => [p.id, p]));
 // throughout the AI prompts, so changing the wording here is a breaking
 // change). When a new limit is added to LIMITS above, add a row here
 // too — anything missing falls through to the SOCIAL group with no icon.
+// Icons are painted pixel-art symbols (img/lim_*.png) — see _ic().
+const _limIc = (slug) => `<img src="img/lim_${slug}.png?v=1" class="chip-ic-img" alt="">`;
 const LIMIT_META = {
-  'No strangers':              { icon: '🚷', group: 'privacy' },
-  'No selfies / face shots':   { icon: '🤳', group: 'privacy' },
-  'Keep it indoors':           { icon: '🏠', group: 'setting'  },
-  'No trespassing':            { icon: '🚧', group: 'setting'  },
-  'Quiet mode':                { icon: '🤫', group: 'setting'  },
-  'No running':                { icon: '🏃', group: 'effort'   },
-  'Limited mobility':          { icon: '♿', group: 'effort'   },
-  'No flirting':               { icon: '💋', group: 'social'   },
-  'Nothing embarrassing':      { icon: '😶', group: 'social'   },
-  'No food/drinks':            { icon: '🍴', group: 'social'   },
+  'No strangers':              { icon: _limIc('strangers'),    group: 'privacy' },
+  'No selfies / face shots':   { icon: _limIc('selfies'),      group: 'privacy' },
+  'Keep it indoors':           { icon: _limIc('indoors'),      group: 'setting' },
+  'No trespassing':            { icon: _limIc('trespassing'),  group: 'setting' },
+  'Quiet mode':                { icon: _limIc('quiet'),        group: 'setting' },
+  'No running':                { icon: _limIc('running'),      group: 'effort'  },
+  'Limited mobility':          { icon: _limIc('mobility'),     group: 'effort'  },
+  'No flirting':               { icon: _limIc('flirting'),     group: 'social'  },
+  'Nothing embarrassing':      { icon: _limIc('embarrassing'), group: 'social'  },
+  'No food/drinks':            { icon: _limIc('food'),         group: 'social'  },
 };
 // Group display order + headers + their icons. Add a new group key here
 // to introduce a new section above the chips.
@@ -10050,7 +10061,7 @@ const LIMIT_GROUPS = [
 // remain the source of truth and can be unchecked individually.
 const LIMIT_PRESETS = [
   {
-    id: 'firsttimer', icon: '🌱', label: 'First-timer',
+    id: 'firsttimer', icon: '<img src="img/lp_firsttimer.png?v=1" class="chip-ic-img" alt="">', label: 'First-timer',
     limits: [
       'No strangers',
       'No flirting',
@@ -10059,7 +10070,7 @@ const LIMIT_PRESETS = [
     ],
   },
   {
-    id: 'public', icon: '🚶', label: 'Public-spaces safe',
+    id: 'public', icon: '<img src="img/lp_public.png?v=1" class="chip-ic-img" alt="">', label: 'Public-spaces safe',
     limits: [
       'No strangers',
       'No selfies / face shots',
@@ -10067,7 +10078,7 @@ const LIMIT_PRESETS = [
     ],
   },
   {
-    id: 'indoor', icon: '🛋', label: 'Indoor only',
+    id: 'indoor', icon: '<img src="img/lp_indoor.png?v=1" class="chip-ic-img" alt="">', label: 'Indoor only',
     limits: [
       'Keep it indoors',
       'No running',
@@ -10076,7 +10087,7 @@ const LIMIT_PRESETS = [
   // Build 239 — new presets for common play contexts. Bundle existing
   // limits rather than introducing new chips so the screen stays scannable.
   {
-    id: 'kidfriendly', icon: '👨‍👩‍👧', label: 'Kid-friendly',
+    id: 'kidfriendly', icon: '<img src="img/lp_kidfriendly.png?v=1" class="chip-ic-img" alt="">', label: 'Kid-friendly',
     limits: [
       'Nothing embarrassing',
       'No flirting',
@@ -10085,7 +10096,7 @@ const LIMIT_PRESETS = [
     ],
   },
   {
-    id: 'officesafe', icon: '💼', label: 'Office-safe',
+    id: 'officesafe', icon: '<img src="img/lp_officesafe.png?v=1" class="chip-ic-img" alt="">', label: 'Office-safe',
     limits: [
       'Nothing embarrassing',
       'No running',
@@ -10096,7 +10107,7 @@ const LIMIT_PRESETS = [
     ],
   },
   {
-    id: 'accessible', icon: '♿', label: 'Accessible',
+    id: 'accessible', icon: '<img src="img/lp_accessible.png?v=1" class="chip-ic-img" alt="">', label: 'Accessible',
     limits: [
       'Limited mobility',
       'No running',
@@ -14686,7 +14697,7 @@ function setupRisks() {
     const chips = grouped[g.id] || [];
     if (!chips.length) return '';
     return `
-      <div class="section-title limit-group-title">${g.icon} ${g.label}</div>
+      <div class="section-title limit-group-title">${g.label}</div>
       <div class="chips limit-chip-group">
         ${chips.map(c => `
           <div class="chip deny ${(r.limits || []).includes(c.label) ? 'on' : ''}" data-limit="${escapeHtml(c.label)}">
@@ -14758,7 +14769,7 @@ function setupRisks() {
     <div id="limitChips">
       ${sectionsHTML}
     </div>
-    <div class="section-title limit-group-title allow-group-title">🎁 ALLOWANCES <span class="allow-group-sub">(opt-in)</span></div>
+    <div class="section-title limit-group-title allow-group-title">ALLOWANCES <span class="allow-group-sub">(opt-in)</span></div>
     <div class="chips limit-chip-group allow-chip-group" id="allowanceChips">
       ${allowanceChips}
     </div>
@@ -24821,7 +24832,7 @@ function openBossInfoModal() {
             // Append pet type inline when this is the pet allowance.
             if (a === 'Playing with a pet here' && r.petContext && r.petContext.type) {
               const pt = (typeof PET_TYPE_BY_ID !== 'undefined' && PET_TYPE_BY_ID[r.petContext.type]) || null;
-              const label = pt ? `${a} (${pt.icon} ${pt.label})` : a;
+              const label = pt ? `${a} (${pt.label})` : a;
               return `<span class="chip allow on">${escapeHtml(label)}</span>`;
             }
             return `<span class="chip allow on">${escapeHtml(a)}</span>`;
