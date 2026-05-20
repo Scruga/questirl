@@ -3807,6 +3807,10 @@
     box-shadow: 4px 4px 0 #000, inset 0 0 0 2px var(--neon-3), 0 0 14px rgba(0,230,195,0.3);
   }
   .style-card-ic { font-size: 30px; line-height: 1; }
+  .style-card-img {
+    width: 46px; height: 46px; object-fit: contain;
+    image-rendering: pixelated;
+  }
   .style-card-name {
     font-family: var(--px); font-size: 11px; letter-spacing: 1px;
     color: var(--ink); margin-top: 2px;
@@ -9347,7 +9351,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.246';
+const BUILD_VERSION = '2026.05.20.247';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -9722,7 +9726,7 @@ function saveProfile() {
 
 /* ----- Content library ----- */
 
-const _vibeIc = (id) => `<img src="img/vibe_${id}.png?v=2" class="vibe-ic" alt=""/>`;
+const _vibeIc = (id) => `<img src="img/vibe_${id}.png?v=3" class="vibe-ic" alt=""/>`;
 const VIBES = [
   { id: 'chill',      name: 'Chill',      ic: _vibeIc('chill') },
   { id: 'chaotic',    name: 'Chaotic',    ic: _vibeIc('chaotic') },
@@ -9730,8 +9734,11 @@ const VIBES = [
   { id: 'wholesome',  name: 'Wholesome',  ic: _vibeIc('wholesome') },
   { id: 'spicy',      name: 'Spicy',      ic: _vibeIc('spicy') },
   { id: 'nostalgic',  name: 'Nostalgic',  ic: _vibeIc('nostalgic') },
-  { id: 'cursed',     name: 'Cursed',     ic: '<img src="img/vibe_unhinged.png?v=2" class="vibe-ic" alt=""/>' },
+  { id: 'cursed',     name: 'Cursed',     ic: _vibeIc('cursed') },
   { id: 'cozy',       name: 'Cozy',       ic: _vibeIc('cozy') },
+  { id: 'dramatic',   name: 'Dramatic',   ic: _vibeIc('dramatic') },
+  { id: 'deadpan',    name: 'Deadpan',    ic: _vibeIc('deadpan') },
+  { id: 'glamorous',  name: 'Glamorous',  ic: _vibeIc('glamorous') },
 ];
 // Max number of vibes selectable per run. More than 3 confuses the
 // quest-gen blend logic and produces muddled output.
@@ -9911,6 +9918,10 @@ const VIBE_CONFLICTS = {
   cursed:    ['wholesome'],
   wholesome: ['cursed'],
   cozy:      ['chaotic'],
+  // Deadpan (understated) and Dramatic (grandiose) are tonal opposites
+  // — blending them produces muddled quest voice.
+  dramatic:  ['deadpan'],
+  deadpan:   ['dramatic'],
 };
 // Returns null when the vibe can be picked, or a reason code/string
 // describing why it's blocked. Tapping a vibe already in the selection
@@ -14521,18 +14532,18 @@ function setupStyle() {
   const active = matchedStylePreset();
   const advOpen = !!state._styleAdvancedOpen;
 
-  const card = (id, icon, label, blurb) => `
+  const card = (id, imgFile, label, blurb) => `
     <button class="style-card ${active === id ? 'on' : ''}" data-style-preset="${id}"
             aria-pressed="${active === id ? 'true' : 'false'}">
-      <div class="style-card-ic">${icon}</div>
+      <div class="style-card-ic"><img src="img/${imgFile}?v=1" class="style-card-img" alt=""/></div>
       <div class="style-card-name">${escapeHtml(label)}</div>
       <div class="style-card-blurb">${escapeHtml(blurb)}</div>
     </button>`;
 
   const styleCards = STYLE_PRESETS
-    .map(p => card(p.id, p.icon, p.label, p.blurb)).join('');
+    .map(p => card(p.id, 'style_' + p.id + '.png', p.label, p.blurb)).join('');
   const storyCards = THEMES
-    .map(t => card('story:' + t.id, t.icon, t.name, t.short)).join('');
+    .map(t => card('story:' + t.id, 'story_' + t.id + '.png', t.name, t.short)).join('');
 
   return `
     <div class="step-head"><div class="sub">${isMpGuest
@@ -15809,8 +15820,7 @@ function screenBoss() {
 
   // Stats strip data — surfaces the run intel (HP / tier / box / steps / timer)
   // so a player can gauge the fight before committing.
-  const TBD = { warmup: 720, brave: 540, bold: 360, chaos: 240, nightmare: 180 };
-  const baseTimerSec = TBD[r.difficulty?.id] || 600;
+  const baseTimerSec = baseRunTimer(r);
   // Account for armed timer modifiers so the displayed value matches reality
   const armed = r.armed || [];
   let timerSec = baseTimerSec;
@@ -16097,9 +16107,9 @@ function bindBossActionRow() {
       // Legacy solo / non-MP path:
       state.run.questRevealed = true;
       state.run.runStart = Date.now();
-    // Difficulty-based timer: Warm-Up 12, Brave 9, Bold 6, Chaos 4, Nightmare 3
-    const TBD = { warmup: 720, brave: 540, bold: 360, chaos: 240, nightmare: 180 };
-    state.run.timerSec = TBD[state.run.difficulty.id] || 600;
+    // Difficulty-based timer (Warm-Up 12 / Brave 9 / Bold 6 / Chaos 4 /
+    // Nightmare 3 min); baseRunTimer also applies the longer-runs ×1.6.
+    state.run.timerSec = baseRunTimer(state.run);
     // If steps demand more time than the difficulty allots (e.g. AI generated
     // a "spend 8 minutes" step), bump the run timer up so the quest is
     // actually completable. EXCEPTION: Nightmare holds the line at exactly
@@ -24345,14 +24355,37 @@ const TIME_TAUNTS_UNHINGED = {
    "for 5 minutes", explicit timerSec values) and ensure the run timer is at
    least the sum of those + a movement/photo buffer. Catches AI outputs that
    ignore the "no long time blocks" rule. */
+// Base run-timer seconds by difficulty. The "Open to longer runs"
+// allowance stretches the clock ×1.6 so the longer, more elaborate
+// steps that allowance asks the AI for are actually completable —
+// without this the player got harder steps on the same clock.
+// Nightmare is exempt: its identity is the tight 3-minute timer.
+const _BASE_TIMER_BY_DIFF = { warmup: 720, brave: 540, bold: 360, chaos: 240, nightmare: 180 };
+function baseRunTimer(r) {
+  const diffId = r && r.difficulty && r.difficulty.id;
+  const base = _BASE_TIMER_BY_DIFF[diffId] || 600;
+  const longer = !!(r && Array.isArray(r.allowances)
+    && r.allowances.includes('Open to longer runs'));
+  if (longer && diffId !== 'nightmare') return Math.round(base * 1.6);
+  return base;
+}
+
 function calculateRequiredRunTime(r) {
   let stepTimeSec = 0;
   for (const step of r.quest || []) {
     const text = ((step.instr || '') + ' ' + (step.title || '')).toLowerCase();
-    const matches = text.matchAll(/(\d+)\s*(?:minute|min(?:ute)?s?)\b/g);
-    for (const m of matches) {
+    const minMatches = text.matchAll(/(\d+)\s*(?:minute|min(?:ute)?s?)\b/g);
+    for (const m of minMatches) {
       const minutes = parseInt(m[1], 10);
       if (minutes > 1) stepTimeSec += minutes * 60;
+    }
+    // Also catch second-scale holds ("hold 90 seconds", "45 sec pose").
+    // The longer-runs prompt asks for 45-90s holds, which a minutes-only
+    // scan would miss entirely. Threshold 20s ignores trivial mentions.
+    const secMatches = text.matchAll(/(\d+)\s*(?:second|sec(?:ond)?s?)\b/g);
+    for (const m of secMatches) {
+      const secs = parseInt(m[1], 10);
+      if (secs >= 20) stepTimeSec += secs;
     }
     if (step.timerSec) stepTimeSec += step.timerSec;
   }
@@ -28225,8 +28258,7 @@ function seedRunFromRoomForRejoin(data) {
   }
   // Compute the run timer from difficulty (mirroring startQuestRunFromSync
   // so a rejoiner sees a sensible value, not NaN).
-  const TBD = { warmup: 720, brave: 540, bold: 360, chaos: 240, nightmare: 180 };
-  let timerSec = TBD[state.run.difficulty?.id] || 600;
+  let timerSec = baseRunTimer(state.run);
   if (typeof calculateRequiredRunTime === 'function') {
     const required = calculateRequiredRunTime(state.run);
     if (required > timerSec) timerSec = required;
@@ -29062,8 +29094,7 @@ function startQuestRunFromSync(_serverStartedAtMs) {
   // off, prefer local now() so the timer doesn't read negative.
   if (sharedStart && Math.abs(now - sharedStart) > 6000) sharedStart = null;
   r.runStart = sharedStart || now;
-  const TBD = { warmup: 720, brave: 540, bold: 360, chaos: 240, nightmare: 180 };
-  r.timerSec = TBD[r.difficulty?.id] || 600;
+  r.timerSec = baseRunTimer(r);
   if (typeof calculateRequiredRunTime === 'function') {
     const required = calculateRequiredRunTime(r);
     if (required > r.timerSec) r.timerSec = required;
