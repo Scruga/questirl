@@ -9397,7 +9397,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.258';
+const BUILD_VERSION = '2026.05.20.259';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -9850,7 +9850,7 @@ const THEMES = [
       'THE ARCHITECT (this place was built by them; defeated by altering)',
       'THE GLITCH (reality misfiring; defeated by patching)',
     ],
-    stepFraming: 'Each step is a field-agent task — collect sample, scan area, decode signal, observe target, document anomaly. Ordinary objects reclassified as alien tech (lamp = signal beacon, spoon = translator wand, couch = stasis pod).',
+    stepFraming: 'Each step is a DIFFERENT field-agent task — deliberately vary them: collect a sample, run a scan, calibrate an instrument, decode a signal, observe a target, document an anomaly, contain a breach, triangulate a source, recalibrate, transmit a report. CRITICAL: never reuse the same task verb twice in one quest, and use the words "vector" and "signal" AT MOST ONCE EACH across the whole quest. Reframe ordinary objects as alien tech (lamp = signal beacon, spoon = translator wand, couch = stasis pod).',
     hostVoice: 'Mission control — clipped, professional, faintly inhuman. Lowercase. Terms like "subject", "anomaly", "sample retrieved", "vector confirmed", "telemetry green". Very little emotion.',
     keywords: ['anomaly', 'signal', 'sample', 'vector', 'alien', 'artifact', 'scan', 'telemetry', 'subject', 'visitor', 'spacecraft', 'transmission', 'breach', 'agent'],
     loadingHints: [
@@ -9875,7 +9875,7 @@ const THEMES = [
       'THE INFORMANT (says too much; defeated by silence)',
       'THE GHOST (every clue points elsewhere; defeated by inversion)',
     ],
-    stepFraming: 'Each step is a detective procedure — collect clue, surveil target, photograph evidence, deduce pattern, interview environment. Treat ordinary objects as clues (chair = where they sat, cup = what they drank, napkin = the note they left).',
+    stepFraming: 'Each step is a DIFFERENT detective procedure — deliberately vary them: collect a clue, surveil a target, photograph evidence, deduce a pattern, interview the environment, reconstruct the scene, tail a suspect, dust for prints, follow the money, stage a confrontation. CRITICAL: never reuse the same procedure verb twice in one quest. Treat ordinary objects as clues (chair = where they sat, cup = what they drank, napkin = the note they left).',
     hostVoice: 'Noir detective — observational, cynical. Long sentences. 1940s slang sparingly ("joint", "outfit", "the racket"). Player is "kid" or "partner" or by name.',
     keywords: ['suspect', 'clue', 'case', 'witness', 'evidence', 'alibi', 'racket', 'tail', 'gumshoe', 'noir', 'mystery', 'investigation', 'lead', 'tip', 'partner'],
     loadingHints: [
@@ -9900,7 +9900,7 @@ const THEMES = [
       'THE GOBLIN (steals small things; defeated by gift-giving)',
       'THE ORACLE (gives prophecy; defeated by reframing the riddle)',
     ],
-    stepFraming: 'Each step is a fantasy beat — find the artifact, brew the potion (mix two drinks), say the incantation, perform the ritual, present the offering. Ordinary objects reframed as fantasy items (cup = chalice, lamp = lantern of guidance, couch = the velvet throne).',
+    stepFraming: 'Each step is a DIFFERENT fantasy beat — deliberately vary them: find an artifact, brew a potion (mix two drinks), say an incantation, perform a ritual, present an offering, slay a beast, barter with a merchant, decipher a rune, forge a weapon, swear an oath. CRITICAL: never reuse the same beat verb twice in one quest. Reframe ordinary objects as fantasy items (cup = chalice, lamp = lantern of guidance, couch = the velvet throne).',
     hostVoice: 'Fantasy narrator — high-flown but warm, like a tabletop DM. "And so it was that you arrived at...". Lowercase except for sigil words (Quest, Boss, Ritual, Sigil). The player is "hero" or "champion" or by name.',
     keywords: ['quest', 'hero', 'dragon', 'sigil', 'incantation', 'sword', 'spell', 'ritual', 'chalice', 'champion', 'tavern', 'oracle', 'rune', 'prophecy', 'goblin'],
     loadingHints: [
@@ -9925,7 +9925,7 @@ const THEMES = [
       'THE TARGET (you were supposed to follow; defeated by being seen)',
       'THE CIPHER (the whole op is a test; defeated by walking away)',
     ],
-    stepFraming: 'Each step is a tradecraft beat — dead drop, brush pass, signal flash, cover identity, surveillance detection. Ordinary objects reframed as tradecraft (napkin = signal, chair = drop, cup = countersurveillance check, couch = safehouse).',
+    stepFraming: 'Each step is a DIFFERENT tradecraft beat — deliberately vary them: a dead drop, a brush pass, a signal flash, a cover identity, surveillance detection, a bug sweep, an exfil route, a cipher, a tail, an extraction. CRITICAL: never reuse the same tradecraft beat twice in one quest. Reframe ordinary objects as tradecraft (napkin = signal, chair = drop, cup = countersurveillance check, couch = safehouse).',
     hostVoice: 'Mission dispatcher — clipped, professional, slightly cold. "Asset, your six is clear. Proceed to drop location." Code-name energy. Player is "agent" or by name.',
     keywords: ['asset', 'agent', 'op', 'drop', 'cover', 'extraction', 'handler', 'cipher', 'tradecraft', 'comms', 'six', 'safehouse', 'mole', 'brief', 'recon'],
     loadingHints: [
@@ -15526,7 +15526,7 @@ async function generateRunInner() {
       // retry once on any failure; a SECOND retry fires only when a hard
       // violation survives the first — so the extra API call is spent
       // only when something genuinely shouldn't reach the player.
-      const HARD_VIOLATION_RE = /face-shot|real-purchase|text-shot/i;
+      const HARD_VIOLATION_RE = /face-shot|real-purchase|text-shot|requires a sequence/i;
       const hasHardViolation = (v) =>
         Array.isArray(v.violations) && v.violations.some(s => HARD_VIOLATION_RE.test(String(s)));
       let _retries = 0;
@@ -22508,7 +22508,7 @@ async function aiGenerateArchitecture(r) {
     r.vibes = rollThemeVibes(_theme.id);
   }
   const userMsg = `LOCATION: ${ctxName}${r.contextNote && r.contextChoice === 'custom' ? ` (custom: "${r.contextNote}")` : ''}
-${_theme ? `STORY MODE: ${_theme.name.toUpperCase()} (${_theme.icon}) — ${_theme.blurb} This is the FICTIONAL UNIVERSE for the entire quest. Boss MUST be drawn from the theme archetypes below, NOT from the standard archetypes. Every step's title, instruction, and example MUST be reframed inside this universe. Host voice for the run: ${_theme.hostVoice}.
+${_theme ? `STORY MODE: ${_theme.name.toUpperCase()} (${_theme.icon}) — ${_theme.blurb} This is the FICTIONAL UNIVERSE for the entire quest. Boss MUST be drawn from the theme archetypes below, NOT from the standard archetypes. Every step's title, instruction, and example MUST be reframed inside this universe. STEP VARIETY (critical): each of the five steps must be a DIFFERENT kind of action — never reuse the same action verb across two steps. Do NOT default Step 1 to a "locate / find the primary X" beat — vary which beat opens the quest from run to run. BOSS NAME: name the boss like a character or creature with personality (e.g. "The Quiet Passenger", "The Bench Patient", "Marcy Shift-Eternal") — never a bare abstract or tech noun (not "Framerate", not "The Catalog"). Host voice for the run: ${_theme.hostVoice}.
 THEME BOSS ARCHETYPES (pick exactly one):
 ${_theme.bossArchetypes.map(b => '- ' + b).join('\n')}
 THEME STEP FRAMING: ${_theme.stepFraming}
