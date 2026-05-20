@@ -1294,6 +1294,34 @@
     );
     box-shadow: inset 0 -3px 0 rgba(0,0,0,0.4), inset 0 2px 0 rgba(255,255,255,0.25);
   }
+  /* Boss reaction when a step lands — flinch + flash + floating damage
+     number, so the player can SEE the boss take the hit. */
+  @keyframes bossHitFlinch {
+    0%   { transform: translateX(0) rotate(0); }
+    14%  { transform: translateX(-5px) rotate(-5deg); }
+    30%  { transform: translateX(5px)  rotate(5deg); }
+    46%  { transform: translateX(-4px) rotate(-3deg); }
+    62%  { transform: translateX(3px)  rotate(2deg); }
+    100% { transform: translateX(0) rotate(0); }
+  }
+  .boss-hit-flinch { animation: bossHitFlinch 0.42s ease-out; }
+  @keyframes bossHitFlash {
+    0%, 100% { filter: none; }
+    22%      { filter: brightness(2.4) saturate(0.4); }
+  }
+  .boss-hit-flash { animation: bossHitFlash 0.34s ease-out; }
+  @keyframes dmgFloat {
+    0%   { transform: translate(-50%, 4px) scale(0.5); opacity: 0; }
+    18%  { transform: translate(-50%, -6px) scale(1.2); opacity: 1; }
+    100% { transform: translate(-50%, -52px) scale(1); opacity: 0; }
+  }
+  .dmg-float {
+    position: fixed; z-index: 4000;
+    font-family: var(--px); font-size: 20px;
+    color: #ff5764; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255,87,100,0.85);
+    pointer-events: none; white-space: nowrap;
+    animation: dmgFloat 0.95s ease-out forwards;
+  }
   .reward-pill {
     display: inline-block; padding: 6px 10px; border-radius: 0;
     background: var(--gold); color: #2a1500;
@@ -2218,6 +2246,21 @@
     50%      { filter: drop-shadow(0 0 32px rgba(255,40,60,0.95)) drop-shadow(0 0 60px rgba(255,40,60,0.6)); }
   }
   .lootbox.shake { animation: shake 0.18s steps(2) infinite; }
+  /* Tap-to-open hint under the crate — bright, pulsing, points up at it
+     so players don't miss that the crate itself is the thing to tap. */
+  @keyframes tapHintPulse {
+    0%, 100% { transform: scale(1);    opacity: 0.8; }
+    50%      { transform: scale(1.07); opacity: 1; }
+  }
+  .box-tap-label {
+    margin-top: 14px;
+    font-family: var(--px); font-size: 12px;
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 1px; text-align: center; line-height: 1.5;
+    transition: opacity 0.25s;
+    animation: tapHintPulse 1.1s ease-in-out infinite;
+  }
   @keyframes shake {
     0%   { transform: translate(-2px, 0) rotate(-3deg); }
     50%  { transform: translate(2px, -2px) rotate(3deg); }
@@ -3739,6 +3782,57 @@
   }
   .limits-count-num { font-size: 18px; }
   .limits-count-label { font-size: 9px; }
+  /* ── Style step (build 245): one-tap preset cards ────────────────
+     Quick-style + Story-mode universe cards on the new Style step. */
+  .style-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 8px 0 4px;
+  }
+  .style-card {
+    display: flex; flex-direction: column; align-items: center;
+    text-align: center; gap: 4px;
+    padding: 14px 10px;
+    background: var(--card);
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000;
+    cursor: pointer;
+    transition: transform 0.08s, box-shadow 0.08s, border-color 0.15s;
+    font-family: var(--term);
+  }
+  .style-card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
+  .style-card.on {
+    border-color: var(--neon-3);
+    box-shadow: 4px 4px 0 #000, inset 0 0 0 2px var(--neon-3), 0 0 14px rgba(0,230,195,0.3);
+  }
+  .style-card-ic { font-size: 30px; line-height: 1; }
+  .style-card-name {
+    font-family: var(--px); font-size: 11px; letter-spacing: 1px;
+    color: var(--ink); margin-top: 2px;
+  }
+  .style-card.on .style-card-name { color: var(--neon-3); }
+  .style-card-blurb { font-size: 12px; color: var(--ink-dim); line-height: 1.35; }
+  .story-sub {
+    font-family: var(--term); font-size: 12px;
+    color: var(--ink-faint); letter-spacing: 0; text-transform: none;
+  }
+  .style-advanced-toggle {
+    width: 100%; margin-top: 18px;
+    padding: 12px 14px;
+    background: var(--card);
+    border: 2px dashed var(--line);
+    color: var(--ink-dim);
+    font-family: var(--px); font-size: 10px; letter-spacing: 1px;
+    text-align: left; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .style-advanced-toggle.open { color: var(--neon-3); border-color: var(--neon-3); }
+  .style-advanced-body {
+    margin-top: 4px; padding: 12px;
+    border: 2px solid var(--line); border-top: 0;
+    background: rgba(0,0,0,0.18);
+  }
   /* When the gremlin's running the show, swap the dashed gold accent
      for a faint cursed green so the preset row still reads as "his". */
   body.unhinged-run .limit-presets-row {
@@ -9253,7 +9347,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.19.244';
+const BUILD_VERSION = '2026.05.20.246';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -10004,6 +10098,97 @@ const LIMIT_PRESETS = [
     isClear: true,
   },
 ];
+
+// ══════════════════════════════════════════════════════════════════
+// STYLE PRESETS — the one-tap setup shortcut (build 245). Each preset
+// is a full bundle: vibes + limits + allowances + the unhinged flag.
+// Tapping a card on the Style step writes the whole bundle into
+// state.run, so a player goes Location → tap a card → Difficulty
+// without ever opening the granular Advanced controls.
+// Story-mode universe cards are generated from THEMES at render time
+// (preset id `story:<themeId>`), so they aren't listed here.
+const STYLE_PRESETS = [
+  {
+    id: 'chill', icon: '🌿', label: 'Chill',
+    blurb: 'Low-key and cozy. No strangers, nothing embarrassing.',
+    vibes: ['chill', 'cozy'], unhinged: false, theme: null,
+    limits: ['No strangers', 'No flirting', 'Nothing embarrassing', 'No selfies / face shots'],
+    allowances: [],
+  },
+  {
+    id: 'social', icon: '🎉', label: 'Social',
+    blurb: 'Playful and people-friendly. Great with friends around.',
+    vibes: ['chaotic', 'wholesome'], unhinged: false, theme: null,
+    limits: ['No selfies / face shots'],
+    allowances: [],
+  },
+  {
+    id: 'wild', icon: '🌶', label: 'Wild',
+    blurb: 'Spicy, chaotic, faintly cursed. Crazy dares unlocked.',
+    vibes: ['spicy', 'chaotic', 'cursed'], unhinged: false, theme: null,
+    limits: [],
+    allowances: ['OK with crazy dares'],
+  },
+  {
+    id: 'unhinged', icon: '🦇', label: 'Unhinged',
+    blurb: 'The Gremlin takes over. Theatrical, lowercase, cursed.',
+    vibes: [], unhinged: true, theme: null,
+    limits: [],
+    allowances: ['OK with crazy dares'],
+  },
+];
+const STYLE_PRESET_BY_ID = Object.fromEntries(STYLE_PRESETS.map(p => [p.id, p]));
+
+// Public-spaces-safe limit set applied when a Story Mode universe card
+// is picked — keeps themed runs sane without a granular Limits step.
+const STORY_SAFE_LIMITS = ['No strangers', 'No selfies / face shots', 'No trespassing'];
+
+// True when state.run's current config exactly matches a style preset
+// (or any theme, for Story cards). Drives the card highlight — no
+// stored flag, so editing anything in Advanced cleanly de-highlights.
+function matchedStylePreset() {
+  const r = state.run;
+  if (!r) return null;
+  if (r.theme) return 'story:' + r.theme;
+  const eq = (a, b) => {
+    const A = [...(a || [])].sort(), B = [...(b || [])].sort();
+    return A.length === B.length && A.every((x, i) => x === B[i]);
+  };
+  for (const p of STYLE_PRESETS) {
+    if (!!p.unhinged === !!r.unhinged && !r.theme
+        && eq(p.vibes, r.vibes) && eq(p.limits, r.limits)
+        && eq(p.allowances, r.allowances)) {
+      return p.id;
+    }
+  }
+  return null;
+}
+
+// Apply a style/story preset bundle to state.run.
+function applyStylePreset(pid) {
+  const r = state.run;
+  if (!r) return;
+  if (pid && pid.indexOf('story:') === 0) {
+    const themeId = pid.slice(6);
+    if (!THEME_BY_ID[themeId]) return;
+    r.theme = themeId;
+    r.unhinged = false;
+    r.vibes = [];
+    r.limits = [...STORY_SAFE_LIMITS];
+    r.allowances = [];
+    try { sfx.unhingedOn && sfx.unhingedOn(); } catch (_) {}
+    return;
+  }
+  const p = STYLE_PRESET_BY_ID[pid];
+  if (!p) return;
+  r.vibes = [...p.vibes];
+  r.unhinged = !!p.unhinged;
+  r.theme = p.theme || null;
+  r.limits = [...p.limits];
+  r.allowances = [...p.allowances];
+  if (p.unhinged) { try { sfx.unhingedOn && sfx.unhingedOn(); } catch (_) {} }
+  else { try { sfx.tap && sfx.tap(); } catch (_) {} }
+}
 
 // Helper: pixel-art place icon (used in setup wizard chips). Falls
 // back gracefully to the emoji name in alt= so screen readers still
@@ -11472,8 +11657,8 @@ const HOST_LINES = {
     'not everyone agreed. suspicious. continue or retry.',
   ],
   reward: [
-    'reward incoming. i\'m feeling generous which is rare and lightly threatening.',
-    'loot dispensed. try not to peak here bro.',
+    'your reward is sealed in the box below. tap it to crack it open.',
+    'loot\'s waiting in that box down there. tap it. i\'m not opening it for you.',
   ],
   tooEasy: [
     'declared too easy. confidence noted, especially when it ages badly.',
@@ -14195,31 +14380,18 @@ function startSetup(mode) {
     activeTwists: [],
   };
   state.setupStep = 0;
+  state._styleAdvancedOpen = false;
   go('setup');
 }
 
 function screenSetup() {
-  // Unhinged mode skips Limits entirely — the gremlin handles content
-  // boundaries via its own persona override. Limits would just confuse
-  // the prompt and create dead weight in the wizard.
-  // Guests mirror the host's unhinged flag so their STEPS list matches.
+  // Setup wizard is always 3 steps (build 245): Location → Style →
+  // Difficulty. The Style step folds in the old Vibe + Limits steps via
+  // one-tap presets (with an Advanced expander for granular control);
+  // the old Review step is gone — item-arming moved onto Difficulty.
+  // Guests render the wizard read-only, mirroring the host's choices.
   const isMpGuest = !!(state.run.qmpRoomCode && !state.run.qmpIsHost);
-  const isUnhinged = isMpGuest
-    ? !!qmpRoomState?.hostSetup?.unhinged
-    : !!state.run?.unhinged;
-  // Both host and guests see the same wizard pages — guest screens are
-  // read-only mirrors of the host's choices. Guests can't navigate;
-  // their setupStep is driven by hostSetup.step in the room snapshot.
-  let STEPS;
-  if (state.run.mode === 'party') {
-    STEPS = isUnhinged
-      ? ['Context', 'Vibe', 'Difficulty', 'Review']
-      : ['Context', 'Vibe', 'Limits', 'Difficulty', 'Review'];
-  } else {
-    STEPS = isUnhinged
-      ? ['Context', 'Vibe', 'Difficulty', 'Review']
-      : ['Context', 'Vibe', 'Limits', 'Difficulty', 'Review'];
-  }
+  const STEPS = ['Context', 'Style', 'Difficulty'];
   // Defensive clamp — if the host is mid-toggle (unhinged just turned
   // on/off, mid-step), the guest's stale setupStep could land out of
   // range for one render. Snap it back into bounds.
@@ -14230,18 +14402,18 @@ function screenSetup() {
 
   let body = '';
   if (stepName === 'Context') body = setupContext();
-  else if (stepName === 'Players') body = setupPlayers();
-  else if (stepName === 'Vibe') body = setupVibe();
-  else if (stepName === 'Limits') body = setupRisks();
+  else if (stepName === 'Style') body = setupStyle();
   else if (stepName === 'Difficulty') body = setupDifficulty();
-  else if (stepName === 'Review') body = setupReview();
+  // Display title — 'Context' reads better as 'Location' in the header.
+  const STEP_TITLES = { Context: 'Location', Style: 'Style', Difficulty: 'Difficulty' };
+  const stepTitle = STEP_TITLES[stepName] || stepName;
 
   app().innerHTML = `
     ${header()}
     <div class="screen">
       <div class="step-head">
         <div class="crumb">${state.run.mode === 'party' ? 'Party Run' : 'Solo Run'} · Step ${idx+1} of ${STEPS.length}</div>
-        <h2>${stepName}</h2>
+        <h2>${stepTitle}</h2>
       </div>
       <div class="progress">
         ${STEPS.map((_, i) => `<div class="seg ${i <= idx ? 'on' : ''}"></div>`).join('')}
@@ -14254,8 +14426,8 @@ function screenSetup() {
       ` : ''}
       <div class="row" style="margin-top:18px;">
         <button class="btn ghost" id="back" ${isMpGuest && idx !== 0 ? 'style="visibility:hidden;"' : ''}>${idx === 0 ? 'Cancel' : 'Back'}</button>
-        <button class="btn primary" id="next" ${isMpGuest && stepName !== 'Review' ? 'style="visibility:hidden;"' : ''}>${
-          stepName === 'Review'
+        <button class="btn primary" id="next" ${isMpGuest && stepName !== 'Difficulty' ? 'style="visibility:hidden;"' : ''}>${
+          stepName === 'Difficulty'
             ? (isMpGuest ? '<img src="img/ui_waiting.png?v=2" class="ui-ic"/>WAITING FOR HOST…' : 'Generate Run')
             : 'Next'
         }</button>
@@ -14336,6 +14508,52 @@ function setupPlayers() {
       <div class="m"><div class="l">Players</div><div class="v">${r.players.length}</div></div>
       <div class="m"><div class="l">Mode</div><div class="v">Party</div></div>
     </div>
+  `;
+}
+
+// Build 245 — the Style step. Replaces the old Vibe + Limits steps.
+// One-tap preset cards (Quick Styles + Story Mode universes) up top,
+// with an Advanced expander that reveals the full granular controls
+// (the reused setupVibe + setupRisks bodies).
+function setupStyle() {
+  const r = state.run;
+  const isMpGuest = !!(r.qmpRoomCode && !r.qmpIsHost);
+  const active = matchedStylePreset();
+  const advOpen = !!state._styleAdvancedOpen;
+
+  const card = (id, icon, label, blurb) => `
+    <button class="style-card ${active === id ? 'on' : ''}" data-style-preset="${id}"
+            aria-pressed="${active === id ? 'true' : 'false'}">
+      <div class="style-card-ic">${icon}</div>
+      <div class="style-card-name">${escapeHtml(label)}</div>
+      <div class="style-card-blurb">${escapeHtml(blurb)}</div>
+    </button>`;
+
+  const styleCards = STYLE_PRESETS
+    .map(p => card(p.id, p.icon, p.label, p.blurb)).join('');
+  const storyCards = THEMES
+    .map(t => card('story:' + t.id, t.icon, t.name, t.short)).join('');
+
+  return `
+    <div class="step-head"><div class="sub">${isMpGuest
+      ? 'The host is choosing the style. Sit tight.'
+      : 'Tap a style to set everything at once — or open Advanced to fine-tune.'}</div></div>
+
+    <div class="section-title">▸ QUICK STYLES</div>
+    <div class="style-card-grid">${styleCards}</div>
+
+    <div class="section-title">▸ STORY MODE <span class="story-sub">— wrap your run in a universe</span></div>
+    <div class="style-card-grid">${storyCards}</div>
+
+    <button class="style-advanced-toggle ${advOpen ? 'open' : ''}" id="styleAdvancedToggle" type="button">
+      ${advOpen ? '▾' : '▸'} Advanced — vibes, limits &amp; allowances
+    </button>
+    ${advOpen ? `
+      <div class="style-advanced-body">
+        ${setupVibe()}
+        ${r.unhinged ? '' : setupRisks()}
+      </div>
+    ` : ''}
   `;
 }
 
@@ -14578,6 +14796,7 @@ function setupDifficulty() {
         </div>
       `;}).join('')}
     </div>
+    ${(r.qmpRoomCode && !r.qmpIsHost) ? '' : reviewArmedItemsBlock()}
   `;
 }
 
@@ -14735,7 +14954,7 @@ function bindSetup(STEPS) {
     document.querySelectorAll(
       '#ctxChips .chip, #vibeChips .chip, #limitChips .chip, #allowanceChips .chip, ' +
       '[data-vibe], [data-limit], [data-allowance], [data-pet-type], [data-theme], [data-diff], ' +
-      '#unhingedToggle, #storyModeToggle, ' +
+      '[data-style-preset], #unhingedToggle, #storyModeToggle, ' +
       '#ctxNote'
     ).forEach(el => {
       el.style.pointerEvents = 'none';
@@ -14804,7 +15023,25 @@ function bindSetup(STEPS) {
       r.secretRoles = !r.secretRoles; render();
     };
   }
-  if (stepName === 'Vibe') {
+  if (stepName === 'Style') {
+    // One-tap preset cards — apply the whole bundle, then sync it all.
+    document.querySelectorAll('[data-style-preset]').forEach(el => el.onclick = () => {
+      applyStylePreset(el.dataset.stylePreset);
+      if (r.qmpRoomCode && r.qmpIsHost) {
+        window.qmp?.syncHostSetup(r.qmpRoomCode, {
+          vibes: r.vibes, limits: r.limits, allowances: r.allowances,
+          unhinged: r.unhinged, theme: r.theme,
+        });
+      }
+      render();
+    });
+    // Advanced expander — local view state only, no MP sync needed.
+    const advBtn = document.getElementById('styleAdvancedToggle');
+    if (advBtn) advBtn.onclick = () => {
+      state._styleAdvancedOpen = !state._styleAdvancedOpen;
+      try { sfx.tap && sfx.tap(); } catch (_) {}
+      render();
+    };
     document.querySelectorAll('[data-vibe]').forEach(c => c.onclick = () => {
       const id = c.dataset.vibe;
       if (r.vibes.includes(id)) {
@@ -14899,7 +15136,8 @@ function bindSetup(STEPS) {
       render();
     });
   }
-  if (stepName === 'Limits') {
+  if (stepName === 'Style') {
+    // Limits / allowances live inside the Style step's Advanced expander.
     // Allowed-risks chips no longer render — see setupRisks(). Risks are
     // pre-seeded to "all" in startSetup so the AI prompt still gets them.
     document.querySelectorAll('[data-limit]').forEach(c => c.onclick = () => {
@@ -14997,10 +15235,12 @@ function bindSetup(STEPS) {
       render();
     });
   }
-  if (stepName === 'Review') {
-    // Tap an inventory item chip to arm it; tap an armed chip to unarm.
-    // Long-press (~500ms) on either pops up the item's full description
-    // — a tap-to-arm mistake is annoying when you just wanted to read.
+  if (stepName === 'Difficulty') {
+    // Armed-items picker (moved off the deleted Review step onto the
+    // Difficulty step). Tap an inventory item chip to arm it; tap an
+    // armed chip to unarm. Long-press (~500ms) on either pops up the
+    // item's full description — a tap-to-arm mistake is annoying when
+    // you just wanted to read.
     const attachLongPress = (el, onLong) => {
       let timer = null;
       let suppressClick = false;
@@ -15107,7 +15347,7 @@ function bindSetup(STEPS) {
   };
   document.getElementById('next').onclick = () => {
     if (!validateStep(stepName)) return;
-    if (stepName === 'Review') {
+    if (stepName === 'Difficulty') {
       // Guests don't generate the quest — they wait for the host's broadcast.
       // The room subscription will navigate them to boss reveal when status flips.
       if (r.qmpRoomCode && !r.qmpIsHost) {
@@ -15147,10 +15387,11 @@ function validateStep(stepName) {
       toast('Type your custom location.'); return false;
     }
   }
-  // Vibes are skipped when unhinged mode is on (gremlin overrides them)
-  // OR when Story Mode is on (theme overrides them — vibes are auto-rolled
-  // from the theme's compatibleVibes pool at quest-gen time).
-  if (stepName === 'Vibe' && !r.unhinged && !r.theme && r.vibes.length === 0) { toast('Pick at least one vibe.'); return false; }
+  // The Style step needs SOME style chosen — a preset card sets one of
+  // these, and so does the Advanced expander. Unhinged or a Story theme
+  // both override vibes (auto-rolled at quest-gen time), so either one
+  // satisfies the step on its own.
+  if (stepName === 'Style' && !r.unhinged && !r.theme && r.vibes.length === 0) { toast('Pick a style.'); return false; }
   // Risks no longer surface in the UI — they are seeded to "all" at run
   // start (startSetup) so the AI prompt still gets the full flavor list.
   // No validation needed for the Limits step; empty limits is valid.
@@ -15973,6 +16214,48 @@ function screenRoleReveal() {
 /* ---------- Quest ---------- */
 
 let timerInterval = null;
+
+// Boss damage reaction — called after a step completes and the quest
+// screen re-renders. Flinches + flashes the boss art, floats a "-NN"
+// damage number, and drains the HP bar down from its pre-hit width so
+// the player can SEE the boss take the hit (testers couldn't tell the
+// steps were doing damage without it).
+function animateBossHit(hpBefore, hpAfter, dmg) {
+  const card = document.getElementById('questBossCard');
+  if (!card) return;
+  const maxHP = (state.run && state.run.bossMaxHP) || 1;
+  // Drain the HP bar from the pre-hit width down to the new width.
+  const fill = document.getElementById('hpFill');
+  if (fill) {
+    const beforePct = Math.max(0, Math.min(100, (hpBefore / maxHP) * 100));
+    const afterPct  = Math.max(0, Math.min(100, (hpAfter  / maxHP) * 100));
+    fill.style.transition = 'none';
+    fill.style.width = beforePct + '%';
+    void fill.offsetWidth;        // commit the pre-hit width
+    fill.style.transition = '';   // restore the CSS drain transition
+    fill.style.width = afterPct + '%';
+  }
+  // Flinch + flash the boss art.
+  const emblem = card.querySelector('.boss-emblem');
+  if (emblem) {
+    emblem.classList.remove('boss-hit-flinch', 'boss-hit-flash');
+    void emblem.offsetWidth;
+    emblem.classList.add('boss-hit-flinch', 'boss-hit-flash');
+  }
+  // Floating "-NN" damage number, pinned to <body> (position:fixed) so
+  // the boss card's overflow:hidden doesn't clip it as it rises.
+  if (dmg > 0) {
+    const rect = card.getBoundingClientRect();
+    const float = document.createElement('div');
+    float.className = 'dmg-float';
+    float.textContent = '-' + dmg;
+    float.style.left = (rect.left + rect.width / 2) + 'px';
+    float.style.top  = (rect.top + 16) + 'px';
+    document.body.appendChild(float);
+    setTimeout(() => float.remove(), 1000);
+  }
+  try { sfx.hit(); } catch (_) {}
+}
 
 function screenQuest() {
   const r = state.run;
@@ -16903,6 +17186,7 @@ function bindQuest() {
       // No alarming text — looks like a tough step / harsh AI judge.
       toast(`The boss shrugged off some of that. ${dmg} damage.`);
     }
+    const _hpBeforeHit = r.bossHP;
     r.bossHP = Math.max(0, r.bossHP - dmg);
     // Phase 2b — broadcast the damage. Co-op writes the shared room.bossHP.
     // Competitive / Chaos write to room.players[uid].bossHP — each player
@@ -17007,6 +17291,8 @@ function bindQuest() {
       else go('vote');
     } else {
       render();
+      // Quest screen is back up with the new HP — play the hit reaction.
+      animateBossHit(_hpBeforeHit, r.bossHP, dmg);
     }
   });
 
@@ -18386,7 +18672,7 @@ function screenReward() {
           const _t = ['warmup','brave','bold','chaos','nightmare'].includes(r.difficulty?.id) ? r.difficulty.id : 'brave';
           return `<div class="lootbox shake box-${r.difficulty?.id || 'chaos'}" id="box" data-tier="${_t}"><img class="lootbox-img" src="img/crate_${_t}_0.png?v=2" alt="" draggable="false"/><img src="img/crate_${_t}_1.png?v=2" style="display:none" alt=""/><img src="img/crate_${_t}_2.png?v=2" style="display:none" alt=""/><img src="img/crate_${_t}_3.png?v=2" style="display:none" alt=""/></div>`;
         })()}
-        <div id="boxLabel" style="margin-top:14px; color: var(--ink-dim); font-family:var(--px); font-size:9px; transition: opacity 0.25s;">TAP TO OPEN ${reward.box.toUpperCase()}</div>
+        <div id="boxLabel" class="box-tap-label">▲<br>TAP THE ${reward.box.toUpperCase()} ABOVE TO OPEN IT</div>
       </div>
 
       <div class="reward-list" id="rewardList" style="display:none;">
@@ -18546,7 +18832,7 @@ function screenReward() {
       setTimeout(() => sfx.chestBurst && sfx.chestBurst(), 220);
     }
     const label = document.getElementById('boxLabel');
-    if (label) label.style.opacity = '0';
+    if (label) { label.style.animation = 'none'; label.style.opacity = '0'; }
     setTimeout(() => {
       const list = document.getElementById('rewardList');
       list.style.display = 'block';
@@ -23343,7 +23629,7 @@ async function aiJudgePhoto(dataUrl, step) {
   // before/after / no multi-shot), creative interpretations pass, only
   // fail when the photo is clearly unrelated. The judge keeps the run
   // moving — false fails frustrate players more than false passes.
-  const JUDGE_RULES = ` HARD RULES: (1) The player submits exactly ONE photo per step. NEVER ask for "before and after", "two photos", "a video", or anything multi-shot — that's not possible in the UI. (2) The step's "examples" are SUGGESTIONS, not requirements. If the player did something different that still hits the spirit of the step's instruction, PASS. (3) Lean toward PASS. Only fail when the photo is clearly unrelated to the step instruction — not just when it didn't match an example. (4) Your comment must NEVER mention before/after, multiple photos, video, retakes, or any feature that doesn't exist. (5) Keep it under 140 chars. (6) UNVERIFIABLE-SEQUENCE LENIENCE: if the step asks for a SEQUENCE of actions (touch N things, walk to N zones, say N words to N objects) but the player can only submit ONE photo, you CANNOT verify the prior N-1 actions. In that case, PASS the photo if it shows the player was plausibly AT THE FINAL STEP of the sequence — don't fail with "no evidence you did the previous actions." That's a quest-gen failure, not a player failure. Be generous when the step's verification ask exceeds what one photo can show.`;
+  const JUDGE_RULES = ` HARD RULES: (1) The player submits exactly ONE photo per step. NEVER ask for "before and after", "two photos", "a video", or anything multi-shot — that's not possible in the UI. (2) The step's "examples" are SUGGESTIONS, not requirements. If the player did something different that still hits the spirit of the step's instruction, PASS. (3) Lean toward PASS. Only fail when the photo is clearly unrelated to the step instruction — not just when it didn't match an example. (4) Your comment must NEVER mention before/after, multiple photos, video, retakes, or any feature that doesn't exist. (5) Keep it under 140 chars. (6) UNVERIFIABLE-SEQUENCE LENIENCE: if the step asks for a SEQUENCE of actions (touch N things, walk to N zones, say N words to N objects) but the player can only submit ONE photo, you CANNOT verify the prior N-1 actions. In that case, PASS the photo if it shows the player was plausibly AT THE FINAL STEP of the sequence — don't fail with "no evidence you did the previous actions." That's a quest-gen failure, not a player failure. Be generous when the step's verification ask exceeds what one photo can show. (7) BACKGROUND IS NEVER A FAILURE: judge ONLY the photo's subject against the instruction. Never fail because of background clutter, mess, a desk, furniture, or other objects around the subject. If the thing the step asked for is clearly in frame, the surrounding environment is irrelevant — do not mention it. (8) FRAMING LENIENCE: do not be pedantic about exact angle, distance, or precise positioning (e.g. whether the player is exactly "in" a doorway or standing in an exact spot). If the photo plausibly shows the player did the thing, PASS — never fail over imperfect framing or the player not being perfectly positioned. (9) TONE ON FAIL: when you FAIL a photo, do NOT mock, insult, or be sarcastic. The comment must be a brief, friendly, SPECIFIC hint about what is missing or how to reshoot. Snark is for PASSES and obvious joke-flops only — being cruel on a borderline fail makes players quit.`;
   // Pull photo-verifiable active twists onto the judge's checklist. Any
   // twist flagged photoVisible:false (Narrator, Phone Swap, Vow of
   // Silence) is audio/behavior-only — honor-system, not enforced here.
@@ -23358,7 +23644,7 @@ async function aiJudgePhoto(dataUrl, step) {
     : '';
   const sys = r?.unhinged
     ? `You are THE GREMLIN — chaotic-good little monster judging a photo for QuestIRL. Look at the photo and decide if it satisfies the quest step. Reply STRICT JSON: {"pass": true|false, "comment": "one short sentence under 140 chars, lowercase, broken cadence, slightly cursed but warm — never cruel, never mocking protected traits"}. If the player committed to the bit AT ALL, pass them. The gremlin loves commitment.${JUDGE_RULES}${TWIST_RULES}${passBias}`
-    : `You are the snarky AI host of QuestIRL. Look at the photo and decide if it satisfies the quest step. Reply STRICT JSON: {"pass": true|false, "comment": "one short sarcastic sentence under 140 chars"}.${JUDGE_RULES}${TWIST_RULES}${passBias}`;
+    : `You are the snarky AI host of QuestIRL. Look at the photo and decide if it satisfies the quest step. Reply STRICT JSON: {"pass": true|false, "comment": "under 140 chars — witty and sarcastic when you PASS the player, but when you FAIL them drop the snark entirely and give a warm, specific hint about what to fix"}.${JUDGE_RULES}${TWIST_RULES}${passBias}`;
   const userMsg = `Step type: ${step.type}. Step title: ${step.title}. Step instruction: ${step.instr}. Examples of acceptable proof (suggestions only, NOT requirements): ${(step.examples || []).join(', ') || 'none'}.${visibleTwists.length ? ` Active twist cards the photo MUST also satisfy: ${visibleTwists.map(t => `[${t.n}] ${t.d}`).join(' | ')}.` : ''} The player submitted ONE photo. Decide if it hits the spirit of the instruction AND every active twist. Respond with JSON only.`;
   const { url: _u, init: _init } = anthropicFetchInit({
     model: 'claude-haiku-4-5',
@@ -23388,10 +23674,10 @@ const SIM_PASS_LINES = [
   'Decent. The Couch Goblin sighs.',
 ];
 const SIM_FAIL_LINES = [
-  'No. Try again with actual effort.',
-  'This proves you have a phone. Nothing more.',
-  'Reject. The composition alone is a crime.',
-  'Take it again. Less ceiling, more subject.',
+  'Not quite — get the main subject clearly in frame and try once more.',
+  'Hard to read this one. Reshoot with the thing the step asked for front and center.',
+  'Close! Take it again so the step\'s subject is clearly visible.',
+  'Almost — frame it a little tighter on what the step wants and resubmit.',
 ];
 function simulateJudgment(step) {
   const armed = (state.run && state.run.armed) || [];
@@ -27484,6 +27770,8 @@ function qmpSetupSignature(data) {
     (hs.vibes || []).join(','),
     !!hs.unhinged,
     (hs.limits || []).join(','),
+    hs.theme || '',
+    (hs.allowances || []).join(','),
     hs.difficulty || '',
     // Host's wizard step — when they navigate back/forward, the
     // signature changes and guests re-render onto the same step.
@@ -28145,6 +28433,10 @@ function handleQmpRoomUpdate(data) {
       if (Array.isArray(hs.vibes))            state.run.vibes = hs.vibes;
       if (typeof hs.unhinged === 'boolean')   state.run.unhinged = hs.unhinged;
       if (Array.isArray(hs.limits))           state.run.limits = hs.limits;
+      // Style-step additions (build 245): theme + allowances mirror to
+      // guests too, so their Style cards highlight the host's pick.
+      if (typeof hs.theme !== 'undefined')    state.run.theme = hs.theme;
+      if (Array.isArray(hs.allowances))       state.run.allowances = hs.allowances;
       if (hs.difficulty && typeof DIFFICULTIES !== 'undefined') {
         const d = DIFFICULTIES.find(x => x.id === hs.difficulty);
         if (d) state.run.difficulty = d;
