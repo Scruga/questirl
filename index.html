@@ -7947,6 +7947,13 @@
     display: block; margin: 0 auto 22px;
     filter: drop-shadow(0 6px 10px rgba(0,0,0,0.55));
   }
+  /* Gentle hover-bob for floating characters (sci-fi astronaut etc.) —
+     layered on top of the drawn sprite loop. */
+  @keyframes genFloat {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-14px); }
+  }
+  .gen-anim-img.gen-anim-float { animation: genFloat 2.4s ease-in-out infinite; }
   .gen-title {
     font-family: var(--px); font-size: 16px;
     color: var(--neon); letter-spacing: 3px;
@@ -9405,7 +9412,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.268';
+const BUILD_VERSION = '2026.05.20.269';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -29712,9 +29719,14 @@ function pickWaitQuip(pool, elapsedSec) {
 }
 
 // Per-style/story animated loading character. Each ready key ships a
-// 4-frame loop as load_<key>_0..3.png; keys not yet in this set fall
+// frame loop as load_<key>_0..N.png; keys not yet in this set fall
 // back to the host-face loader. Add a key here as its frames land.
-const LOADING_ANIM_READY = new Set(['zombie']);
+const LOADING_ANIM_READY = new Set(['zombie', 'scifi']);
+// Frame count per key (default 4).
+const LOADING_ANIM_FRAMES = { scifi: 8 };
+// Keys that get a gentle CSS hover-bob on top of the sprite loop —
+// for characters drawn static/floating rather than walking.
+const LOADING_ANIM_FLOAT = new Set(['scifi']);
 function loadingAnimKey(r) {
   if (!r) return null;
   if (r.theme) return LOADING_ANIM_READY.has(r.theme) ? r.theme : null;
@@ -29736,7 +29748,7 @@ function screenGenerating() {
   // frames; otherwise the existing laughing host face.
   const animKey = loadingAnimKey(r);
   const ic = animKey
-    ? `<img id="genAnimImg" class="gen-anim-img" src="img/load_${animKey}_0.png" alt="">`
+    ? `<img id="genAnimImg" class="gen-anim-img${LOADING_ANIM_FLOAT.has(animKey) ? ' gen-anim-float' : ''}" src="img/load_${animKey}_0.png" alt="">`
     : isUnhinged
       ? `<div class="gen-icon-laugh"><img src="img/unhinged_head.png" class="unhinged-bat-img" style="width:140px; height:140px;" alt=""></div>`
       : `<div class="gen-icon-laugh">${systemAv.html('smug', 'lg')}</div>`;
@@ -29839,11 +29851,12 @@ function screenGenerating() {
       const animImg = document.getElementById('genAnimImg');
       if (animImg) {
         let f = 0;
+        const frameCount = LOADING_ANIM_FRAMES[animKey] || 4;
         // 360ms/frame — a slow, deliberate loop (half the 180ms the
         // hero-charge strip uses) so the shamble reads as a shamble.
         const animTick = () => {
           if (!document.body.contains(animImg)) return;
-          f = (f + 1) % 4;
+          f = (f + 1) % frameCount;
           animImg.src = `img/load_${animKey}_${f}.png`;
           setTimeout(animTick, 360);
         };
