@@ -9397,7 +9397,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.259';
+const BUILD_VERSION = '2026.05.20.260';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -10191,7 +10191,7 @@ const STYLE_PRESETS = [
     allowances: ['OK with crazy dares'],
   },
   {
-    id: 'unhinged', icon: '🦇', label: 'Unhinged',
+    id: 'unhinged', icon: '🦇', iconFile: 'unhinged.png', label: 'Unhinged',
     blurb: 'The Gremlin takes over. Theatrical, lowercase, cursed.',
     vibes: [], unhinged: true, theme: null,
     limits: [],
@@ -14592,7 +14592,7 @@ function setupStyle() {
     </button>`;
 
   const styleCards = STYLE_PRESETS
-    .map(p => card(p.id, 'style_' + p.id + '.png', p.label, p.blurb)).join('');
+    .map(p => card(p.id, p.iconFile || ('style_' + p.id + '.png'), p.label, p.blurb)).join('');
   const storyCards = THEMES
     .map(t => card('story:' + t.id, 'story_' + t.id + '.png', t.name, t.short)).join('');
 
