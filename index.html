@@ -9476,7 +9476,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.21.281';
+const BUILD_VERSION = '2026.05.21.282';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -12483,25 +12483,27 @@ function rollReward(diff) {
     }
   }
 
-  // Failed-step penalty: each timer-failed step removes 20% of the reward,
-  // capped at 75% total loss. Stash the per-step penalty so the recap can
-  // visualize it next to each failed step.
+  // Failed/skipped-step penalty: each step the player timed out on OR
+  // skipped removes 20% of the run's reward — coins, XP, chest item
+  // count and the frame-drop chance all scale down together. Capped at
+  // 90% loss so an all-skipped run still opens a token (scraps) chest.
   const failedSteps = (state.run && state.run.failedSteps) ? [...state.run.failedSteps] : [];
   const PENALTY_PER_FAIL = 0.20;
-  const totalPenalty = Math.min(0.75, failedSteps.length * PENALTY_PER_FAIL);
+  const totalPenalty = Math.min(0.90, failedSteps.length * PENALTY_PER_FAIL);
   const coinsLostPerFail = Math.round(baseCoins * PENALTY_PER_FAIL);
   const xpLostPerFail = Math.round(baseXp * PENALTY_PER_FAIL);
   const coins = Math.round(baseCoins * (1 - totalPenalty));
   const xp = Math.round(baseXp * (1 - totalPenalty));
 
-  // Scale item count: Warm-Up 1, Brave 2, Bold 3, Chaos 4, Nightmare 5
-  const itemCount = [1, 2, 3, 4, 5][tier - 1];
+  // Item count by tier (Warm-Up 1 … Nightmare 5), scaled down by the
+  // failed/skipped-step penalty — skip steps, get an emptier chest.
+  const itemCount = Math.max(0, Math.round([1, 2, 3, 4, 5][tier - 1] * (1 - totalPenalty)));
 
   // Frame drop chance scales with difficulty.
   // Frame drop — chance and rarity weighting both scale with box tier.
   // Lower tiers favor common rims; nightmare boxes have a real shot at
   // legendary stacked-effect frames. Only drops frames not already owned.
-  const frameChance = [0, 0.15, 0.30, 0.55, 0.80][tier - 1];
+  const frameChance = [0, 0.15, 0.30, 0.55, 0.80][tier - 1] * (1 - totalPenalty);
   // Per-tier rarity weights — tier index 1..5 maps to columns C/U/R/E/L
   const RARITY_WEIGHTS = {
     1: { common: 100, uncommon:   0, rare:   0, epic:  0, legendary:  0 }, // Warm-Up — frame drops disabled but kept for completeness
@@ -18231,6 +18233,33 @@ function showSkipStepConfirmModal() {
     const finish = (ok) => { wrap.remove(); resolve(ok); };
     document.getElementById('skipStepCancel').onclick = () => finish(false);
     document.getElementById('skipStepConfirm').onclick = () => finish(true);
+    wrap.onclick = (e) => { if (e.target === wrap) finish(false); };
+  });
+}
+
+// Generic styled yes/no confirm — replaces native confirm() for the
+// smaller confirmations (discard saved run, etc.). Returns a Promise.
+function showConfirmModal({ title, body, confirmText = 'CONFIRM', cancelText = 'CANCEL', danger = false } = {}) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('genericConfirmModal');
+    if (existing) existing.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'genericConfirmModal';
+    wrap.className = 'modal-bg';
+    wrap.innerHTML = `
+      <div class="modal skip-modal">
+        <h3>${escapeHtml(title || 'ARE YOU SURE?')}</h3>
+        <p class="skip-modal-body">${body || ''}</p>
+        <div class="row" style="justify-content:center; gap:10px; margin-top:14px;">
+          <button class="btn ghost" id="gcmCancel">${escapeHtml(cancelText)}</button>
+          <button class="btn ${danger ? 'danger' : 'primary'}" id="gcmConfirm">${escapeHtml(confirmText)}</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    const finish = (ok) => { wrap.remove(); resolve(ok); };
+    document.getElementById('gcmCancel').onclick = () => finish(false);
+    document.getElementById('gcmConfirm').onclick = () => finish(true);
     wrap.onclick = (e) => { if (e.target === wrap) finish(false); };
   });
 }
@@ -27731,8 +27760,13 @@ function maybeRenderResumeCard() {
       </div>
     </div>
   `;
-  document.getElementById('resumeDismiss').onclick = () => {
-    if (!confirm('Discard saved run? You can\'t recover it.')) return;
+  document.getElementById('resumeDismiss').onclick = async () => {
+    const ok = await showConfirmModal({
+      title: 'DISCARD SAVED RUN?',
+      body: "This run will be gone for good — you won't be able to resume it.",
+      confirmText: 'DISCARD', cancelText: 'KEEP IT', danger: true,
+    });
+    if (!ok) return;
     clearResumeState();
     slot.innerHTML = '';
   };
