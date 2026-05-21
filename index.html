@@ -5899,6 +5899,14 @@
   }
   .photo-judge.pass { box-shadow: 3px 3px 0 var(--neon-3); border-left: 6px solid var(--neon-3); }
   .photo-judge.fail { box-shadow: 3px 3px 0 var(--danger); border-left: 6px solid var(--danger); }
+  /* Per-step escape hatch — low-emphasis so it's findable but doesn't
+     invite casual skipping. */
+  .step-skip-btn {
+    display: block; width: 100%;
+    margin-top: 8px;
+    font-size: 11px; opacity: 0.6;
+  }
+  .step-skip-btn:active { opacity: 0.9; }
   .photo-judge .verdict { font-family: var(--px); font-size: 10px; margin-bottom: 6px; }
   .photo-judge.pass .verdict { color: var(--neon-3); }
   .photo-judge.fail .verdict { color: var(--danger); }
@@ -9412,7 +9420,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.269';
+const BUILD_VERSION = '2026.05.20.270';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15541,7 +15549,7 @@ async function generateRunInner() {
       // retry once on any failure; a SECOND retry fires only when a hard
       // violation survives the first — so the extra API call is spent
       // only when something genuinely shouldn't reach the player.
-      const HARD_VIOLATION_RE = /face-shot|real-purchase|text-shot|requires a sequence|overlaps recent/i;
+      const HARD_VIOLATION_RE = /face-shot|real-purchase|text-shot|requires a sequence|overlaps recent|unverifiable-conceal/i;
       const hasHardViolation = (v) =>
         Array.isArray(v.violations) && v.violations.some(s => HARD_VIOLATION_RE.test(String(s)));
       let _retries = 0;
@@ -16697,7 +16705,9 @@ function renderStep(s, i) {
           : `<div class="dmg">⚔ ${s.dmg} damage</div>`
         }
         ${active
-          ? renderProofUI(s, i)
+          ? renderProofUI(s, i) + ((r.judgments[i] && r.judgments[i].pass)
+              ? ''
+              : `<button class="btn ghost sm step-skip-btn" data-skip-step="${i}">Stuck? Skip this step</button>`)
           : ((r.failedSteps || []).includes(i)
               ? `<div style="color: var(--danger); font-family: var(--px); font-size: 9px; margin-top:8px; letter-spacing: 1px;">✗ TIME EXPIRED · 0 damage dealt · reward reduced</div>`
               : renderCompletedProof(s, i))}
@@ -17250,8 +17260,31 @@ function bindQuest() {
     }
   });
 
-  // (player-facing Skip button removed — only AI judging is exposed.
-  //  Dev-menu force-pass uses devForcePassStep() for the same effect.)
+  // Per-step Skip — an escape hatch when a step is broken, impossible,
+  // or the player just can't do it. Marks the step failed (no boss
+  // damage, exactly like a timeout) and advances, so the player is
+  // never stuck. Self-limiting: skipping deals no damage, so it can't
+  // be abused to win — you just may not drain the boss.
+  document.querySelectorAll('[data-skip-step]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.skipStep;
+    if (r.completed.includes(i)) return;
+    if (!confirm("Skip this step? It counts as failed — no damage to the boss, but you won't be stuck.")) return;
+    r.failedSteps = r.failedSteps || [];
+    if (!r.failedSteps.includes(i)) r.failedSteps.push(i);
+    if (!r.completed.includes(i)) r.completed.push(i);
+    r.currentStep = Math.min(r.quest.length - 1, r.currentStep + 1);
+    toast('✗ Step skipped — no damage dealt.');
+    try { pushChat('host', `▶ step ${i + 1} skipped. no damage. moving on.`); renderChatSheet(); } catch (_) {}
+    render();
+    // If that resolved the last step, kick the finalize logic.
+    if (r.completed.length >= r.quest.length) {
+      setTimeout(() => {
+        if (state.view !== 'quest') return;
+        if (r.mode === 'solo' || r.qmpRoomCode) return finalizeRun();
+        return go('vote');
+      }, 400);
+    }
+  });
 
   document.querySelectorAll('[data-complete]').forEach(b => b.onclick = () => {
     const i = +b.dataset.complete;
@@ -22330,6 +22363,29 @@ function validateGeneratedQuest(ai, r) {
     if (SEQUENCE_PATTERN.test(text) && stepProof === 'photo' && (!stepPhotoCount || stepPhotoCount < 2)) {
       const m = text.match(SEQUENCE_PATTERN);
       violations.push(`Step ${idx + 1} requires a sequence ("${m[0]}") but uses single-photo proof — judge can't verify. Use proof:"tap" or photoCount > 1.`);
+    }
+
+    // Unverifiable-conceal detector. A photo step that requires the
+    // subject to be invisible / hidden / out of sight is a paradox —
+    // the judge needs to SEE the proof, but the step demands it can't
+    // be seen. (Reported by a tester: "hide the pen so it's invisible"
+    // — impossible to ever pass.) Flag so the retry rewrites it.
+    if (stepProof === 'photo') {
+      const CONCEAL_PATTERNS = [
+        /\binvisible\b/i,
+        /\bout of sight\b/i,
+        /\b(?:completely|fully|totally|entirely)\s+(?:hidden|concealed|covered|obscured|out of view)\b/i,
+        /\b(?:cannot|can'?t|can not|won'?t|will not|impossible to)\s+be\s+seen\b/i,
+        /\bhidden\s+from\s+(?:view|sight|the camera)\b/i,
+        /\bnot\s+(?:be\s+)?visible\s+(?:in|to)\b/i,
+      ];
+      for (const pat of CONCEAL_PATTERNS) {
+        const m = text.match(pat);
+        if (m) {
+          violations.push(`Step ${idx + 1} unverifiable-conceal ("${m[0]}") — a photo step cannot require the subject to be invisible/hidden. Rewrite so the photo shows the hiding SPOT or the ACT, with the object still partly visible.`);
+          break;
+        }
+      }
     }
 
     // Every-path / whole-area sweep detector. The player has ~60s per
