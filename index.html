@@ -5899,14 +5899,23 @@
   }
   .photo-judge.pass { box-shadow: 3px 3px 0 var(--neon-3); border-left: 6px solid var(--neon-3); }
   .photo-judge.fail { box-shadow: 3px 3px 0 var(--danger); border-left: 6px solid var(--danger); }
-  /* Per-step escape hatch — low-emphasis so it's findable but doesn't
-     invite casual skipping. */
+  /* Per-step escape hatch — its own pixel-art treatment: a dashed,
+     muted "secondary action" look so it's findable but never competes
+     with the solid Submit / Capture buttons or invites casual skips. */
   .step-skip-btn {
     display: block; width: 100%;
-    margin-top: 8px;
-    font-size: 11px; opacity: 0.6;
+    margin-top: 10px;
+    padding: 9px 10px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 2px dashed var(--ink-faint);
+    border-radius: 0;
+    color: var(--ink-dim);
+    font-family: var(--px); font-size: 9px; letter-spacing: 1.5px;
+    text-align: center; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
   }
-  .step-skip-btn:active { opacity: 0.9; }
+  .step-skip-btn:hover { color: var(--ink); border-color: var(--ink-dim); }
+  .step-skip-btn:active { transform: translate(0, 1px); background: rgba(0, 0, 0, 0.4); }
   .photo-judge .verdict { font-family: var(--px); font-size: 10px; margin-bottom: 6px; }
   .photo-judge.pass .verdict { color: var(--neon-3); }
   .photo-judge.fail .verdict { color: var(--danger); }
@@ -9420,7 +9429,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.21.278';
+const BUILD_VERSION = '2026.05.21.279';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -16707,7 +16716,7 @@ function renderStep(s, i) {
         ${active
           ? renderProofUI(s, i) + ((r.judgments[i] && r.judgments[i].pass)
               ? ''
-              : `<button class="btn ghost sm step-skip-btn" data-skip-step="${i}">Stuck? Skip this step</button>`)
+              : `<button class="step-skip-btn" data-skip-step="${i}">▸▸ STUCK? SKIP THIS STEP</button>`)
           : ((r.failedSteps || []).includes(i)
               ? `<div style="color: var(--danger); font-family: var(--px); font-size: 9px; margin-top:8px; letter-spacing: 1px;">✗ TIME EXPIRED · 0 damage dealt · reward reduced</div>`
               : renderCompletedProof(s, i))}
