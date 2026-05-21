@@ -9420,7 +9420,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.273';
+const BUILD_VERSION = '2026.05.20.274';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -29779,7 +29779,7 @@ function pickWaitQuip(pool, elapsedSec) {
 // back to the host-face loader. Add a key here as its frames land.
 const LOADING_ANIM_READY = new Set(['zombie', 'scifi']);
 // Frame count per key (default 4).
-const LOADING_ANIM_FRAMES = { scifi: 3 };
+const LOADING_ANIM_FRAMES = { scifi: 1 };
 // Keys that get a gentle CSS hover-bob on top of the sprite loop —
 // for characters drawn static/floating rather than walking.
 const LOADING_ANIM_FLOAT = new Set(['scifi']);
@@ -29903,11 +29903,13 @@ function screenGenerating() {
   // Party runs skip this — they show the charging hero-crew banner instead.
   if (!isParty) {
     if (animKey) {
-      // 4-frame walk/idle/action loop for the style/story character.
+      // Frame-swap loop for the style/story character. A 1-frame key
+      // (sci-fi) is a static sprite — the CSS hover-bob is the motion,
+      // so skip the swap loop entirely.
       const animImg = document.getElementById('genAnimImg');
-      if (animImg) {
+      const frameCount = LOADING_ANIM_FRAMES[animKey] || 4;
+      if (animImg && frameCount > 1) {
         let f = 0;
-        const frameCount = LOADING_ANIM_FRAMES[animKey] || 4;
         // 360ms/frame — a slow, deliberate loop (half the 180ms the
         // hero-charge strip uses) so the shamble reads as a shamble.
         const animTick = () => {
