@@ -6455,6 +6455,47 @@
     .fab { right: calc(50% - 240px + 14px); }
   }
   .fab:active { transform: translate(2px, 2px); }
+  /* Chat FAB — always-visible "ASK HOST" label so it reads as a button,
+     not decoration. The label sits just left of the square FAB. */
+  .chat-fab .fab-label {
+    position: absolute;
+    right: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    background: var(--bg-1);
+    border: 3px solid #000;
+    box-shadow: 3px 3px 0 #000;
+    padding: 6px 9px;
+    font-family: var(--px); font-size: 9px;
+    color: var(--neon); letter-spacing: 1px;
+    pointer-events: none;
+  }
+  /* Attention bounce after a failed step — layered on top of pulsePink
+     (different property: transform vs box-shadow, so they don't fight). */
+  @keyframes fabNudge {
+    0%, 100% { transform: translateY(0); }
+    20%      { transform: translateY(-13px); }
+    40%      { transform: translateY(0); }
+    62%      { transform: translateY(-7px); }
+    82%      { transform: translateY(0); }
+  }
+  .fab.nudging { animation: pulsePink 2s ease-in-out infinite, fabNudge 1s ease-out 1; }
+  /* One-time teaching tip flashed above the chat FAB on early fails. */
+  .chat-fab-tip {
+    position: fixed; z-index: 31;
+    max-width: 210px;
+    background: var(--bg-1);
+    border: 3px solid #000;
+    box-shadow: 4px 4px 0 #000;
+    padding: 9px 11px;
+    font-family: var(--term); font-size: 13px;
+    color: var(--ink); line-height: 1.35;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.25s, transform 0.25s;
+    pointer-events: none;
+  }
+  .chat-fab-tip.show { opacity: 1; transform: translateY(0); }
   /* Music toggle FAB — smaller, anchored to the LEFT side opposite the
      chat FAB so it doesn't fight the right-side stack. Quieter glow. */
   .fab.music-fab {
@@ -9435,7 +9476,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.21.280';
+const BUILD_VERSION = '2026.05.21.281';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -16576,8 +16617,9 @@ function screenQuest() {
         <span class="badge">${countInRunItems()}</span>
       </button>
     ` : ''}
-    <button class="fab" id="chatFab" title="Talk to The System">
+    <button class="fab chat-fab" id="chatFab" title="Talk to The System">
       <img src="img/system/idle.png" class="fab-ic" alt=""/>
+      <span class="fab-label">▸ ASK HOST</span>
       ${(r.chat || []).length > 0 ? `<span class="badge">${r.chat.filter(m => m.role === 'host').length}</span>` : ''}
     </button>
     <button class="fab music-fab" id="musicFab" title="Toggle background music">
@@ -17228,6 +17270,7 @@ function bindQuest() {
     if (result.comment.length > (r.bestQuip || '').length) r.bestQuip = result.comment;
     profile.photosJudged++; saveProfile();
     render();
+    if (result && !result.pass) nudgeChatFab();
   });
 
   // Submit = judge first, then auto-fire complete on pass. The button text
@@ -17307,6 +17350,9 @@ function bindQuest() {
     if (result.pass) {
       // Auto-complete on pass — no second tap needed.
       setTimeout(() => document.querySelector(`[data-complete="${i}"]`)?.click(), 200);
+    } else {
+      // Failed — nudge the chat FAB; the host can rephrase / reroll.
+      nudgeChatFab();
     }
   });
 
@@ -27290,6 +27336,33 @@ function useInRunItem(id) {
     if (toastMsg) toast(toastMsg);
     if (state.view === 'quest') render();
   }
+}
+
+// Bounce the chat FAB after a failed step, and — the first few times —
+// flash a tip so players learn the host can rephrase/reroll a step
+// rather than just skipping it.
+function nudgeChatFab() {
+  const fab = document.getElementById('chatFab');
+  if (!fab) return;
+  fab.classList.remove('nudging');
+  void fab.offsetWidth;            // restart the animation
+  fab.classList.add('nudging');
+  setTimeout(() => fab.classList.remove('nudging'), 1100);
+  // Teaching tip — first 3 fails ever, then it stops nagging.
+  if (typeof profile === 'undefined' || (profile.chatFabTips || 0) >= 3) return;
+  profile.chatFabTips = (profile.chatFabTips || 0) + 1;
+  try { saveProfile(); } catch (_) {}
+  document.getElementById('chatFabTip')?.remove();
+  const tip = document.createElement('div');
+  tip.id = 'chatFabTip';
+  tip.className = 'chat-fab-tip';
+  tip.textContent = 'Stuck? Tap the host — it can rephrase or reroll this step.';
+  document.body.appendChild(tip);
+  const rc = fab.getBoundingClientRect();
+  tip.style.right = (window.innerWidth - rc.right) + 'px';
+  tip.style.bottom = (window.innerHeight - rc.top + 10) + 'px';
+  requestAnimationFrame(() => tip.classList.add('show'));
+  setTimeout(() => { tip.classList.remove('show'); setTimeout(() => tip.remove(), 320); }, 6500);
 }
 
 function openChatSheet() {
