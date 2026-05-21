@@ -9420,7 +9420,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.20.272';
+const BUILD_VERSION = '2026.05.20.273';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -29779,7 +29779,7 @@ function pickWaitQuip(pool, elapsedSec) {
 // back to the host-face loader. Add a key here as its frames land.
 const LOADING_ANIM_READY = new Set(['zombie', 'scifi']);
 // Frame count per key (default 4).
-const LOADING_ANIM_FRAMES = { scifi: 8 };
+const LOADING_ANIM_FRAMES = { scifi: 3 };
 // Keys that get a gentle CSS hover-bob on top of the sprite loop —
 // for characters drawn static/floating rather than walking.
 const LOADING_ANIM_FLOAT = new Set(['scifi']);
