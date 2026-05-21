@@ -5916,6 +5916,12 @@
   }
   .step-skip-btn:hover { color: var(--ink); border-color: var(--ink-dim); }
   .step-skip-btn:active { transform: translate(0, 1px); background: rgba(0, 0, 0, 0.4); }
+  /* Skip-step confirm modal. */
+  .skip-modal-ic {
+    font-family: var(--px); font-size: 24px;
+    color: var(--ink-dim); letter-spacing: 3px;
+    margin-bottom: 6px;
+  }
   .photo-judge .verdict { font-family: var(--px); font-size: 10px; margin-bottom: 6px; }
   .photo-judge.pass .verdict { color: var(--neon-3); }
   .photo-judge.fail .verdict { color: var(--danger); }
@@ -9429,7 +9435,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.21.279';
+const BUILD_VERSION = '2026.05.21.280';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -9866,6 +9872,13 @@ const THEMES = [
       'tip: barricades are 70% intent, 30% chairs.',
       'tip: silence travels less than you think. commit to the whisper.',
     ],
+    loadingQuips: [
+      { from: 15, text: 'scouting the area — the right threat is out there.' },
+      { from: 25, text: 'the outbreak is being SPECIFIC tonight. hold position.' },
+      { from: 40, text: 'taking longer than usual. means the boss is a bad one.' },
+      { from: 60, text: 'if the channel feels dead, reroll from the menu.' },
+      { from: 90, text: '...silence on the comms. you can refresh if you want.' },
+    ],
   },
   {
     id: 'scifi',
@@ -9890,6 +9903,13 @@ const THEMES = [
       'tip: the signal repeats every 7 minutes. you have 5.',
       'tip: command says trust your readings. command lies sometimes.',
       'tip: if your translator chip glitches, the boss heard everything.',
+    ],
+    loadingQuips: [
+      { from: 15, text: 'classifying the anomaly — telemetry incoming.' },
+      { from: 25, text: 'command is being SPECIFIC tonight. stand by.' },
+      { from: 40, text: 'signal lock taking longer than usual. likely a strong one.' },
+      { from: 60, text: 'if the uplink feels frozen, reroll from the menu.' },
+      { from: 90, text: '...telemetry lost. you can refresh.' },
     ],
   },
   {
@@ -9916,6 +9936,13 @@ const THEMES = [
       'tip: if it looks like a clue, it\'s probably bait. follow it anyway.',
       'tip: the case isn\'t about the case. it never is.',
     ],
+    loadingQuips: [
+      { from: 15, text: 'working the case — the right suspect is in here.' },
+      { from: 25, text: 'this one has layers, kid. give it a minute.' },
+      { from: 40, text: 'trail is colder than usual. means it is a real case.' },
+      { from: 60, text: 'if the leads dry up, reroll from the menu.' },
+      { from: 90, text: '...the trail went quiet. you can refresh if you want.' },
+    ],
   },
   {
     id: 'fantasy',
@@ -9941,6 +9968,13 @@ const THEMES = [
       'tip: the ancients didn\'t fight every dragon. some they fed.',
       'tip: the oracle is always right. usually after the fact.',
     ],
+    loadingQuips: [
+      { from: 15, text: 'consulting the tome — the right quest is written here.' },
+      { from: 25, text: 'the runes are being SPECIFIC tonight. a moment.' },
+      { from: 40, text: 'the prophecy runs longer than usual. a worthy one, then.' },
+      { from: 60, text: 'if the pages feel stuck, reroll from the menu.' },
+      { from: 90, text: '...the tome has fallen silent. you may refresh.' },
+    ],
   },
   {
     id: 'spy',
@@ -9965,6 +9999,13 @@ const THEMES = [
       'tip: if you can see the asset, the asset can see you.',
       'tip: the only good drop is the one you don\'t come back to.',
       'tip: cover identities live or die on the small details. mind your hands.',
+    ],
+    loadingQuips: [
+      { from: 15, text: 'encoding the mission packet — your target is in here.' },
+      { from: 25, text: 'the briefing is being SPECIFIC tonight. hold.' },
+      { from: 40, text: 'decryption taking longer than usual. high-value, probably.' },
+      { from: 60, text: 'if the channel feels dead, reroll from the menu.' },
+      { from: 90, text: '...comms dark. you can refresh.' },
     ],
   },
 ];
@@ -17274,10 +17315,11 @@ function bindQuest() {
   // damage, exactly like a timeout) and advances, so the player is
   // never stuck. Self-limiting: skipping deals no damage, so it can't
   // be abused to win — you just may not drain the boss.
-  document.querySelectorAll('[data-skip-step]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-skip-step]').forEach(b => b.onclick = async () => {
     const i = +b.dataset.skipStep;
     if (r.completed.includes(i)) return;
-    if (!confirm("Skip this step? It counts as failed — no damage to the boss, but you won't be stuck.")) return;
+    if (!(await showSkipStepConfirmModal())) return;
+    if (r.completed.includes(i)) return;  // re-check — state may have moved while the modal was open
     r.failedSteps = r.failedSteps || [];
     if (!r.failedSteps.includes(i)) r.failedSteps.push(i);
     if (!r.completed.includes(i)) r.completed.push(i);
@@ -18117,6 +18159,33 @@ function showAbandonConfirmModal() {
         target.textContent = line;
       }
     };
+  });
+}
+
+// Styled confirm for the per-step Skip — replaces the native confirm().
+function showSkipStepConfirmModal() {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('skipStepModal');
+    if (existing) existing.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'skipStepModal';
+    wrap.className = 'modal-bg';
+    wrap.innerHTML = `
+      <div class="modal skip-modal">
+        <div class="skip-modal-ic">▸▸</div>
+        <h3>SKIP THIS STEP?</h3>
+        <p class="skip-modal-body">It counts as <b>failed</b> — no damage to the boss. But you won't be stuck, and the run keeps going.</p>
+        <div class="row" style="justify-content:center; gap:10px; margin-top:14px;">
+          <button class="btn ghost" id="skipStepCancel">NEVERMIND</button>
+          <button class="btn danger" id="skipStepConfirm">SKIP STEP</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+    const finish = (ok) => { wrap.remove(); resolve(ok); };
+    document.getElementById('skipStepCancel').onclick = () => finish(false);
+    document.getElementById('skipStepConfirm').onclick = () => finish(true);
+    wrap.onclick = (e) => { if (e.target === wrap) finish(false); };
   });
 }
 
@@ -29853,7 +29922,13 @@ function screenGenerating() {
     hintPool = activeTheme.loadingHints;
   } else hintPool = LOADING_HINTS_NORMAL;
   const hint = hintPool[Math.floor(Math.random() * hintPool.length)];
-  const quipPool = isUnhinged ? LOADING_WAITQUIPS_UNHINGED : LOADING_WAITQUIPS_NORMAL;
+  // Wait-quips mirror the hint pool: unhinged wins, then a story
+  // theme's own quips, then the standard pool.
+  let quipPool;
+  if (isUnhinged) quipPool = LOADING_WAITQUIPS_UNHINGED;
+  else if (activeTheme && Array.isArray(activeTheme.loadingQuips) && activeTheme.loadingQuips.length) {
+    quipPool = activeTheme.loadingQuips;
+  } else quipPool = LOADING_WAITQUIPS_NORMAL;
   // Party runs get a charging hero-crew banner above the boss-summon icon
   // so the loading screen feels like the team is sprinting toward the boss.
   const isParty = !!(r?.qmpRoomCode || r?.mode === 'party');
