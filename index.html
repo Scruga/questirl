@@ -5787,6 +5787,199 @@
     z-index: 5;
   }
 
+  /* ---------- AR Finisher modal ---------- */
+  /* Fullscreen camera + gyro-anchored boss + HP/timer HUD + tap-to-
+     attack. Lives above the self-timer camera modal in the z stack
+     because both can technically exist (player Cancels AR mid-fight
+     and immediately taps Capture on the photo path). */
+  .ar-finisher-modal {
+    position: fixed; inset: 0;
+    z-index: 140;
+    background: #000;
+    overflow: hidden;
+    animation: fadeUp .15s ease;
+  }
+  .ar-video {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+  /* Soft scrim so the HUD text reads against any background the
+     player's camera happens to be pointed at. */
+  .ar-scrim {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 22%, transparent 78%, rgba(0,0,0,0.65) 100%);
+    pointer-events: none;
+  }
+  .ar-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: space-between;
+    padding: 28px 18px 24px;
+    pointer-events: none;
+  }
+  .ar-overlay > * { pointer-events: auto; }
+  .ar-hud {
+    width: 100%; max-width: 420px;
+    text-align: center;
+  }
+  .ar-boss-name {
+    font-family: var(--px); font-size: 13px;
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000, 0 0 8px rgba(255,206,79,0.5);
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+  }
+  .ar-hpbar {
+    height: 16px;
+    background: #0a0518;
+    border: 3px solid #000;
+    box-shadow: inset 2px 2px 0 rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.08);
+    overflow: hidden;
+  }
+  .ar-hpfill {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, var(--danger) 0%, var(--neon) 55%, var(--gold) 100%);
+    transition: width .18s ease;
+  }
+  .ar-hpnum {
+    font-family: var(--px); font-size: 9px;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 1px;
+    margin-top: 6px;
+  }
+  .ar-timer {
+    font-family: var(--px); font-size: 28px;
+    color: #fff;
+    text-shadow: 3px 3px 0 #000, 0 0 14px var(--neon-3);
+    letter-spacing: 3px;
+  }
+  .ar-boss-stage {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%;
+    /* So translate3d on the sprite has parent context to use for compositing. */
+    perspective: 600px;
+  }
+  .ar-boss-sprite {
+    width: 200px; height: 200px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    cursor: pointer;
+    filter: drop-shadow(0 6px 18px rgba(0,0,0,0.75));
+    /* The bob animation lives on the inner element; the outer transform
+       carries the gyro position. We compose them via two layers later
+       if we want the bob to be perfectly orthogonal — for the MVP the
+       bob can ride along with the gyro translate without issues. */
+    animation: arBossBob 2.6s ease-in-out infinite;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .ar-boss-emoji {
+    font-size: 140px;
+    line-height: 1;
+    text-shadow: 4px 4px 0 #000, 0 0 12px rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    width: 160px; height: 160px;
+  }
+  @keyframes arBossBob {
+    0%, 100% { translate: 0 0; }
+    50%      { translate: 0 -10px; }
+  }
+  /* Hit flash — restarts each tap via class-remove + reflow + class-add. */
+  .ar-boss-sprite.ar-hit {
+    animation: arBossBob 2.6s ease-in-out infinite, arHitFlash .18s ease;
+  }
+  @keyframes arHitFlash {
+    0%   { filter: drop-shadow(0 6px 18px rgba(0,0,0,0.75)); }
+    50%  { filter: brightness(2.3) drop-shadow(0 0 20px #fff); }
+    100% { filter: drop-shadow(0 6px 18px rgba(0,0,0,0.75)); }
+  }
+  .ar-tap-hint {
+    font-family: var(--px); font-size: 9px;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .ar-cancel {
+    position: absolute; top: 18px; right: 18px;
+    width: 44px; height: 44px;
+    background: rgba(0,0,0,0.65);
+    color: #fff;
+    border: 2px solid #fff;
+    border-radius: 0;
+    font-size: 22px;
+    cursor: pointer;
+    z-index: 2;
+  }
+  /* Damage popup — anchored at the tap coords, floats up + fades out. */
+  .ar-dmg-pop {
+    position: fixed;
+    transform: translate(-50%, -50%);
+    font-family: var(--px); font-size: 18px;
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 1px;
+    pointer-events: none;
+    z-index: 200;
+    animation: arDmgFloat .8s ease-out forwards;
+  }
+  .ar-dmg-pop.crit {
+    color: var(--neon);
+    font-size: 26px;
+  }
+  @keyframes arDmgFloat {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -160%) scale(1.4); }
+  }
+  .ar-result {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--px); font-size: 30px;
+    text-shadow: 4px 4px 0 #000, 0 0 16px currentColor;
+    letter-spacing: 3px;
+    animation: arResultPop .5s ease;
+    text-align: center;
+    line-height: 1.2;
+    z-index: 3;
+  }
+  .ar-victory { color: var(--gold); }
+  .ar-defeat  { color: var(--danger); }
+  @keyframes arResultPop {
+    0%   { transform: translate(-50%, -50%) scale(0); }
+    60%  { transform: translate(-50%, -50%) scale(1.2); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+  }
+
+  /* AR Finisher launcher (on the step card, not inside the AR modal). */
+  .ar-finisher-btn {
+    margin-top: 12px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 14px 18px;
+    width: 100%;
+    box-shadow: 4px 4px 0 #000, 0 0 18px rgba(245, 194, 66, 0.45);
+    animation: arBtnPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes arBtnPulse {
+    0%, 100% { box-shadow: 4px 4px 0 #000, 0 0 16px rgba(245, 194, 66, 0.4); }
+    50%      { box-shadow: 4px 4px 0 #000, 0 0 28px rgba(245, 194, 66, 0.8); }
+  }
+  .ar-finisher-hint {
+    font-family: var(--term);
+    font-size: 12px;
+    color: var(--ink-faint);
+    text-align: center;
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
   /* ---------- In-app self-timer camera ---------- */
   .camera-modal {
     position: fixed; inset: 0;
@@ -9613,7 +9806,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.288';
+const BUILD_VERSION = '2026.05.23.289';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -17184,6 +17377,12 @@ function renderProofUI(s, i) {
           : `<button class="btn primary sm" data-complete="${i}" ${proof ? '' : 'disabled'}>Complete</button>`
         }
       </div>
+      ${isFinalStep(r, i) ? `
+        <button class="btn gold ar-finisher-btn" data-ar-fight="${i}">
+          ⚔ FINISH IT · AR MODE
+        </button>
+        <div class="ar-finisher-hint">Tap-fight the boss live. Photo still works as fallback.</div>
+      ` : ''}
     `;
   }
   // ── MOTION proof — sensor verification via DeviceMotionEvent. The
@@ -17902,6 +18101,13 @@ function bindQuest() {
   // Geo-gate handlers — for steps with step.walkDistance set, the
   // photo/motion/timer proof UI is locked behind a GPS-verified walk.
   bindGeoProofs(r);
+  // AR Finisher launcher — opens the camera-overlay tap-fight modal
+  // for the final step. Photo proof remains available as a fallback
+  // so devices without gyro / orientation perms aren't locked out of
+  // closing out a run.
+  document.querySelectorAll('[data-ar-fight]').forEach(b => b.onclick = () => {
+    openARFinisher(+b.dataset.arFight);
+  });
   // Timer-start handler — kicks off the wait countdown for proof:'timer'
   // steps. We record start time on r.timerStarts[i] and tick render()
   // once per second so the UI refreshes the remaining-seconds label and
@@ -25697,6 +25903,237 @@ function saveProofPhoto(stepIdx, slotIdx, dataUrl) {
         }
       })
       .catch(e => console.warn('[qmp] photo upload failed:', e));
+  }
+}
+
+// Is this step the climactic final beat of the run? Used by the AR
+// Finisher button so the camera-overlay boss-fight only surfaces on
+// the actual closer. Most quests use s.type === 'Final Attack' / 'TRUE
+// FINAL'; the last-index check is the universal safety net for older
+// content that didn't tag the step type.
+function isFinalStep(r, i) {
+  if (!r || !Array.isArray(r.quest)) return false;
+  if (i !== r.quest.length - 1) return false;
+  // Photo proof is the only path the AR finisher swaps in for. Steps
+  // ending in motion / timer don't get the AR button — they have their
+  // own verifier and adding AR on top would muddle the flow.
+  const s = r.quest[i];
+  if (!s) return false;
+  if (s.proof && s.proof !== 'photo') return false;
+  return true;
+}
+
+// AR FINISHER — fullscreen rear-camera modal where the player tap-
+// fights the boss to close out the run. Gyro-anchored sprite floats
+// "in front of" the world; HP drains on every tap; 30s timer caps
+// the fight. Win → marks the final step verified (synthetic passing
+// judgment, then auto-fires the complete button). Loss / cancel →
+// teardown only; the photo proof UI is still available behind the
+// modal for a retry. Degrades gracefully when DeviceOrientationEvent
+// or getUserMedia is missing — boss appears stationary, fight still
+// playable.
+async function openARFinisher(stepIdx) {
+  const r = state.run;
+  if (!r || !r.boss) return;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    toast('Camera unavailable — use photo proof instead.');
+    return;
+  }
+  // iOS DeviceOrientationEvent permission gate. Runs inside the user
+  // gesture (the AR button click) so it satisfies Safari's policy.
+  // Android / desktop browsers grant implicitly; the function returns
+  // 'granted' or doesn't exist at all.
+  const haveOrient = typeof DeviceOrientationEvent !== 'undefined';
+  let orientPermGranted = haveOrient;
+  if (haveOrient && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const perm = await DeviceOrientationEvent.requestPermission();
+      orientPermGranted = perm === 'granted';
+    } catch (e) {
+      console.warn('[ar-finisher] orient perm threw', e);
+      orientPermGranted = false;
+    }
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    });
+  } catch (e) {
+    console.warn('[ar-finisher] camera denied', e);
+    toast('Camera denied — use photo proof instead.');
+    return;
+  }
+
+  const boss = r.boss;
+  const bossSpriteSrc = boss.iconImg || '';
+  const bossEmoji = boss.ic || '👹';
+  const bossName = boss.name || 'BOSS';
+
+  // AR HP is fresh per fight — independent of the boss's run-long HP
+  // pool. Keeps the encounter feeling snappy regardless of how much
+  // damage the player dealt in the preceding 4 steps. ~12-18 taps to
+  // win at the current damage range.
+  let arHP = 100;
+  const arHPMax = 100;
+  let timeLeft = 30000;
+  let lastTickTs = Date.now();
+  let won = false;
+  let lost = false;
+  let cancelled = false;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'ar-finisher-modal';
+  wrap.innerHTML = `
+    <video class="ar-video" autoplay playsinline muted></video>
+    <div class="ar-scrim"></div>
+    <div class="ar-overlay">
+      <div class="ar-hud">
+        <div class="ar-boss-name">▶ ${escapeHtml(bossName.toUpperCase())}</div>
+        <div class="ar-hpbar"><div class="ar-hpfill" id="arHpFill"></div></div>
+        <div class="ar-hpnum" id="arHpNum">${arHP} / ${arHPMax}</div>
+      </div>
+      <div class="ar-timer" id="arTimer">30.0s</div>
+      <div class="ar-boss-stage" id="arBossStage">
+        ${bossSpriteSrc
+          ? `<img class="ar-boss-sprite" id="arBossSprite" src="${bossSpriteSrc}" alt="boss"/>`
+          : `<div class="ar-boss-emoji ar-boss-sprite" id="arBossSprite">${bossEmoji}</div>`}
+      </div>
+      <div class="ar-tap-hint">▸ TAP THE BOSS — DRAIN HP BEFORE 30s ◂</div>
+      <button class="ar-cancel" id="arCancel" type="button" aria-label="Cancel">✕</button>
+    </div>
+  `;
+  document.body.appendChild(wrap);
+  const video = wrap.querySelector('.ar-video');
+  video.srcObject = stream;
+
+  // Gyro anchor. We pick a random "world" offset for the boss so it
+  // doesn't spawn dead-center every fight, and track delta-from-initial
+  // alpha + beta to translate the sprite as the player turns. Yaw
+  // (alpha) → horizontal, pitch (beta) → vertical. Multipliers tuned
+  // by hand on a Pixel 6; should feel reasonable on most phones.
+  let initialAlpha = null;
+  let initialBeta = null;
+  const worldOffset = {
+    x: (Math.random() - 0.5) * 220,    // ±110px from screen center
+    y: (Math.random() - 0.5) * 80,     // ±40px
+  };
+  const sprite = wrap.querySelector('#arBossSprite');
+  function applySpritePos(dx, dy) {
+    if (!sprite) return;
+    // CSS translate keeps the existing bob animation intact (the bob is
+    // on the inner sprite, the transform here moves the whole element).
+    sprite.style.transform = `translate(${dx}px, ${dy}px)`;
+  }
+  applySpritePos(worldOffset.x, worldOffset.y);
+  function onOrient(e) {
+    if (e.alpha == null || e.beta == null) return;
+    if (initialAlpha === null) { initialAlpha = e.alpha; initialBeta = e.beta; return; }
+    let dAlpha = e.alpha - initialAlpha;
+    if (dAlpha > 180) dAlpha -= 360;
+    if (dAlpha < -180) dAlpha += 360;
+    const dBeta = (e.beta - initialBeta);
+    // Rotating left (positive dAlpha) means the world appears to shift
+    // RIGHT in the camera view → sprite x increases.
+    const dx = worldOffset.x + dAlpha * 8;
+    const dy = worldOffset.y + dBeta * 4;
+    applySpritePos(dx, dy);
+  }
+  if (orientPermGranted) {
+    window.addEventListener('deviceorientation', onOrient);
+  }
+
+  // Tap-to-attack. Damage range tuned so a focused player drops the
+  // boss in ~15 taps (well within 30s), but mashers don't trivialize
+  // it — average damage with variance, occasional crit.
+  function handleAttack(e) {
+    if (won || lost || cancelled) return;
+    e.stopPropagation();
+    const isCrit = Math.random() < 0.12;
+    const dmg = isCrit ? 18 + Math.floor(Math.random() * 6) : 5 + Math.floor(Math.random() * 5);
+    arHP = Math.max(0, arHP - dmg);
+    const fill = wrap.querySelector('#arHpFill');
+    const num  = wrap.querySelector('#arHpNum');
+    if (fill) fill.style.width = Math.round((arHP / arHPMax) * 100) + '%';
+    if (num)  num.textContent  = arHP + ' / ' + arHPMax;
+    if (sprite) {
+      sprite.classList.remove('ar-hit');     // restart the flash
+      void sprite.offsetWidth;
+      sprite.classList.add('ar-hit');
+    }
+    // Damage popup near the tap point.
+    const dn = document.createElement('div');
+    dn.className = 'ar-dmg-pop' + (isCrit ? ' crit' : '');
+    dn.textContent = (isCrit ? '✦ ' : '−') + dmg;
+    dn.style.left = (e.clientX || window.innerWidth / 2) + 'px';
+    dn.style.top  = (e.clientY || window.innerHeight / 2) + 'px';
+    wrap.appendChild(dn);
+    dn.addEventListener('animationend', () => dn.remove(), { once: true });
+    try { sfx.hit && sfx.hit(); } catch {}
+    try { navigator.vibrate && navigator.vibrate(isCrit ? 30 : 12); } catch {}
+    if (arHP <= 0) { won = true; finishAR(true); }
+  }
+  if (sprite) {
+    sprite.addEventListener('pointerdown', handleAttack);
+  }
+
+  wrap.querySelector('#arCancel').onclick = () => {
+    if (won || lost) return;
+    cancelled = true;
+    cleanup();
+  };
+
+  // RAF-driven countdown so the readout is silky and pauses naturally
+  // when the tab is backgrounded (rAF stops firing in hidden tabs).
+  function tick() {
+    if (won || lost || cancelled) return;
+    const now = Date.now();
+    timeLeft -= (now - lastTickTs);
+    lastTickTs = now;
+    const timerEl = wrap.querySelector('#arTimer');
+    if (timerEl) timerEl.textContent = (Math.max(0, timeLeft) / 1000).toFixed(1) + 's';
+    if (timeLeft <= 0) { lost = true; finishAR(false); return; }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  function finishAR(victory) {
+    window.removeEventListener('deviceorientation', onOrient);
+    const overlay = wrap.querySelector('.ar-overlay');
+    if (overlay) {
+      const result = document.createElement('div');
+      result.className = victory ? 'ar-result ar-victory' : 'ar-result ar-defeat';
+      result.textContent = victory ? '★ BOSS DEFEATED' : '⌛ TIME UP';
+      overlay.appendChild(result);
+    }
+    if (victory) {
+      try { sfx.success && sfx.success(); } catch {}
+      // Synthesize a passing proof + judgment so the existing complete
+      // pipeline accepts this as a valid step finish. We mark it
+      // arFinisher:true on the proof so future code can distinguish
+      // AR wins from photo wins (recap art, share-card variants, etc).
+      r.proofs = r.proofs || {};
+      r.proofs[stepIdx] = { ts: Date.now(), arFinisher: true, dataUrl: null };
+      r.judgments = r.judgments || {};
+      r.judgments[stepIdx] = { pass: true, comment: '★ AR Finisher — boss tapped into oblivion.' };
+    } else {
+      try { sfx.error && sfx.error(); } catch {}
+      toast('Boss survived. Photo proof still works.');
+    }
+    setTimeout(() => {
+      cleanup();
+      render();
+      if (victory) {
+        setTimeout(() => document.querySelector(`[data-complete="${stepIdx}"]`)?.click(), 100);
+      }
+    }, 1400);
+  }
+
+  function cleanup() {
+    window.removeEventListener('deviceorientation', onOrient);
+    try { stream && stream.getTracks().forEach(t => t.stop()); } catch {}
+    try { wrap.remove(); } catch {}
   }
 }
 
