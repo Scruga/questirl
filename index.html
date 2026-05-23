@@ -6036,10 +6036,10 @@
   /* ── Dodge button — bottom-center, big finger target. Pulses while
      the dodge window is open. ── */
   .ar-dodge-btn {
+    /* Position is JS-driven now (random per-spawn). The button gets
+       `left`/`top` set inline before display; the pulse animation
+       only scales, so no transform fight. */
     position: absolute;
-    bottom: 24%;
-    left: 50%;
-    transform: translateX(-50%);
     background: var(--neon-3);
     color: #002b27;
     border: 4px solid #000;
@@ -6052,12 +6052,22 @@
     z-index: 8;
     display: flex; align-items: center; gap: 10px;
     text-shadow: 1px 1px 0 #fff;
-    animation: arDodgeBtnPulse .35s ease-in-out infinite;
+    transform-origin: center center;
+    animation: arDodgeBtnPulse .35s ease-in-out infinite,
+               arDodgeBtnSpawn .22s ease-out;
   }
   .ar-dodge-icon { font-size: 26px; }
   @keyframes arDodgeBtnPulse {
-    0%, 100% { transform: translateX(-50%) scale(1); box-shadow: 6px 6px 0 #000, 0 0 18px rgba(0,230,195,0.7); }
-    50%      { transform: translateX(-50%) scale(1.08); box-shadow: 6px 6px 0 #000, 0 0 32px rgba(0,230,195,1); }
+    0%, 100% { transform: scale(1);    box-shadow: 6px 6px 0 #000, 0 0 18px rgba(0,230,195,0.7); }
+    50%      { transform: scale(1.08); box-shadow: 6px 6px 0 #000, 0 0 32px rgba(0,230,195,1); }
+  }
+  /* Spawn animation — quick pop so the button reads as "appeared here
+     just now" instead of being mistaken for a static UI element the
+     player overlooked. */
+  @keyframes arDodgeBtnSpawn {
+    0%   { opacity: 0; transform: scale(0.4); }
+    60%  { opacity: 1; transform: scale(1.18); }
+    100% { opacity: 1; transform: scale(1); }
   }
   .ar-dodge-success {
     position: absolute;
@@ -10224,7 +10234,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.297';
+const BUILD_VERSION = '2026.05.23.298';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26573,23 +26583,29 @@ async function openARFinisher(stepIdx) {
   // the moment too.
   const JUKE_INTERVAL_MS = 1500;
   let enrageJukeTimer = null;
+  function doEnrageJuke() {
+    if (won || lost || cancelled || currentPhase < 4) return;
+    // Wider range during enrage — ±screen-width-half / ±height-third.
+    // Calibrated to land within view most of the time; combined with
+    // the camera-relative gyro, the player still has to actively
+    // hunt the boss across the frame.
+    worldOffset.x = (Math.random() - 0.5) * window.innerWidth  * 0.6;
+    worldOffset.y = (Math.random() - 0.5) * window.innerHeight * 0.35;
+    if (sprite) {
+      sprite.classList.remove('ar-juke');
+      void sprite.offsetWidth;
+      sprite.classList.add('ar-juke');
+    }
+    try { sfx.tick && sfx.tick(); } catch {}
+  }
   function startEnrageJuke() {
     if (enrageJukeTimer) return;
-    enrageJukeTimer = setInterval(() => {
-      if (won || lost || cancelled || currentPhase < 4) return;
-      // Wider range during enrage — ±screen-width-half / ±height-third.
-      // Calibrated to land within view most of the time; combined with
-      // the camera-relative gyro, the player still has to actively
-      // hunt the boss across the frame.
-      worldOffset.x = (Math.random() - 0.5) * window.innerWidth  * 0.6;
-      worldOffset.y = (Math.random() - 0.5) * window.innerHeight * 0.35;
-      if (sprite) {
-        sprite.classList.remove('ar-juke');
-        void sprite.offsetWidth;
-        sprite.classList.add('ar-juke');
-      }
-      try { sfx.tick && sfx.tick(); } catch {}
-    }, JUKE_INTERVAL_MS);
+    // Fire the first juke IMMEDIATELY — user feedback: 'boss should
+    // start teleporting the moment he gets enraged' — so the player
+    // feels the phase change in motion, not just in color. Subsequent
+    // jukes ride the interval.
+    doEnrageJuke();
+    enrageJukeTimer = setInterval(doEnrageJuke, JUKE_INTERVAL_MS);
   }
   function stopEnrageJuke() {
     if (enrageJukeTimer) {
@@ -26869,11 +26885,28 @@ async function openARFinisher(stepIdx) {
     wrap.classList.add('ar-windup');
     if (sprite) sprite.classList.add('ar-windup');
     try { sfx.error && sfx.error(); } catch {}
-    // After the telegraph, open the dodge window and surface the button.
+    // After the telegraph, open the dodge window and surface the button
+    // at a RANDOM screen position so the player has to actually look
+    // for it and aim, not spam-tap the same bottom-center spot. Bounds
+    // exclude the top HUD strip (~150px) and the bottom slam/tap-hint
+    // strip (~200px), plus a side margin so the button can't clip
+    // off-screen.
     setTimeout(() => {
       if (won || lost || cancelled) return;
       const dodgeBtn = wrap.querySelector('#arDodge');
       if (dodgeBtn) {
+        const padSide = 24;
+        const padTop = 170;
+        const padBot = 220;
+        const btnW = 200;   // approximate; the button is laid out by content
+        const btnH = 72;
+        const maxX = Math.max(padSide, window.innerWidth  - btnW - padSide);
+        const maxY = Math.max(padTop,  window.innerHeight - btnH - padBot);
+        const x = padSide + Math.random() * Math.max(0, maxX - padSide);
+        const y = padTop  + Math.random() * Math.max(0, maxY - padTop);
+        dodgeBtn.style.left = x + 'px';
+        dodgeBtn.style.top  = y + 'px';
+        dodgeBtn.style.bottom = 'auto';
         dodgeBtn.style.display = '';
         dodgeBtn.classList.add('arming');
       }
