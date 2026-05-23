@@ -6676,6 +6676,42 @@
     margin-left: auto; margin-right: auto;
   }
 
+  /* ── Final-step AR-only stage card. Sits in place of the photo
+       capture stage, so the player sees ONE primary path (the AR
+       button) instead of the photo + AR pair the user flagged. ── */
+  .ar-only-stage {
+    background: linear-gradient(135deg, rgba(40, 5, 20, 0.85), rgba(70, 10, 40, 0.85));
+    border: 3px solid var(--gold);
+    box-shadow: 4px 4px 0 #000, inset 0 0 24px rgba(255, 61, 166, 0.15);
+    padding: 14px;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  .ar-only-tag {
+    font-family: var(--px); font-size: 11px;
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+  .ar-only-body {
+    font-family: var(--term); font-size: 14px;
+    color: var(--ink-dim);
+    line-height: 1.5;
+  }
+  .ar-photo-opt {
+    color: var(--ink-faint);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .ar-photo-opt:hover { color: var(--ink-dim); }
+  .ar-back-to-fight {
+    margin-top: 10px;
+    width: 100%;
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+
   /* AR Finisher launcher (on the step card, not inside the AR modal). */
   .ar-finisher-btn {
     margin-top: 12px;
@@ -10532,7 +10568,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.302';
+const BUILD_VERSION = '2026.05.23.303';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -18031,6 +18067,25 @@ function renderProofUI(s, i) {
   if (s.walkDistance && !(r.geoCleared && r.geoCleared[i])) {
     return renderGeoGateUI(s, i);
   }
+  // ── FINAL STEP = AR-MODE EXCLUSIVE.
+  // Tester: 'step 5 has tap to capture and finish the boss too, we
+  // should have one or the other.' AR is the headline path for the
+  // climactic step. Photo UI is hidden unless the player explicitly
+  // opts in via the small "take a photo instead" link (or AR aborts
+  // because of camera/sensor denial — see openARFinisher).
+  if (isFinalStep(r, i) && !((r._arPhotoFallback || {})[i])) {
+    return `
+      <div class="ar-only-stage">
+        <div class="ar-only-tag">⚔ FINAL STAND</div>
+        <div class="ar-only-body">Tap-fight the boss live. Dodge, slam, combo to drain HP — but if the boss kills you, the run is over.</div>
+      </div>
+      <button class="btn gold ar-finisher-btn" data-ar-fight="${i}">
+        ⚔ FINISH IT · AR MODE
+      </button>
+      <div class="ar-finisher-hint">Live camera + sensors. <a class="ar-photo-opt" data-ar-photo-fallback="${i}">prefer a photo? tap here</a></div>
+      <button data-complete="${i}" style="display:none" aria-hidden="true"></button>
+    `;
+  }
   if (s.proof === 'photo') {
     // Steps that explicitly need multiple distinct photos surface N capture
     // slots. proof.photos[] holds them all; proof.dataUrl mirrors the first
@@ -18103,11 +18158,8 @@ function renderProofUI(s, i) {
           : `<button class="btn primary sm" data-complete="${i}" ${proof ? '' : 'disabled'}>Complete</button>`
         }
       </div>
-      ${isFinalStep(r, i) ? `
-        <button class="btn gold ar-finisher-btn" data-ar-fight="${i}">
-          ⚔ FINISH IT · AR MODE
-        </button>
-        <div class="ar-finisher-hint">Tap-fight the boss live. Photo still works as fallback.</div>
+      ${isFinalStep(r, i) && ((r._arPhotoFallback || {})[i]) ? `
+        <button class="btn ghost ar-back-to-fight" data-ar-restore-fight="${i}">↺ Try the AR fight instead</button>
       ` : ''}
     `;
   }
@@ -18843,6 +18895,21 @@ function bindQuest() {
   // closing out a run.
   document.querySelectorAll('[data-ar-fight]').forEach(b => b.onclick = () => {
     openARFinisher(+b.dataset.arFight);
+  });
+  // Player can opt out of AR for this step (motion-sickness, can't
+  // grant camera, etc) and take a regular photo instead.
+  document.querySelectorAll('[data-ar-photo-fallback]').forEach(b => b.onclick = (e) => {
+    e.preventDefault();
+    const i = +b.dataset.arPhotoFallback;
+    r._arPhotoFallback = r._arPhotoFallback || {};
+    r._arPhotoFallback[i] = true;
+    render();
+  });
+  // Or back out of the photo path and try AR again.
+  document.querySelectorAll('[data-ar-restore-fight]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.arRestoreFight;
+    if (r._arPhotoFallback) delete r._arPhotoFallback[i];
+    render();
   });
   // Timer-start handler — kicks off the wait countdown for proof:'timer'
   // steps. We record start time on r.timerStarts[i] and tick render()
@@ -26679,8 +26746,18 @@ function isFinalStep(r, i) {
 async function openARFinisher(stepIdx) {
   const r = state.run;
   if (!r || !r.boss) return;
+  // Helper used by every launch-time failure path. Flips the per-step
+  // flag that swaps the step's UI from AR-only back to photo-capture
+  // so the player has a way to finish the step even if camera / motion
+  // perms are unavailable.
+  const fallbackToPhoto = (reason) => {
+    r._arPhotoFallback = r._arPhotoFallback || {};
+    r._arPhotoFallback[stepIdx] = true;
+    if (reason) toast(reason);
+    render();
+  };
   if (!navigator.mediaDevices?.getUserMedia) {
-    toast('Camera unavailable — use photo proof instead.');
+    fallbackToPhoto('Camera unavailable — switching to photo proof.');
     return;
   }
   // iOS DeviceOrientationEvent permission gate. Runs inside the user
@@ -26706,7 +26783,7 @@ async function openARFinisher(stepIdx) {
     });
   } catch (e) {
     console.warn('[ar-finisher] camera denied', e);
-    toast('Camera denied — use photo proof instead.');
+    fallbackToPhoto('Camera denied — switching to photo proof.');
     return;
   }
 
@@ -27775,7 +27852,23 @@ async function openARFinisher(stepIdx) {
           : '⌛ TIME UP<div class="ar-result-sub">Boss survived.</div>';
         overlay.appendChild(result);
       }
-      toast(fellInBattle ? 'You were defeated. Photo proof still works.' : 'Boss survived. Photo proof still works.');
+      // Dying to the boss = run fails (per tester ask: 'dying to the
+      // boss should fail the quest'). The defeat banner shows for a
+      // beat then we hand off to the existing failRun cinematic.
+      // Timer-up still keeps the player on the step so they can retry
+      // AR or fall back to a photo.
+      if (fellInBattle) {
+        setTimeout(() => {
+          cleanup();
+          if (typeof failRun === 'function') {
+            failRun('☠ The boss defeated you in AR Mode. Run failed.');
+          } else {
+            render();
+          }
+        }, 1800);
+        return;
+      }
+      toast('Boss survived. Try again, or take a photo instead.');
     }
     setTimeout(() => {
       cleanup();
