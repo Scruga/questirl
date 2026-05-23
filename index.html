@@ -5142,6 +5142,37 @@
     box-shadow: 4px 4px 0 #000, 0 0 18px rgba(245, 194, 66, 0.4);
     animation: spinBtnPulse 1.6s ease-in-out infinite;
   }
+  /* Static hub overlay — replaces the in-SVG SPIN text that used to
+     rotate with the wheel. Sized so the label reads clearly at any
+     wheel diameter and the tap target is finger-friendly (~76px). */
+  .wheel-hub {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 76px; height: 76px;
+    border-radius: 50%;
+    background: #0a0518;
+    border: 3px solid var(--gold);
+    box-shadow: 0 0 0 3px #000, 0 0 18px rgba(245, 194, 66, 0.55);
+    color: var(--gold);
+    font-family: var(--px);
+    font-size: 13px;
+    letter-spacing: 2px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 4;          /* above the rotating wheel (z:2) and rim (z:1) */
+    padding: 0;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .08s ease;
+  }
+  .wheel-hub:hover { transform: translate(-50%, -50%) scale(1.04); }
+  .wheel-hub:active { transform: translate(-50%, -50%) scale(0.96); }
+  .wheel-hub:disabled,
+  .wheel-hub.spent { cursor: default; box-shadow: 0 0 0 3px #000; }
   @keyframes spinBtnPulse {
     0%, 100% { box-shadow: 4px 4px 0 #000, 0 0 18px rgba(245, 194, 66, 0.4); }
     50%      { box-shadow: 4px 4px 0 #000, 0 0 28px rgba(245, 194, 66, 0.75); }
@@ -6078,18 +6109,20 @@
   .avatar[class*="frame-img-"] > img {
     width: 100%; height: 100%; object-fit: cover; display: block;
   }
-  /* Painted chibi avatar that sits at the bottom-center of any framed
-     avatar slot. Replaces the previous photo upload — the chibi peeks up
-     out of the frame's lower edge instead of filling the whole interior. */
-  /* Higher specificity than the global .avatar img rule so the chibi
-     actually respects its size constraints. */
+  /* Painted chibi avatar inside any framed avatar slot. Originally
+     designed to "peek up" from the bottom (width 60% / height 50% /
+     bottom 16%) which read as "half cut off" to testers #3 and #4 in
+     the header where the slot is only 36px tall. Bumped to fill ~85%
+     of the cell so the whole character is visible without losing the
+     intentional bottom anchor. Larger callsites (lg/xl) still feel
+     framed because .avatar.lg / .avatar.xl scale the cell, not these. */
   .avatar img.chibi-inner {
     position: absolute;
     left: 50%;
-    bottom: 16%;
+    bottom: 4%;
     transform: translateX(-50%);
-    width: 60%;
-    height: 50%;
+    width: 86%;
+    height: 86%;
     object-fit: contain;
     object-position: bottom center;
     image-rendering: pixelated;
@@ -9364,6 +9397,7 @@ const DEFAULT_PROFILE = {
   ownedFrames: ['none'],                          // starter pack
   armedItems: [],                                 // item ids armed for next run; consumed at run start
   sfxMuted: false,                                // toggled from settings; respected by sfx.*
+  sfxVolume: 0.7,                                 // 0.0–1.0, multiplies every sfx peak so effects can sit above the music
   // Music defaults to ON. Starts on the first user click (autoplay
   // policies block audio before any gesture).
   musicMuted: false,
@@ -9476,7 +9510,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.21.282';
+const BUILD_VERSION = '2026.05.22.283';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -13206,6 +13240,16 @@ const sfx = (() => {
   function isMuted() {
     return !!(typeof profile !== 'undefined' && profile.sfxMuted);
   }
+  // Master gain multiplier from profile.sfxVolume. Tester #3 / #4 both
+  // flagged effects as inaudible under the music bed — the slider in
+  // settings now feeds straight into every tone/noise peak so the
+  // player can lift them without changing music volume.
+  function vol() {
+    const raw = (typeof profile !== 'undefined' && typeof profile.sfxVolume === 'number')
+      ? profile.sfxVolume
+      : 0.7;
+    return Math.max(0, Math.min(1, raw));
+  }
   // Single oscillator with optional pitch sweep + volume envelope.
   function tone(freq, duration, opts = {}) {
     if (isMuted()) return;
@@ -13215,7 +13259,7 @@ const sfx = (() => {
     const gain = ac.createGain();
     osc.type = opts.type || 'square';
     osc.frequency.value = freq;
-    const peak = (opts.volume != null) ? opts.volume : 0.05;
+    const peak = ((opts.volume != null) ? opts.volume : 0.05) * vol();
     const now = ac.currentTime;
     osc.connect(gain).connect(ac.destination);
     gain.gain.setValueAtTime(0, now);
@@ -13241,7 +13285,7 @@ const sfx = (() => {
     const src = ac.createBufferSource();
     src.buffer = buf;
     const gain = ac.createGain();
-    const peak = (opts.volume != null) ? opts.volume : 0.04;
+    const peak = ((opts.volume != null) ? opts.volume : 0.04) * vol();
     const now = ac.currentTime;
     let chain = src;
     if (opts.lowpass) {
@@ -13265,6 +13309,13 @@ const sfx = (() => {
   return {
     isMuted,
     setMuted(v) { if (typeof profile !== 'undefined') { profile.sfxMuted = !!v; saveProfile(); } },
+    setVolume(v) {
+      if (typeof profile !== 'undefined') {
+        profile.sfxVolume = Math.max(0, Math.min(1, +v || 0));
+        saveProfile();
+      }
+    },
+    getVolume: vol,
     // Generic UI click — short blip.
     click()      { tone(720, 0.04, { volume: 0.04 }); },
     // Stronger click for primary buttons.
@@ -21786,18 +21837,13 @@ function screenWheel() {
           <svg class="wheel" id="wheel" viewBox="0 0 ${SIZE} ${SIZE}">
             <circle cx="${cx}" cy="${cy}" r="${R+2}" fill="#000"/>
             ${slices}
-            <!-- Center hub doubles as a spin trigger. Wrapped in a <g>
-                 with id so the click handler binds in one place. The
-                 invisible-fill circle on top widens the hit target so
-                 fingers don't have to land precisely on the SPIN text. -->
-            <g id="wheelHub" style="cursor: pointer;">
-              <circle cx="${cx}" cy="${cy}" r="28" fill="#0a0518" stroke="var(--gold)" stroke-width="3"/>
-              <text x="${cx}" y="${cy + 4}" text-anchor="middle" dominant-baseline="middle"
-                    fill="var(--gold)" font-family="Press Start 2P" font-size="9"
-                    style="pointer-events: none;">SPIN</text>
-              <circle cx="${cx}" cy="${cy}" r="38" fill="transparent"/>
-            </g>
           </svg>
+          <!-- Tester #3: the SPIN hub used to live inside <svg id="wheel">,
+               so it rotated along with the slices and the 9px <text>
+               looked tiny. Moved out into a static HTML overlay over
+               the wheel centre — same click target, same look, but it
+               stays upright at a readable size while the wheel spins. -->
+          <button class="wheel-hub" id="wheelHub" type="button" aria-label="Spin the wheel">SPIN</button>
         </div>
         <div class="wheel-tier-legend">
           <span class="wheel-tier-pill" data-tier="common">COMMON</span>
@@ -21849,11 +21895,14 @@ function screenWheel() {
         const btn = document.getElementById('spin');
         btn.textContent = 'BACK TO MAIN MENU';
         btn.onclick = () => failRun('Run failed. Boss survives. Streak reset.');
-        // Center hub is no longer a spin target after the result lands.
+        // Center hub is no longer a spin target after the result lands —
+        // dim it and disable so it stops reading as a live affordance.
         const hub = document.getElementById('wheelHub');
         if (hub) {
           hub.onclick = null;
-          hub.style.cursor = 'default';
+          hub.disabled = true;
+          hub.classList.add('spent');
+          hub.style.opacity = '0.5';
         }
       }, 600);
     }, 4100);
@@ -21989,6 +22038,8 @@ function openSettingsModal() {
         <button class="btn ${profile.sfxMuted ? 'ghost' : 'primary'}" id="sfxOn"><img src="img/setting_sound_on.png?v=3" class="setting-ic" alt=""/> ON</button>
         <button class="btn ${profile.sfxMuted ? 'primary' : 'ghost'}" id="sfxOff"><img src="img/setting_sound_off.png?v=3" class="setting-ic" alt=""/> OFF</button>
       </div>
+      <label style="margin-top: 12px; font-size: 9px;">VOLUME</label>
+      <input type="range" class="arcade-range" id="sfxVolume" min="0" max="100" value="${Math.round((profile.sfxVolume ?? 0.7) * 100)}"/>
 
       <label style="margin-top: 14px;">BACKGROUND MUSIC</label>
       <div class="row" style="gap:10px; margin-top:6px;">
@@ -22094,6 +22145,15 @@ function openSettingsModal() {
   };
   const volEl = document.getElementById('musicVolume');
   if (volEl) volEl.oninput = () => music.setVolume(volEl.value / 100);
+  // SFX volume slider — feeds straight into the sfx module's master gain
+  // multiplier. Plays a short blip on release so the player can hear
+  // the level they just picked (skipped on every input tick so dragging
+  // doesn't machine-gun the speaker).
+  const sfxVolEl = document.getElementById('sfxVolume');
+  if (sfxVolEl) {
+    sfxVolEl.oninput = () => sfx.setVolume(sfxVolEl.value / 100);
+    sfxVolEl.onchange = () => { try { sfx.primary && sfx.primary(); } catch {} };
+  }
   const trackEl = document.getElementById('musicTrack');
   if (trackEl) trackEl.onchange = () => {
     music.setTrack(trackEl.value);
@@ -24647,6 +24707,12 @@ function pushChat(role, text) {
   const typed = role === 'user';
   r.chat.push({ role, text, ts: Date.now(), typed });
   updateChatFabBadge();
+  // Bug #7: refresh used to drop user-typed messages because the only
+  // place that saved state.run was render(), and sendChat never calls
+  // render(). Persist on every chat push so both sides of the convo
+  // survive a refresh. saveResumeState() already gates by view, so MP
+  // runs and post-game views are skipped — no extra checks needed.
+  try { if (typeof saveResumeState === 'function') saveResumeState(); } catch (_) {}
 }
 
 function updateChatFabBadge() {
@@ -27426,6 +27492,15 @@ function renderChatSheet() {
     document.body.appendChild(bg);
     bg.onclick = (e) => { if (e.target === bg) closeChatSheet(); };
   }
+  // Tester #2 caught this: when a system message ("Task Failed", etc.)
+  // arrives mid-typing, the innerHTML rebuild below replaces the input
+  // and the player's draft is gone. Stash it (plus selection + focus
+  // state) here so we can restore it after the rebuild.
+  const _prevInput = document.getElementById('chatInput');
+  const _draft = _prevInput ? _prevInput.value : '';
+  const _draftWasFocused = _prevInput && document.activeElement === _prevInput;
+  const _draftSelStart = _prevInput ? _prevInput.selectionStart : 0;
+  const _draftSelEnd = _prevInput ? _prevInput.selectionEnd : 0;
   const _batTiny = '<img src="img/unhinged_head.png" class="unhinged-bat-img tiny" alt="">';
   const hostLabel = r.unhinged ? `${_batTiny} THE GREMLIN` : '▶ THE SYSTEM';
   const hostName  = r.unhinged ? 'THE GREMLIN' : 'THE SYSTEM';
@@ -27485,7 +27560,19 @@ function renderChatSheet() {
   };
   send.onclick = fire;
   inp.onkeydown = e => { if (e.key === 'Enter') fire(); };
-  inp.focus();
+  // Restore the player's in-flight draft (bug #6) — only when the input
+  // isn't already disabled by chatBusy, since the host is mid-thought
+  // and the player can't type yet anyway. Focus + cursor position are
+  // restored only if they were the active element before this rebuild.
+  if (_draft && !r.chatBusy) {
+    inp.value = _draft;
+    if (_draftWasFocused) {
+      inp.focus();
+      try { inp.setSelectionRange(_draftSelStart, _draftSelEnd); } catch {}
+    }
+  } else {
+    inp.focus();
+  }
   // Quick actions
   document.querySelectorAll('#chatQuick .q').forEach(q => q.onclick = () => handleQuickAction(q.dataset.q));
   // Typewriter pass for un-typed host/tag messages — fills each one
