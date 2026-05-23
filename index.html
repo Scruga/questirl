@@ -9613,7 +9613,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.22.285';
+const BUILD_VERSION = '2026.05.22.286';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15902,6 +15902,13 @@ async function generateRunInner() {
         // at the photo from step N" instructions that the model
         // sometimes slips in despite the prompt rule.
         r.quest = sanitizeQuestSteps(ai.quest);
+        // Walk-gate safety net. The model under-uses walkDistance on
+        // its first few generations after a prompt update — even with
+        // a REQUIRED nudge it'll occasionally ship a run with zero
+        // walk-gates. If the player's limits permit walking, bolt a
+        // gate onto the first Move/Find step so the feature actually
+        // surfaces. Skips when limits include indoor/mobility blockers.
+        try { ensureAtLeastOneWalkGate(r); } catch (e) { console.warn('[walk-gate] safety net errored:', e); }
         // Surface validation result on the run so the dev config badge
         // can show pass/fail status during testing.
         r._validatorResult = validation;
@@ -15965,6 +15972,9 @@ async function generateRunInner() {
     if (isNightmare) {
       r.quest = applyNightmareTier(r.quest, r.mode === 'party');
     }
+    // Fallback-library runs don't ship with walkDistance either —
+    // bolt one on if the run permits walking, same as the AI path.
+    try { ensureAtLeastOneWalkGate(r); } catch (e) { console.warn('[walk-gate] fallback safety net errored:', e); }
   } else {
     // Even AI-generated quests get the Nightmare modifier pass for consistency
     if (r.difficulty.id === 'nightmare') {
@@ -17238,6 +17248,41 @@ function renderProofUI(s, i) {
   // the photo path so the rest of the pipeline keeps working.
   s.proof = 'photo';
   return renderProofUI(s, i);
+}
+
+// Walk-gate safety net. Called after AI quest acceptance. If the run
+// permits walking and zero steps shipped with walkDistance, bolt a
+// gate onto the first Move (or Find, as fallback) step. This exists
+// because the model under-uses walkDistance on its first runs after
+// the prompt update — without this, the feature ships to production
+// but never appears in actual quests.
+function runPermitsWalking(r) {
+  if (!r || !Array.isArray(r.limits)) return true;
+  const blockers = new Set(['Keep it indoors', 'Limited mobility']);
+  return !r.limits.some(l => blockers.has(l));
+}
+function ensureAtLeastOneWalkGate(r) {
+  if (!r || !Array.isArray(r.quest) || r.quest.length === 0) return;
+  if (!runPermitsWalking(r)) return;
+  const already = r.quest.some(s => s && s.walkDistance);
+  if (already) return;
+  // Prefer a Move step (the most natural anchor), then Find, then
+  // any non-timer / non-final step. Skip the absolute-last step on
+  // longer quests because that's the Final Attack and we don't want
+  // to gate the climactic moment behind a walk on first generation.
+  const candidates = r.quest.map((s, i) => ({ s, i }))
+    .filter(({ s, i }) => s && s.proof !== 'timer' && i < r.quest.length - 1)
+    .sort((a, b) => {
+      const rank = (t) => t === 'Move' ? 0 : t === 'Find' ? 1 : 2;
+      return rank(a.s.type) - rank(b.s.type);
+    });
+  const target = candidates[0];
+  if (!target) return;
+  // 60-90m default — comfortably outdoorsy but doable in a single step
+  // time budget. The AI can override on later generations once the
+  // prompt's nudge has had a few warm-up runs.
+  target.s.walkDistance = 60 + Math.floor(Math.random() * 30);
+  console.log('[walk-gate] safety net bolted walkDistance', target.s.walkDistance, 'onto step', target.i + 1, '(' + (target.s.type || '?') + ')');
 }
 
 // ── GEO-GATE lifecycle ──────────────────────────────────────────────
@@ -24371,15 +24416,13 @@ PROOF — strict
 - One photo per step. No video, no screenshots, no multi-shot, no before/after.
 - A step CAN have photoCount: 2-4 when it genuinely needs multiple distinct photos (e.g. "three different chairs, one photo per chair"), but default to 1.
 
-WALK GATE — optional, ONLY when the step genuinely requires the player to physically move somewhere before they can submit proof. Set step.walkDistance to an integer of meters (20-300). The proof UI is locked until the player has covered that distance from where they tapped "start tracking" — verified by GPS. Examples of GOOD fits:
-- A "Move" step asking the player to find something a block away ("walk to the nearest crosswalk and photograph the button"), walkDistance: 80.
-- A "Final Attack" that demands real distance from the starting spot ("get 200m from where you were sitting before you fire the last shot"), walkDistance: 200.
-- Anti-couch steps where the whole point is "leave the room you started in."
-Examples of BAD fits (do NOT add walkDistance to these):
-- Find/Pose/Puzzle steps where the player can do the action where they're standing.
-- "Quiet 5 minutes" timer steps — the player is meant to stay still.
-- Indoor-locked runs (limit "Keep it indoors") — apartments may not give the player room to walk 80m.
-Defaults: walkDistance 60-120m for normal moves, 150-250m for Final Attacks that want real travel. Don't bolt it onto every step — overuse turns the run into a parade.
+WALK GATE — REQUIRED for outdoor-capable runs. step.walkDistance is an integer meters (20-300) that locks a step's proof UI behind a GPS-verified walk. The proof surface (camera / motion / timer) only appears after the player has actually covered that distance from where they tapped "start tracking."
+- If the player's HARD LIMITS do NOT include "Keep it indoors" AND do NOT include "Limited mobility", you MUST set walkDistance on AT LEAST ONE step. Two is even better. Without a walk-gate the run reads as couch-clickable; the walk is the most powerful "this is real life" beat in the loop.
+- Strong fits: any "Move" step ("walk to the nearest crosswalk and photograph the button" → walkDistance: 80); "Find" steps where the target is somewhere else nearby ("find a different chair than the one you're in" → walkDistance: 30); a "Final Attack" that wants real travel ("get 200m from where you started before you fire the last shot" → walkDistance: 200).
+- BAD fits — DO NOT set walkDistance on these: Pose/Puzzle steps the player can do where they're standing, a "Quiet 5 minutes" timer step (the wait IS the point), Investigation Tier steps about reading a sign in front of you.
+- If limits include "Keep it indoors" or "Limited mobility", DO NOT set walkDistance on any step. The player has agreed to stay put or has mobility constraints; a walk-gate would lock them out of their own quest.
+- Defaults: 60-120m for normal Move/Find walks. 150-250m for Final Attacks that want real travel. Avoid 20-30m (feels trivial) and >250m (eats the step's time budget).
+- Never put walkDistance on every step. One or two per run, distributed.
 - ⚠ UNVERIFIABLE-SEQUENCE TRAP — strict (testers flagged this). NEVER write a step that requires the player to do N SEQUENTIAL ACTIONS but uses single-photo proof. Single-photo proof can only show ONE MOMENT — the AI judge cannot verify whether the player did the other N-1 actions before the photo. Examples of the FORBIDDEN pattern:
   · "touch five machines in order, then photograph the fifth" — judge can't see the first four → fails.
   · "walk to three zones in sequence and photograph the third" — same issue.
