@@ -9613,7 +9613,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.22.287';
+const BUILD_VERSION = '2026.05.23.288';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -17954,7 +17954,11 @@ function bindQuest() {
         // anything else sees the photo. Without this, the AI judge call
         // would receive raw camera output with location metadata intact.
         const clean = await stripImageMetadata(ev.target.result);
-        saveProofPhoto(i, slot, clean);
+        // Photo-AR: stamp the run's boss into a corner of the photo.
+        // Boss can't load → falls back to emoji-as-text → falls back
+        // to the original photo. Players' proof is never at risk.
+        const stamped = await stampBossOnPhoto(clean, r.boss);
+        saveProofPhoto(i, slot, stamped);
         toast('Photo captured.');
         render();
       };
@@ -25525,6 +25529,91 @@ function calculateRequiredRunTime(r) {
 // ever sees the player's GPS coordinates or device-identifying tags.
 // Falls back to the original data URL on any error so a capture never
 // silently disappears.
+// Stamp the run's boss sprite into a corner of the proof photo. Runs
+// AFTER the EXIF strip so the metadata-clean photo is the base; we
+// never want to bake GPS coords into a composited image. Sized at
+// ~22% of the photo's shorter side, dropped into a random corner per
+// capture (so it doesn't read as a fixed watermark), with a soft drop
+// shadow so it pops regardless of what the player photographed.
+// Always returns a usable data URL — falls back to the input on any
+// failure path so a missing boss image or a CORS-tainted canvas never
+// loses the player's proof.
+async function stampBossOnPhoto(dataUrl, boss) {
+  if (!boss || !dataUrl) return dataUrl;
+  return new Promise((resolve) => {
+    const photo = new Image();
+    photo.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        const W = photo.naturalWidth || photo.width;
+        const H = photo.naturalHeight || photo.height;
+        c.width = W; c.height = H;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(photo, 0, 0);
+
+        const sz = Math.round(Math.min(W, H) * 0.22);
+        const pad = Math.round(Math.min(W, H) * 0.04);
+        // Pick a corner randomly per shot. Stable per-photo is fine —
+        // we only need variety across the run so every step's proof
+        // doesn't look like the same Photoshop template.
+        const corners = [
+          [pad,            pad           ],   // top-left
+          [W - sz - pad,   pad           ],   // top-right
+          [pad,            H - sz - pad  ],   // bottom-left
+          [W - sz - pad,   H - sz - pad  ],   // bottom-right
+        ];
+        const [dx, dy] = corners[Math.floor(Math.random() * corners.length)];
+
+        // Soft drop shadow so the sprite reads as a foreground sticker,
+        // not part of the scene. The AI judge still sees the photo
+        // around it — the boss is small enough at 22% to leave most
+        // of the frame intact.
+        ctx.shadowColor   = 'rgba(0,0,0,0.55)';
+        ctx.shadowBlur    = Math.round(sz * 0.14);
+        ctx.shadowOffsetX = Math.round(sz * 0.05);
+        ctx.shadowOffsetY = Math.round(sz * 0.05);
+
+        const finalize = () => {
+          try { resolve(c.toDataURL('image/jpeg', 0.88)); }
+          catch (e) { console.warn('[boss-stamp] encode failed:', e); resolve(dataUrl); }
+        };
+        const drawEmojiAtCorner = () => {
+          // Used when the boss has no iconImg OR the iconImg failed to
+          // load. Renders the emoji glyph at sprite size — looks fine
+          // and never fails (emoji are font-rendered, not resource-loaded).
+          ctx.font = `${sz}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif`;
+          ctx.textBaseline = 'top';
+          ctx.fillStyle = '#fff';
+          ctx.fillText(boss.ic || '👹', dx, dy);
+        };
+
+        if (boss.iconImg) {
+          const sprite = new Image();
+          // Same-origin (img/bosses/*.png) so no CORS taint, no decode
+          // gotchas. But the onerror branch still exists in case a
+          // boss ships without its iconImg asset present.
+          sprite.onload = () => {
+            // Pixel-art aesthetic — match the game's everywhere-pixelated look.
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(sprite, dx, dy, sz, sz);
+            finalize();
+          };
+          sprite.onerror = () => { drawEmojiAtCorner(); finalize(); };
+          sprite.src = boss.iconImg;
+        } else {
+          drawEmojiAtCorner();
+          finalize();
+        }
+      } catch (e) {
+        console.warn('[boss-stamp] composite errored:', e);
+        resolve(dataUrl);
+      }
+    };
+    photo.onerror = () => resolve(dataUrl);
+    photo.src = dataUrl;
+  });
+}
+
 async function stripImageMetadata(dataUrl) {
   return new Promise((resolve) => {
     try {
@@ -25852,10 +25941,27 @@ async function openSelfTimerCamera(stepIdx, slotIdx = 0) {
       }
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
 
-      saveProofPhoto(stepIdx, slotIdx, dataUrl);
-      cleanup();
-      toast('Photo captured.');
-      if (state.view === 'quest') render();
+      // Photo-AR: bake the run's boss into a corner before the photo
+      // is saved or judged. Same stamping path the file-input fallback
+      // uses, so both capture routes produce identical-looking proofs.
+      // Awaited via .then so we don't have to make this function async
+      // and rewrite the surrounding sync cleanup/toast/render chain.
+      const boss = (state.run && state.run.boss) || null;
+      stampBossOnPhoto(dataUrl, boss).then((stamped) => {
+        saveProofPhoto(stepIdx, slotIdx, stamped);
+        cleanup();
+        toast('Photo captured.');
+        if (state.view === 'quest') render();
+      }).catch((e) => {
+        // If the stamp itself somehow rejects (it's written to always
+        // resolve, but defense-in-depth), save the raw photo so the
+        // player's capture isn't lost.
+        console.warn('[boss-stamp] await rejected — saving raw:', e);
+        saveProofPhoto(stepIdx, slotIdx, dataUrl);
+        cleanup();
+        toast('Photo captured.');
+        if (state.view === 'quest') render();
+      });
     } catch (e) {
       console.warn('Capture failed', e);
       toast('Capture failed. Try again.');
