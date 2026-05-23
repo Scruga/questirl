@@ -5942,9 +5942,40 @@
     color: var(--neon);
     font-size: 26px;
   }
+  /* Slam damage popup — visually distinct from taps and crits. Huge
+     font, gold/red glow, dramatic life cycle so the player can read
+     the number through the screen-shake without it competing. */
+  .ar-dmg-pop.slam {
+    color: #ffce4f;
+    font-size: 42px;
+    text-shadow: 3px 3px 0 #000, 0 0 16px #ff5764, 0 0 32px #ffce4f;
+    animation: arSlamDmgFloat 1.1s ease-out forwards;
+  }
   @keyframes arDmgFloat {
     0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     100% { opacity: 0; transform: translate(-50%, -160%) scale(1.4); }
+  }
+  @keyframes arSlamDmgFloat {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(0.4); filter: hue-rotate(0deg); }
+    20%  { opacity: 1; transform: translate(-50%, -70%) scale(1.6); filter: hue-rotate(-30deg) brightness(1.5); }
+    100% { opacity: 0; transform: translate(-50%, -200%) scale(1.2); filter: hue-rotate(40deg); }
+  }
+  /* Shockwave ring — expanding circle from the slam impact point. */
+  .ar-slam-shockwave {
+    position: fixed;
+    width: 60px; height: 60px;
+    transform: translate(-50%, -50%);
+    border: 4px solid var(--gold);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 6;
+    box-shadow: 0 0 24px var(--gold), inset 0 0 16px var(--gold);
+    animation: arSlamShockwave .55s ease-out forwards;
+  }
+  @keyframes arSlamShockwave {
+    0%   { width: 60px;  height: 60px;  border-width: 4px; opacity: 1;    filter: brightness(2); }
+    60%  {                                                  opacity: 0.85; }
+    100% { width: 520px; height: 520px; border-width: 1px; opacity: 0;    filter: brightness(0.7); }
   }
   .ar-result {
     position: absolute;
@@ -6319,18 +6350,21 @@
     50%      { box-shadow: 3px 3px 0 #000, 0 0 26px rgba(245,194,66,0.85); }
   }
 
-  /* ── Slam flash + screen-shake on big moments. ── */
+  /* ── Slam flash + screen-shake on big moments. The flash hits hard
+     up front, then bleeds out warmer (gold tinge) so it reads as an
+     explosion rather than a debug overlay. ── */
   .ar-finisher-modal.ar-slam-flash::after {
     content: '';
     position: absolute; inset: 0;
-    background: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.85);
     pointer-events: none;
-    animation: arSlamFlash .22s ease-out forwards;
+    animation: arSlamFlash .42s ease-out forwards;
     z-index: 4;
   }
   @keyframes arSlamFlash {
-    0%   { opacity: 1; }
-    100% { opacity: 0; }
+    0%   { opacity: 1; background: rgba(255,255,255,0.95); }
+    25%  { opacity: 0.85; background: rgba(255,230,160,0.65); }
+    100% { opacity: 0; background: rgba(255,180,80,0); }
   }
   .ar-finisher-modal.ar-screen-shake .ar-video,
   .ar-finisher-modal.ar-screen-shake .ar-scrim,
@@ -10234,7 +10268,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.298';
+const BUILD_VERSION = '2026.05.23.299';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26837,15 +26871,44 @@ async function openARFinisher(stepIdx) {
         if (mag < SHAKE_MAG_THRESHOLD) return;
         lastShakeTs = now;
         slamReadyAt = now + SLAM_COOLDOWN_MS;
-        // Slam damage: 25-35, breaks combo intentionally. Bright flash
-        // + heavy haptic + screen shake so it feels like a finisher.
-        const dmg = 25 + Math.floor(Math.random() * 11);
+        // Slam damage: 60-90 (was 25-35). The button-mash baseline is
+        // ~9 dmg/tap, so the slam should read as 6-10x a normal hit
+        // — a proper "save it for the moment" attack. Breaks combo
+        // intentionally (it's the alternative damage path, not a
+        // combo capstone).
+        const dmg = 60 + Math.floor(Math.random() * 31);
         breakCombo();
+        // Multi-layered "explosive" feedback:
+        //   1. White flash overlay (existing)
+        //   2. Full screen-shake (reuses death-celebration animation)
+        //   3. Shockwave ring expanding from the boss
+        //   4. Heavier haptic chain + layered sfx (crtOff thump + hit)
+        //   5. Slam-specific oversized damage popup near the sprite
         wrap.classList.remove('ar-slam-flash');
         void wrap.offsetWidth;
         wrap.classList.add('ar-slam-flash');
-        try { sfx.hit && sfx.hit(); } catch {}
-        try { navigator.vibrate && navigator.vibrate([60, 30, 60]); } catch {}
+        // Reuse the screen-shake from the win sequence — short, sharp,
+        // already battle-tested for not breaking gyro/touch input.
+        wrap.classList.remove('ar-screen-shake');
+        void wrap.offsetWidth;
+        wrap.classList.add('ar-screen-shake');
+        setTimeout(() => wrap.classList.remove('ar-screen-shake'), 460);
+        // Shockwave ring centred on the boss's current screen position.
+        try {
+          const rect = sprite ? sprite.getBoundingClientRect() : null;
+          if (rect) {
+            const ring = document.createElement('div');
+            ring.className = 'ar-slam-shockwave';
+            ring.style.left = (rect.left + rect.width  / 2) + 'px';
+            ring.style.top  = (rect.top  + rect.height / 2) + 'px';
+            wrap.appendChild(ring);
+            ring.addEventListener('animationend', () => ring.remove(), { once: true });
+          }
+        } catch {}
+        // Layered audio + extended haptic for "weight"
+        try { sfx.crtOff && sfx.crtOff(); } catch {}      // sub-bass thump
+        try { setTimeout(() => sfx.hit && sfx.hit(), 40); } catch {}
+        try { navigator.vibrate && navigator.vibrate([80, 30, 80, 30, 120]); } catch {}
         applyDamage(dmg, { slam: true });
         updateSlamReadout(false);
       };
