@@ -10532,7 +10532,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.301';
+const BUILD_VERSION = '2026.05.23.302';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26720,12 +26720,18 @@ async function openARFinisher(stepIdx) {
   // scale by the run's chosen difficulty so the AR fight matches the
   // weight of the rest of the run. 'bold' is the baseline (1.0x);
   // warmup/brave are progressively gentler; chaos/nightmare bite back.
+  // Per-tier multipliers. HP ramp is flatter than before — user
+  // wanted nightmare capped at what chaos used to be (3500), and
+  // chaos pulled down accordingly. The base damage doubled too (see
+  // BASE_BOSS_ATTACKS below) so the atkDmg multipliers are softer
+  // than the old table — the difficulty ramp is now mostly about
+  // PLAYER HP shrinking, not boss HP ballooning.
   const DIFF_SCALE_TABLE = {
-    warmup:    { bossHp: 0.55, playerHp: 1.5,  timer: 1.20, atkDmg: 0.70 },
-    brave:     { bossHp: 0.75, playerHp: 1.25, timer: 1.10, atkDmg: 0.85 },
+    warmup:    { bossHp: 0.55, playerHp: 1.5,  timer: 1.20, atkDmg: 0.60 },
+    brave:     { bossHp: 0.75, playerHp: 1.25, timer: 1.10, atkDmg: 0.80 },
     bold:      { bossHp: 1.00, playerHp: 1.00, timer: 1.00, atkDmg: 1.00 },
-    chaos:     { bossHp: 1.40, playerHp: 0.85, timer: 1.00, atkDmg: 1.40 },
-    nightmare: { bossHp: 2.00, playerHp: 0.70, timer: 1.00, atkDmg: 1.85 },
+    chaos:     { bossHp: 1.20, playerHp: 0.85, timer: 1.00, atkDmg: 1.15 },
+    nightmare: { bossHp: 1.40, playerHp: 0.70, timer: 1.00, atkDmg: 1.30 },
   };
   const diffId = (r.difficulty && r.difficulty.id) || 'bold';
   const diffScale = DIFF_SCALE_TABLE[diffId] || DIFF_SCALE_TABLE.bold;
@@ -27457,15 +27463,15 @@ async function openARFinisher(stepIdx) {
   // player can't memorize "telegraph X ms, dodge at Y ms" — they
   // have to read each cue. The TYPE selection also drives the
   // wind-up class on the modal so the visual cue matches.
-  // Base damages are bold-tier; diffScale.atkDmg multiplies them so
-  // nightmare crashes hit for ~110 dmg (a third of a base playerHP)
-  // and warmup jabs only nick for ~14. Player tester complained
-  // boss damage was too soft — baseline bumped ~60% on top of the
-  // scale system so the fight feels truly competitive.
+  // Damages doubled per tester ask: 'boss needs to do maybe 2 times
+  // the damage.' At bold (300 HP), one crash miss now eats ~40-50%
+  // of player HP — two misses lethal. Combined with the softer
+  // atkDmg scale, nightmare crashes land at ~150-200 dmg vs 210 HP,
+  // i.e. one crash miss = guaranteed near-death. Brutal but readable.
   const BASE_BOSS_ATTACKS = [
-    { id: 'jab',   weight: 3, telegraph:  450, dodge:  600, dmgMin: 16, dmgMax: 24, label: '⚡ QUICK' },
-    { id: 'slam',  weight: 4, telegraph:  750, dodge:  800, dmgMin: 28, dmgMax: 40, label: '✦ SLAM' },
-    { id: 'crash', weight: 2, telegraph: 1150, dodge:  900, dmgMin: 55, dmgMax: 75, label: '☠ CRASH' },
+    { id: 'jab',   weight: 3, telegraph:  450, dodge:  600, dmgMin:  32, dmgMax:  48, label: '⚡ QUICK' },
+    { id: 'slam',  weight: 4, telegraph:  750, dodge:  800, dmgMin:  56, dmgMax:  80, label: '✦ SLAM' },
+    { id: 'crash', weight: 2, telegraph: 1150, dodge:  900, dmgMin: 110, dmgMax: 150, label: '☠ CRASH' },
   ];
   const BOSS_ATTACKS = BASE_BOSS_ATTACKS.map(a => ({
     ...a,
@@ -27777,7 +27783,7 @@ async function openARFinisher(stepIdx) {
       if (victory) {
         setTimeout(() => document.querySelector(`[data-complete="${stepIdx}"]`)?.click(), 100);
       }
-    }, victory ? 2000 : 1400);
+    }, victory ? 5000 : 1400);
   }
 
   function cleanup() {
