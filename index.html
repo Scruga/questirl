@@ -9985,7 +9985,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.291';
+const BUILD_VERSION = '2026.05.23.292';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26169,12 +26169,16 @@ async function openARFinisher(stepIdx) {
   const bossName = boss.name || 'BOSS';
 
   // AR HP is fresh per fight — independent of the boss's run-long HP
-  // pool. Keeps the encounter feeling snappy regardless of how much
-  // damage the player dealt in the preceding 4 steps. ~12-18 taps to
-  // win at the current damage range.
-  let arHP = 100;
-  const arHPMax = 100;
-  let timeLeft = 30000;
+  // pool. Tuned so the tier-1 polish (combo, phases, slam, enrage)
+  // actually surfaces during play:
+  //   Phase 2 (75%) lands ~5s in, phase 3 (50%) ~10s in, ENRAGE
+  //   (25%) ~17s in. Combo can reach the x2 tier (10+ chain) before
+  //   the boss dies. Slam (5s cooldown) fires 3-4 times per fight.
+  //   ~25-30s fights for engaged play, comfortable margin on the 45s
+  //   timer so casual players aren't punished while learning.
+  let arHP = 300;
+  const arHPMax = 300;
+  let timeLeft = 45000;
   let lastTickTs = Date.now();
   let won = false;
   let lost = false;
@@ -26206,7 +26210,7 @@ async function openARFinisher(stepIdx) {
         <div class="ar-hpbar"><div class="ar-hpfill" id="arHpFill"></div></div>
         <div class="ar-hpnum" id="arHpNum">${arHP} / ${arHPMax}</div>
       </div>
-      <div class="ar-timer" id="arTimer">30.0s</div>
+      <div class="ar-timer" id="arTimer">45.0s</div>
       <!-- Combo chip — hidden until the chain reaches 2+. Tracks live
            combo count and applies a scaling damage multiplier. -->
       <div class="ar-combo-chip" id="arCombo" style="display:none;">
@@ -26218,7 +26222,7 @@ async function openARFinisher(stepIdx) {
           ? `<img class="ar-boss-sprite" id="arBossSprite" src="${bossSpriteSrc}" alt="boss"/>`
           : `<div class="ar-boss-emoji ar-boss-sprite" id="arBossSprite">${bossEmoji}</div>`}
       </div>
-      <div class="ar-tap-hint">▸ TAP THE BOSS — SHAKE THE PHONE TO SLAM ◂</div>
+      <div class="ar-tap-hint">▸ TAP TO STRIKE · SHAKE TO SLAM · CHAIN FOR COMBO ◂</div>
       <!-- Shake-to-slam indicator. The bar drains on use (cooldown
            overlay) and refills as the cooldown elapses. The label
            flips to ⚡ SLAM READY when armed. -->
