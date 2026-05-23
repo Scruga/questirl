@@ -6412,6 +6412,270 @@
     letter-spacing: 2px;
   }
 
+  /* ── Heartbeat vignette — atmospheric red pulse that intensifies
+       with each phase. Lives behind the scrim, in front of the video. */
+  .ar-heartbeat {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    box-shadow: inset 0 0 80px 30px rgba(255, 30, 60, 0);
+    animation: arHeartbeat 1.8s ease-in-out infinite;
+  }
+  @keyframes arHeartbeat {
+    0%, 100% { box-shadow: inset 0 0 60px 10px rgba(255, 30, 60, 0.06); }
+    20%      { box-shadow: inset 0 0 90px 30px rgba(255, 30, 60, 0.14); }
+    35%      { box-shadow: inset 0 0 60px 10px rgba(255, 30, 60, 0.06); }
+    50%      { box-shadow: inset 0 0 80px 24px rgba(255, 30, 60, 0.12); }
+  }
+  /* Phase-driven heartbeat tempo — gets faster + more red as boss HP drops. */
+  .ar-finisher-modal.ar-tint-2 .ar-heartbeat { animation-duration: 1.4s; }
+  .ar-finisher-modal.ar-tint-3 .ar-heartbeat { animation-duration: 1.0s; }
+  .ar-finisher-modal.ar-tint-4 .ar-heartbeat { animation-duration: 0.7s; }
+
+  /* ── Rage meter (in the HUD strip). ── */
+  .ar-rage {
+    margin-top: 12px;
+    text-align: center;
+  }
+  .ar-rage-label {
+    font-family: var(--px); font-size: 9px;
+    color: var(--danger);
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .ar-rage-bar {
+    height: 10px;
+    background: #0a0518;
+    border: 2px solid #000;
+    box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  .ar-rage-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #ff5764 0%, var(--danger) 50%, #ffce4f 100%);
+    transition: width .25s ease;
+  }
+  /* The big floating RAGE button — only visible at full meter. */
+  .ar-rage-btn {
+    position: absolute;
+    top: 36%; left: 50%;
+    transform: translateX(-50%);
+    width: 84%;
+    max-width: 360px;
+    padding: 18px 0;
+    border: 4px solid #000;
+    background: var(--danger);
+    color: #fff;
+    font-family: var(--px); font-size: 16px;
+    letter-spacing: 3px;
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 6px 6px 0 #000, 0 0 28px var(--danger);
+    cursor: pointer;
+    z-index: 7;
+    overflow: hidden;
+    animation: arRageBtnPulse .6s ease-in-out infinite;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ar-rage-btn-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0%;
+    background: linear-gradient(90deg, rgba(255,206,79,0.7), rgba(255,255,255,0.4));
+    pointer-events: none;
+    transition: none;
+  }
+  .ar-rage-btn-label { position: relative; z-index: 2; }
+  @keyframes arRageBtnPulse {
+    0%, 100% { box-shadow: 6px 6px 0 #000, 0 0 24px var(--danger); }
+    50%      { box-shadow: 6px 6px 0 #000, 0 0 44px var(--danger); }
+  }
+  .ar-rage-btn.charging {
+    animation: none;
+    box-shadow: 6px 6px 0 #000, 0 0 60px var(--gold), 0 0 100px var(--danger);
+  }
+
+  /* ── Ability slots — stack of square buttons top-left. ── */
+  .ar-abilities {
+    position: absolute;
+    top: 100px;
+    left: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    z-index: 5;
+  }
+  .ar-ability {
+    position: relative;
+    width: 54px; height: 54px;
+    background: rgba(10, 5, 24, 0.85);
+    border: 3px solid var(--neon);
+    box-shadow: 0 0 12px rgba(255,61,166,0.55), 3px 3px 0 #000;
+    cursor: pointer;
+    padding: 0;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    transition: filter .12s ease;
+  }
+  .ar-ability:active { transform: translate(1px, 1px); }
+  .ar-ability.on-cd  { filter: grayscale(1) brightness(0.55); cursor: default; }
+  .ar-ability-ic {
+    width: 36px; height: 36px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    font-size: 24px;
+    line-height: 36px;
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000;
+  }
+  .ar-ability-cd {
+    position: absolute;
+    left: 0; bottom: 0; right: 0;
+    background: rgba(10, 5, 24, 0.7);
+    height: 0%;
+    transition: height .15s linear;
+    pointer-events: none;
+  }
+
+  /* ── Counter-attack prompt under the DODGED floater. ── */
+  .ar-counter-prompt {
+    margin-top: 8px;
+    font-family: var(--px); font-size: 12px;
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000, 0 0 10px var(--gold);
+    letter-spacing: 3px;
+    animation: arCounterPulse .25s ease-in-out infinite alternate;
+  }
+  @keyframes arCounterPulse {
+    0%   { transform: scale(1); }
+    100% { transform: scale(1.08); }
+  }
+
+  /* ── Tap-burst particles ── */
+  .ar-tap-particle {
+    position: fixed;
+    width: 6px; height: 6px;
+    pointer-events: none;
+    border: 1px solid #000;
+    transform: translate(-50%, -50%);
+    z-index: 199;
+    animation: arTapBurst .55s ease-out forwards;
+  }
+  @keyframes arTapBurst {
+    0%   { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--tx, 0)), calc(-50% + var(--ty, 0))) scale(0.3); opacity: 0; }
+  }
+
+  /* ── Boss-attack-type telegraph hues (jab = yellow, slam = pink, crash = deep red). ── */
+  .ar-finisher-modal.ar-windup.ar-atk-jab   .ar-windup-vignette { box-shadow: inset 0 0 100px 30px rgba(255,206,79,0.7); }
+  .ar-finisher-modal.ar-windup.ar-atk-slam  .ar-windup-vignette { box-shadow: inset 0 0 120px 40px rgba(255,30,80,0.7); }
+  .ar-finisher-modal.ar-windup.ar-atk-crash .ar-windup-vignette { box-shadow: inset 0 0 140px 60px rgba(200,10,40,0.9); animation: arWindupCrashPulse .4s ease-in-out infinite; }
+  @keyframes arWindupCrashPulse {
+    0%, 100% { box-shadow: inset 0 0 140px 60px rgba(200,10,40,0.85); }
+    50%      { box-shadow: inset 0 0 180px 80px rgba(255,30,60,1); }
+  }
+  /* Attack-type announcement label near the top of the screen. */
+  .ar-atk-label {
+    position: absolute;
+    top: 160px; left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--px);
+    font-size: 18px;
+    letter-spacing: 3px;
+    pointer-events: none;
+    z-index: 5;
+    animation: arAtkLabelLife .9s ease both;
+    text-shadow: 3px 3px 0 #000;
+  }
+  .ar-atk-label.ar-atk-jab   { color: var(--gold); }
+  .ar-atk-label.ar-atk-slam  { color: var(--neon); }
+  .ar-atk-label.ar-atk-crash { color: var(--danger); font-size: 22px; }
+  @keyframes arAtkLabelLife {
+    0%   { opacity: 0; transform: translate(-50%, -20px) scale(0.6); }
+    20%  { opacity: 1; transform: translate(-50%, 0)     scale(1.15); }
+    70%  { opacity: 1; transform: translate(-50%, 0)     scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -20px) scale(0.95); }
+  }
+
+  /* ── Counter / rage / ability damage popups ── */
+  .ar-dmg-pop.counter {
+    color: var(--gold);
+    font-size: 30px;
+    text-shadow: 3px 3px 0 #000, 0 0 18px var(--gold);
+  }
+  .ar-dmg-pop.rage {
+    color: #fff;
+    font-size: 56px;
+    text-shadow: 4px 4px 0 #000, 0 0 24px var(--danger), 0 0 48px #ffce4f;
+    animation: arSlamDmgFloat 1.3s ease-out forwards;
+  }
+  .ar-dmg-pop.ability {
+    color: var(--neon-3);
+    font-size: 36px;
+    text-shadow: 3px 3px 0 #000, 0 0 18px var(--neon-3);
+  }
+
+  /* Ability shockwave variant — different colour from slam so they're
+     readable as different events on overlapping fires. */
+  .ar-slam-shockwave.ability {
+    border-color: var(--neon);
+    box-shadow: 0 0 24px var(--neon), inset 0 0 16px var(--neon);
+  }
+
+  /* ── Victory rank / stats / death quote ── */
+  .ar-rank {
+    font-family: var(--px);
+    font-size: 96px;
+    line-height: 1;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    animation: arRankPop .6s ease both;
+  }
+  @keyframes arRankPop {
+    0%   { opacity: 0; transform: scale(0.2) rotate(-12deg); }
+    60%  { opacity: 1; transform: scale(1.35) rotate(4deg); }
+    100% { opacity: 1; transform: scale(1)    rotate(0deg); }
+  }
+  .ar-victory-title {
+    font-family: var(--px);
+    font-size: 22px;
+    color: var(--gold);
+    text-shadow: 3px 3px 0 #000, 0 0 16px var(--gold);
+    letter-spacing: 3px;
+    margin-bottom: 16px;
+  }
+  .ar-stats {
+    display: flex; flex-direction: column; gap: 6px;
+    align-items: stretch;
+    max-width: 320px;
+    margin: 0 auto 14px;
+    text-align: left;
+  }
+  .ar-stat {
+    display: flex; justify-content: space-between;
+    font-family: var(--px); font-size: 10px;
+    letter-spacing: 1px;
+    background: rgba(10, 5, 24, 0.75);
+    border: 2px solid #000;
+    padding: 6px 10px;
+  }
+  .ar-stat .l { color: var(--ink-dim); }
+  .ar-stat .v { color: var(--ink); }
+  .ar-stat.bonus {
+    border-color: var(--gold);
+    box-shadow: 0 0 10px rgba(245,194,66,0.4);
+  }
+  .ar-stat.bonus .l, .ar-stat.bonus .v { color: var(--gold); text-shadow: 1px 1px 0 #000; }
+  .ar-death-quote {
+    font-family: var(--term);
+    font-size: 14px;
+    color: var(--ink-faint);
+    font-style: italic;
+    margin-top: 12px;
+    line-height: 1.4;
+    max-width: 320px;
+    margin-left: auto; margin-right: auto;
+  }
+
   /* AR Finisher launcher (on the step card, not inside the AR modal). */
   .ar-finisher-btn {
     margin-top: 12px;
@@ -10268,7 +10532,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.299';
+const BUILD_VERSION = '2026.05.23.300';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26477,19 +26741,63 @@ async function openARFinisher(stepIdx) {
   const COMBO_WINDOW_MS = 500;
   const SLAM_COOLDOWN_MS = 5000;
   const SHAKE_MAG_THRESHOLD = 22;     // m/s² peak that counts as an intentional shake
+  const COUNTER_WINDOW_MS = 800;       // after a dodge, taps do ×3 for this long
   let comboCount = 0;
   let lastTapTs = 0;
   let lastShakeTs = 0;
   let slamReadyAt = 0;                // wall-clock ms at which slam comes off cooldown
+  let counterActiveUntil = 0;         // taps before this ts get the counter-attack ×3 bonus
   let currentPhase = 1;               // 1=full, 2=below 75%, 3=below 50%, 4=below 25% (ENRAGE)
+  // ── Stats for the end-of-fight letter rank ──
+  const fightStartTs = Date.now();
+  let peakComboReached = 0;
+  let dodgesAttempted = 0;             // # of wind-ups that opened a dodge window
+  let dodgesHit = 0;
+  let slamsLanded = 0;
+  // ── Rage meter ──
+  // Fills from damage taken (+15), successful dodge (+5), successful
+  // slam (+10). At 100 the rage button arms; tap-and-hold ~600ms to
+  // unleash a 180 dmg single-shot attack. Resets to 0 on release.
+  const RAGE_MAX = 100;
+  let ragePoints = 0;
+  let rageBtnHoldStart = 0;
+  let rageBtnHoldTimer = null;
+  const RAGE_HOLD_MS = 600;
+  // ── Ability slots ──
+  // Pulls up to 2 armed items from r.armed and surfaces them as
+  // tap-to-fire ability buttons with cooldowns. Each ability deals
+  // 80 damage flat with a flashy aura — for first cut, all abilities
+  // behave the same so the item icons are the prestige read, not the
+  // mechanic difference. A real per-item effects table is a follow-up.
+  const ABILITY_COOLDOWN_MS = 10000;
+  const ABILITY_DAMAGE = 80;
+  const armedItems = (r.armed || []).slice(0, 2);  // first two armed items become abilities
+  const abilityReadyAt = [0, 0];                   // wall-clock ms per slot
   // Particle pool for the death celebration. Pre-rendered DOM nodes
   // recycled out of a holder so we don't thrash the DOM on the win.
 
   const wrap = document.createElement('div');
   wrap.className = 'ar-finisher-modal';
+  // Pull a single quote for the boss-death sequence ahead of render so
+  // we can lock it in to one line (otherwise re-rolling on finish
+  // could feel arbitrary). Pool prefers the boss's own .wants line
+  // (most specific / on-character) and falls back to .beat or a
+  // templated taunt if neither exists.
+  const deathQuotePool = [
+    boss.wants ? `"${String(boss.wants).split('.')[0]}…" — and then nothing.` : null,
+    boss.beat  ? `Their grip on "${String(boss.beat).split('.')[0]}" breaks.` : null,
+    'A pixel god falls.',
+    'Defeat noted. The system remembers.',
+    'It was never alive. Just stubborn.',
+  ].filter(Boolean);
+  const deathQuote = deathQuotePool[Math.floor(Math.random() * deathQuotePool.length)];
   wrap.innerHTML = `
     <video class="ar-video" autoplay playsinline muted></video>
     <div class="ar-scrim"></div>
+    <!-- Camera heartbeat — a faint vignette that pulses to a fight
+         rhythm. The pulse rate steps up with each phase, peaking at
+         a fast erratic beat during ENRAGE. Purely atmospheric. -->
+    <div class="ar-heartbeat"></div>
     <div class="ar-overlay">
       <div class="ar-hud">
         <div class="ar-boss-name">▶ ${escapeHtml(bossName.toUpperCase())}</div>
@@ -26503,7 +26811,37 @@ async function openARFinisher(stepIdx) {
           <div class="ar-hpbar small"><div class="ar-player-hpfill" id="arPlayerHpFill"></div></div>
           <div class="ar-hpnum" id="arPlayerHpNum">${playerHP} / ${playerHPMax}</div>
         </div>
+        <!-- Rage meter — fills from damage taken / dodges / slams.
+             At 100, the button arms; tap-and-hold to release a single
+             big-damage attack. -->
+        <div class="ar-rage" id="arRage">
+          <div class="ar-rage-label">RAGE</div>
+          <div class="ar-rage-bar"><div class="ar-rage-fill" id="arRageFill" style="width:0%;"></div></div>
+        </div>
       </div>
+      <!-- Ability slots (top-left, vertical). Pull from r.armed; up to
+           two surface as tap-to-fire buttons with cooldown bars. -->
+      ${armedItems.length ? `
+        <div class="ar-abilities" id="arAbilities">
+          ${armedItems.map((id, idx) => {
+            const def = (typeof ITEM_BY_ID !== 'undefined' && ITEM_BY_ID[id]) || null;
+            const icon = def && def.img ? def.img : null;
+            const label = def ? (def.n || id) : id;
+            return `
+              <button class="ar-ability" data-ability-slot="${idx}" type="button" title="${escapeHtml(label)}">
+                ${icon ? `<img src="${icon}" class="ar-ability-ic" alt=""/>` : `<span class="ar-ability-ic">✨</span>`}
+                <div class="ar-ability-cd" data-ability-cd="${idx}"></div>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      ` : ''}
+      <!-- Big RAGE button — appears only when the meter is full. Held
+           to charge, releases on lift. -->
+      <button class="ar-rage-btn" id="arRageBtn" type="button" style="display:none;">
+        <span class="ar-rage-btn-label">⚡ HOLD TO RAGE ⚡</span>
+        <div class="ar-rage-btn-fill" id="arRageBtnFill"></div>
+      </button>
       <!-- Wind-up red overlay — pulses around the screen edges during
            boss wind-up so the player feels danger before the attack
            lands. Toggled by a CSS class on the modal. -->
@@ -26779,11 +27117,16 @@ async function openARFinisher(stepIdx) {
       void sprite.offsetWidth;
       sprite.classList.add('ar-hit');
     }
-    // Damage popup. opts.crit and opts.slam style differently so the
-    // player reads intent at a glance.
+    // Damage popup. opts.crit / opts.slam / opts.counter style
+    // differently so the player reads intent at a glance.
     const dn = document.createElement('div');
-    dn.className = 'ar-dmg-pop' + (opts.crit ? ' crit' : '') + (opts.slam ? ' slam' : '');
-    const prefix = opts.slam ? '⚡ ' : opts.crit ? '✦ ' : '−';
+    dn.className = 'ar-dmg-pop'
+      + (opts.crit ? ' crit' : '')
+      + (opts.slam ? ' slam' : '')
+      + (opts.counter ? ' counter' : '')
+      + (opts.rage ? ' rage' : '')
+      + (opts.ability ? ' ability' : '');
+    const prefix = opts.rage ? '★ ' : opts.ability ? '✺ ' : opts.slam ? '⚡ ' : opts.counter ? '↺ ' : opts.crit ? '✦ ' : '−';
     dn.textContent = prefix + dmg;
     dn.style.left = (opts.x != null ? opts.x : window.innerWidth / 2) + 'px';
     dn.style.top  = (opts.y != null ? opts.y : window.innerHeight / 2) + 'px';
@@ -26803,14 +27146,46 @@ async function openARFinisher(stepIdx) {
     if (now - lastTapTs <= COMBO_WINDOW_MS) comboCount++;
     else                                    comboCount = 1;
     lastTapTs = now;
+    if (comboCount > peakComboReached) peakComboReached = comboCount;
     updateComboChip();
     const isCrit = Math.random() < 0.12;
     const baseRoll = isCrit ? 18 + Math.floor(Math.random() * 6)
                             : 5  + Math.floor(Math.random() * 5);
-    const dmg = baseRoll * comboMultiplier();
+    // Counter-attack window: open for 800ms after a successful dodge.
+    // Damage ×3 during the window — rewards good defense with offense.
+    const inCounter = now < counterActiveUntil;
+    const counterMult = inCounter ? 3 : 1;
+    const dmg = baseRoll * comboMultiplier() * counterMult;
     try { sfx.hit && sfx.hit(); } catch {}
     try { navigator.vibrate && navigator.vibrate(isCrit ? 30 : 12); } catch {}
-    applyDamage(dmg, { crit: isCrit, x: e.clientX, y: e.clientY });
+    spawnTapBurst(e.clientX, e.clientY);
+    applyDamage(dmg, { crit: isCrit, counter: inCounter, x: e.clientX, y: e.clientY });
+  }
+
+  // Tap-burst particles. Spawn N tiny squares flying outward from
+  // the tap point; N scales with combo tier so high-chain mashing
+  // visibly intensifies the screen. Squares are recycled by the
+  // browser's GC after their animation ends.
+  function spawnTapBurst(x, y) {
+    if (won || lost || cancelled) return;
+    const tier = comboTier().tier;
+    const count = 3 + Math.min(8, tier * 1);    // 3 at no-tier, up to ~11 at GODLIKE
+    const colors = tier >= 7 ? ['#ff3da6','#7b5cff','#00e6c3','#ffce4f','#fff']
+                  : tier >= 4 ? ['#ffce4f','#ff3da6','#00e6c3']
+                  : ['#ffce4f','#fff'];
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('div');
+      p.className = 'ar-tap-particle';
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.6;
+      const dist = 40 + Math.random() * 60;
+      p.style.left = x + 'px';
+      p.style.top  = y + 'px';
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      p.style.setProperty('--tx', (Math.cos(angle) * dist) + 'px');
+      p.style.setProperty('--ty', (Math.sin(angle) * dist) + 'px');
+      wrap.appendChild(p);
+      p.addEventListener('animationend', () => p.remove(), { once: true });
+    }
   }
   if (sprite) {
     sprite.addEventListener('pointerdown', handleAttack);
@@ -26909,6 +27284,8 @@ async function openARFinisher(stepIdx) {
         try { sfx.crtOff && sfx.crtOff(); } catch {}      // sub-bass thump
         try { setTimeout(() => sfx.hit && sfx.hit(), 40); } catch {}
         try { navigator.vibrate && navigator.vibrate([80, 30, 80, 30, 120]); } catch {}
+        slamsLanded++;
+        addRage(10);
         applyDamage(dmg, { slam: true });
         updateSlamReadout(false);
       };
@@ -26924,6 +27301,136 @@ async function openARFinisher(stepIdx) {
   }
   tryAttachShakeListener();
 
+  // ── Rage meter ────────────────────────────────────────────────────
+  // Fills from damage taken / dodges / slams. At 100, the big RAGE
+  // button surfaces. Tap-and-hold ~600ms to unleash a 180 damage
+  // single-shot. Releasing early cancels with no damage and KEEPS
+  // the rage charge — only a full hold spends it.
+  function addRage(amount) {
+    if (won || lost || cancelled) return;
+    ragePoints = Math.min(RAGE_MAX, ragePoints + amount);
+    updateRageUI();
+  }
+  function updateRageUI() {
+    const fill = wrap.querySelector('#arRageFill');
+    if (fill) fill.style.width = Math.round((ragePoints / RAGE_MAX) * 100) + '%';
+    const btn = wrap.querySelector('#arRageBtn');
+    if (btn) {
+      const armed = ragePoints >= RAGE_MAX;
+      btn.style.display = armed ? '' : 'none';
+      btn.classList.toggle('armed', armed);
+    }
+  }
+  function fireRageStrike() {
+    // Massive single-target damage. Distinct popup style + heavy
+    // shake + sparkle burst. Resets rage to 0.
+    const dmg = 180;
+    ragePoints = 0;
+    updateRageUI();
+    // Rage hit lands centred on the boss for the popup origin.
+    const rect = sprite ? sprite.getBoundingClientRect() : null;
+    const ox = rect ? rect.left + rect.width  / 2 : window.innerWidth  / 2;
+    const oy = rect ? rect.top  + rect.height / 2 : window.innerHeight / 2;
+    wrap.classList.remove('ar-screen-shake');
+    void wrap.offsetWidth;
+    wrap.classList.add('ar-screen-shake');
+    setTimeout(() => wrap.classList.remove('ar-screen-shake'), 460);
+    try { sfx.achievement && sfx.achievement(); } catch {}
+    try { navigator.vibrate && navigator.vibrate([100, 40, 100, 40, 100, 40, 200]); } catch {}
+    applyDamage(dmg, { rage: true, x: ox, y: oy });
+  }
+  // Bind rage button — hold to charge, release to fire (only at full
+  // hold). Touch + pointer events for cross-platform coverage.
+  (() => {
+    const btn = wrap.querySelector('#arRageBtn');
+    if (!btn) return;
+    const fillEl = wrap.querySelector('#arRageBtnFill');
+    const startHold = (ev) => {
+      ev.preventDefault();
+      if (ragePoints < RAGE_MAX || won || lost || cancelled) return;
+      rageBtnHoldStart = Date.now();
+      btn.classList.add('charging');
+      // Animate the charge fill manually so it's bound to the hold duration.
+      const tickFill = () => {
+        if (!rageBtnHoldStart) return;
+        const elapsed = Date.now() - rageBtnHoldStart;
+        const pct = Math.min(100, (elapsed / RAGE_HOLD_MS) * 100);
+        if (fillEl) fillEl.style.width = pct + '%';
+        if (elapsed >= RAGE_HOLD_MS) {
+          rageBtnHoldStart = 0;
+          if (rageBtnHoldTimer) { cancelAnimationFrame(rageBtnHoldTimer); rageBtnHoldTimer = null; }
+          btn.classList.remove('charging');
+          if (fillEl) fillEl.style.width = '0%';
+          fireRageStrike();
+          return;
+        }
+        rageBtnHoldTimer = requestAnimationFrame(tickFill);
+      };
+      tickFill();
+    };
+    const endHold = () => {
+      if (!rageBtnHoldStart) return;
+      // Released early — cancel; rage points are NOT spent.
+      rageBtnHoldStart = 0;
+      if (rageBtnHoldTimer) { cancelAnimationFrame(rageBtnHoldTimer); rageBtnHoldTimer = null; }
+      btn.classList.remove('charging');
+      if (fillEl) fillEl.style.width = '0%';
+    };
+    btn.addEventListener('pointerdown', startHold);
+    btn.addEventListener('pointerup', endHold);
+    btn.addEventListener('pointerleave', endHold);
+    btn.addEventListener('pointercancel', endHold);
+  })();
+
+  // ── Ability slots — armed items become tap-to-fire AR abilities ──
+  // First-cut implementation: all abilities deal ABILITY_DAMAGE flat
+  // with a generic flashy burst. Per-item effect tables are a
+  // follow-up; for now the item icon IS the prestige and the
+  // mechanic is shared.
+  function fireAbility(slot) {
+    if (won || lost || cancelled) return;
+    const now = Date.now();
+    if (now < abilityReadyAt[slot]) return;
+    abilityReadyAt[slot] = now + ABILITY_COOLDOWN_MS;
+    const rect = sprite ? sprite.getBoundingClientRect() : null;
+    const ox = rect ? rect.left + rect.width  / 2 : window.innerWidth  / 2;
+    const oy = rect ? rect.top  + rect.height / 2 : window.innerHeight / 2;
+    // Ability also fires the shockwave ring used by slams for a
+    // beefier look without needing new art.
+    try {
+      const ring = document.createElement('div');
+      ring.className = 'ar-slam-shockwave ability';
+      ring.style.left = ox + 'px';
+      ring.style.top  = oy + 'px';
+      wrap.appendChild(ring);
+      ring.addEventListener('animationend', () => ring.remove(), { once: true });
+    } catch {}
+    try { sfx.projector && sfx.projector(); } catch {}
+    try { navigator.vibrate && navigator.vibrate([40, 20, 80]); } catch {}
+    applyDamage(ABILITY_DAMAGE, { ability: true, x: ox, y: oy });
+    refreshAbilityCooldowns();
+  }
+  function refreshAbilityCooldowns() {
+    armedItems.forEach((_, idx) => {
+      const cdEl = wrap.querySelector(`[data-ability-cd="${idx}"]`);
+      if (!cdEl) return;
+      const remaining = Math.max(0, abilityReadyAt[idx] - Date.now());
+      const pct = remaining > 0 ? (remaining / ABILITY_COOLDOWN_MS) * 100 : 0;
+      cdEl.style.height = pct + '%';
+      const btn = cdEl.closest('.ar-ability');
+      if (btn) btn.classList.toggle('on-cd', remaining > 0);
+    });
+  }
+  // Tick the ability cooldowns on rAF alongside the slam tick.
+  (function abilityTickLoop() {
+    if (won || lost || cancelled) return;
+    refreshAbilityCooldowns();
+    requestAnimationFrame(abilityTickLoop);
+  })();
+  wrap.querySelectorAll('[data-ability-slot]').forEach(b => {
+    b.onclick = () => fireAbility(+b.dataset.abilitySlot);
+  });
+
   // ── Boss attacks + player HP ──────────────────────────────────────
   // Boss winds up every BOSS_ATK_MIN_GAP–BOSS_ATK_MAX_GAP ms. Each
   // wind-up is 1500ms total: the first 700ms is just a danger telegraph
@@ -26932,11 +27439,28 @@ async function openARFinisher(stepIdx) {
   // by 18-25.
   const BOSS_ATK_MIN_GAP = 5000;
   const BOSS_ATK_MAX_GAP = 8000;
-  const BOSS_WINDUP_TELEGRAPH = 700;
-  const BOSS_DODGE_WINDOW   = 800;
+  // Three attack archetypes. Pick one randomly per wind-up so the
+  // player can't memorize "telegraph X ms, dodge at Y ms" — they
+  // have to read each cue. The TYPE selection also drives the
+  // wind-up class on the modal so the visual cue matches.
+  const BOSS_ATTACKS = [
+    { id: 'jab',   weight: 3, telegraph:  450, dodge:  600, dmgMin: 10, dmgMax: 15, label: '⚡ QUICK' },
+    { id: 'slam',  weight: 4, telegraph:  750, dodge:  800, dmgMin: 18, dmgMax: 25, label: '✦ SLAM' },
+    { id: 'crash', weight: 2, telegraph: 1150, dodge:  900, dmgMin: 30, dmgMax: 42, label: '☠ CRASH' },
+  ];
   let bossAtkTimer = null;
   let bossDodgeTimer = null;
   let bossWindupActive = false;
+  let currentAttack = null;
+  function pickBossAttack() {
+    const totalWeight = BOSS_ATTACKS.reduce((s, a) => s + a.weight, 0);
+    let roll = Math.random() * totalWeight;
+    for (const a of BOSS_ATTACKS) {
+      if (roll < a.weight) return a;
+      roll -= a.weight;
+    }
+    return BOSS_ATTACKS[0];
+  }
   function scheduleNextBossAttack() {
     if (won || lost || cancelled) return;
     const delay = BOSS_ATK_MIN_GAP + Math.random() * (BOSS_ATK_MAX_GAP - BOSS_ATK_MIN_GAP);
@@ -26945,8 +27469,20 @@ async function openARFinisher(stepIdx) {
   function startBossWindup() {
     if (won || lost || cancelled) return;
     bossWindupActive = true;
+    currentAttack = pickBossAttack();
     wrap.classList.add('ar-windup');
+    // Per-attack class so the telegraph hue / timing animation reads
+    // differently (jab = yellow flash, crash = deep red ramp).
+    wrap.classList.remove('ar-atk-jab','ar-atk-slam','ar-atk-crash');
+    wrap.classList.add('ar-atk-' + currentAttack.id);
     if (sprite) sprite.classList.add('ar-windup');
+    // Attack-type label appears briefly so the player can read what's
+    // coming — short, glanceable, top-centre under the timer.
+    const label = document.createElement('div');
+    label.className = 'ar-atk-label ar-atk-' + currentAttack.id;
+    label.textContent = currentAttack.label;
+    wrap.querySelector('.ar-overlay')?.appendChild(label);
+    label.addEventListener('animationend', () => label.remove(), { once: true });
     try { sfx.error && sfx.error(); } catch {}
     // After the telegraph, open the dodge window and surface the button
     // at a RANDOM screen position so the player has to actually look
@@ -26956,6 +27492,8 @@ async function openARFinisher(stepIdx) {
     // off-screen.
     setTimeout(() => {
       if (won || lost || cancelled) return;
+      // Count this as an attempted dodge for end-of-fight stats.
+      dodgesAttempted++;
       const dodgeBtn = wrap.querySelector('#arDodge');
       if (dodgeBtn) {
         const padSide = 24;
@@ -26975,11 +27513,11 @@ async function openARFinisher(stepIdx) {
       }
       try { navigator.vibrate && navigator.vibrate([20, 30, 20]); } catch {}
       // Dodge window timer — if the player hasn't tapped by now, the
-      // attack lands.
+      // attack lands. Window length is per-attack-type.
       bossDodgeTimer = setTimeout(() => {
         resolveBossAttack(false);
-      }, BOSS_DODGE_WINDOW);
-    }, BOSS_WINDUP_TELEGRAPH);
+      }, currentAttack ? currentAttack.dodge : 800);
+    }, currentAttack ? currentAttack.telegraph : 700);
   }
   function resolveBossAttack(dodged) {
     if (!bossWindupActive) return;
@@ -26995,17 +27533,30 @@ async function openARFinisher(stepIdx) {
     if (dodged) {
       try { sfx.success && sfx.success(); } catch {}
       try { navigator.vibrate && navigator.vibrate(40); } catch {}
-      // Brief "DODGED!" floater so the player feels rewarded.
+      dodgesHit++;
+      // Counter-attack window opens — next 800ms of taps deal ×3.
+      counterActiveUntil = Date.now() + COUNTER_WINDOW_MS;
+      // Brief "DODGED!" floater + a COUNTER OPEN prompt so the player
+      // knows to mash now.
       const fl = document.createElement('div');
       fl.className = 'ar-dodge-success';
-      fl.textContent = '✦ DODGED ✦';
+      fl.innerHTML = '✦ DODGED ✦<div class="ar-counter-prompt">COUNTER · ×3 DMG</div>';
       wrap.appendChild(fl);
       fl.addEventListener('animationend', () => fl.remove(), { once: true });
+      addRage(5);
     } else {
-      // Attack lands.
-      const dmg = 18 + Math.floor(Math.random() * 8);
+      // Attack lands. Damage from the attack-type table — jab/slam/
+      // crash deal escalating damage.
+      const atk = currentAttack || { dmgMin: 18, dmgMax: 25 };
+      const dmg = atk.dmgMin + Math.floor(Math.random() * (atk.dmgMax - atk.dmgMin + 1));
       applyPlayerDamage(dmg);
+      // Damage taken still feeds rage so a struggling player has a
+      // path back. Bigger bump than dodge so failing isn't free.
+      addRage(15);
     }
+    // Clear the per-attack visual class so the next telegraph starts clean.
+    wrap.classList.remove('ar-atk-jab','ar-atk-slam','ar-atk-crash');
+    currentAttack = null;
     scheduleNextBossAttack();
   }
   function applyPlayerDamage(amount) {
@@ -27120,20 +27671,61 @@ async function openARFinisher(stepIdx) {
         sprite.classList.remove('ar-hit');
         sprite.classList.add('ar-die');
       }
+      // ── Compute the letter rank from the fight stats. ──
+      // S = peak combo 50+, dodge rate >= 90%, finished with >50%
+      // time remaining. A = 25+ / 70% / >30%. B = 10+ / 50%. C = default.
+      const totalMs = Date.now() - fightStartTs;
+      const timeBudget = 150000;
+      const timeRemainingPct = Math.max(0, (timeBudget - totalMs) / timeBudget);
+      const dodgeRate = dodgesAttempted > 0 ? (dodgesHit / dodgesAttempted) : 1;
+      let rank, bonusCoins, rankColor;
+      if (peakComboReached >= 50 && dodgeRate >= 0.90 && timeRemainingPct >= 0.50) {
+        rank = 'S';  bonusCoins = 100; rankColor = '#ff3da6';
+      } else if (peakComboReached >= 25 && dodgeRate >= 0.70 && timeRemainingPct >= 0.30) {
+        rank = 'A';  bonusCoins = 50;  rankColor = '#ffce4f';
+      } else if (peakComboReached >= 10 && dodgeRate >= 0.50) {
+        rank = 'B';  bonusCoins = 25;  rankColor = '#00e6c3';
+      } else {
+        rank = 'C';  bonusCoins = 0;   rankColor = '#7b5cff';
+      }
+      // Grant the performance bonus directly to profile coins. The
+      // base step reward still flows through the regular finalizeRun
+      // path; this is on top, branded as the AR Mode bonus.
+      if (bonusCoins > 0 && typeof profile !== 'undefined') {
+        profile.coins = (profile.coins || 0) + bonusCoins;
+        try { saveProfile && saveProfile(); } catch {}
+      }
       // Synthesize a passing proof + judgment so the existing complete
       // pipeline accepts this as a valid step finish. We mark it
       // arFinisher:true on the proof so future code can distinguish
       // AR wins from photo wins (recap art, share-card variants, etc).
       r.proofs = r.proofs || {};
-      r.proofs[stepIdx] = { ts: Date.now(), arFinisher: true, dataUrl: null, comboPeak: comboCount };
+      r.proofs[stepIdx] = {
+        ts: Date.now(), arFinisher: true, dataUrl: null,
+        comboPeak: peakComboReached, rank, bonusCoins,
+      };
       r.judgments = r.judgments || {};
-      const comboTail = comboCount >= 5 ? ` Peak combo ×${comboCount}.` : '';
-      r.judgments[stepIdx] = { pass: true, comment: '★ AR Finisher — boss tapped into oblivion.' + comboTail };
+      r.judgments[stepIdx] = {
+        pass: true,
+        comment: `★ AR Finisher (rank ${rank}) — peak combo ×${peakComboReached}, dodges ${dodgesHit}/${dodgesAttempted}, slams ${slamsLanded}.`,
+      };
       setTimeout(() => {
         if (overlay) {
           const result = document.createElement('div');
           result.className = 'ar-result ar-victory';
-          result.innerHTML = `★ BOSS DEFEATED ★${comboCount >= 5 ? `<div class="ar-result-sub">Peak combo · ×${comboCount}</div>` : ''}`;
+          // Stats block: rank + peak combo + dodges + slams + coin bonus.
+          // Death quote sits at the bottom for character flavour.
+          result.innerHTML = `
+            <div class="ar-rank ar-rank-${rank}" style="color:${rankColor}; text-shadow: 4px 4px 0 #000, 0 0 20px ${rankColor};">${rank}</div>
+            <div class="ar-victory-title">BOSS DEFEATED</div>
+            <div class="ar-stats">
+              <div class="ar-stat"><span class="l">PEAK COMBO</span><span class="v">×${peakComboReached}</span></div>
+              <div class="ar-stat"><span class="l">DODGES</span><span class="v">${dodgesHit} / ${dodgesAttempted}</span></div>
+              <div class="ar-stat"><span class="l">SLAMS</span><span class="v">${slamsLanded}</span></div>
+              ${bonusCoins > 0 ? `<div class="ar-stat bonus"><span class="l">RANK BONUS</span><span class="v">+${bonusCoins} 🪙</span></div>` : ''}
+            </div>
+            ${deathQuote ? `<div class="ar-death-quote">${escapeHtml(deathQuote)}</div>` : ''}
+          `;
           overlay.appendChild(result);
         }
       }, 320);
