@@ -9613,7 +9613,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.22.286';
+const BUILD_VERSION = '2026.05.22.287';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -17102,6 +17102,16 @@ function renderProofUI(s, i) {
   const r = state.run;
   const proof = r.proofs[i];
   const judgment = r.judgments[i];
+  // ── GEO-GATE — checked FIRST so it applies regardless of proof type.
+  // A walkDistance gate sits in front of photo / motion / timer alike;
+  // the proof surface only renders after the player has covered the
+  // distance and r.geoCleared[i] is set. (Initially this lived below
+  // the photo branch, which meant 'photo' steps short-circuited past
+  // it — the gate was invisible on Find/Move/Pose steps. Lifted here
+  // so the gate applies universally.)
+  if (s.walkDistance && !(r.geoCleared && r.geoCleared[i])) {
+    return renderGeoGateUI(s, i);
+  }
   if (s.proof === 'photo') {
     // Steps that explicitly need multiple distinct photos surface N capture
     // slots. proof.photos[] holds them all; proof.dataUrl mirrors the first
@@ -17175,14 +17185,6 @@ function renderProofUI(s, i) {
         }
       </div>
     `;
-  }
-  // ── GEO-GATE — when a step has step.walkDistance, the proof UI is
-  // locked behind "physically walk N meters first." Uses the browser
-  // Geolocation API; permission is requested via a Start button so it
-  // fires inside a user gesture (iOS Safari's requirement). Cleared
-  // gates persist on r.geoCleared[i] so a re-render doesn't re-lock.
-  if (s.walkDistance && !(r.geoCleared && r.geoCleared[i])) {
-    return renderGeoGateUI(s, i);
   }
   // ── MOTION proof — sensor verification via DeviceMotionEvent. The
   // step.instr tells the player what to do ("walk 10 steps", "do 8
