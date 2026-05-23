@@ -10105,7 +10105,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.294';
+const BUILD_VERSION = '2026.05.23.295';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26288,17 +26288,23 @@ async function openARFinisher(stepIdx) {
   const bossEmoji = boss.ic || '👹';
   const bossName = boss.name || 'BOSS';
 
-  // Boss HP — bumped to 500 to give boss-attack windups room to land
-  // (each attack costs ~3-5 seconds of fight time). Combined with the
-  // 60s timer this is now a real ~40-50s encounter.
-  let arHP = 500;
-  const arHPMax = 500;
-  // Player HP — boss attacks deal 18-25 per hit; 150 HP = 6-8 missed
-  // dodges to death. Player should rarely die unless they ignore the
-  // dodge prompts entirely.
-  let playerHP = 150;
-  const playerHPMax = 150;
-  let timeLeft = 60000;
+  // Boss HP — bumped 10x per playtest: combo ×2 + crit was draining
+  // 500 HP in ~15s, so the new mechanics (combo, phases, slam,
+  // ENRAGE, boss attacks) couldn't all surface in a single fight.
+  // 5000 HP gives ~60-90s of real engagement at peak-combo play.
+  // Timer scaled to match — a 60s clock on 5000 HP was mathematically
+  // unwinnable even at max sustained damage. 120s is generous on the
+  // top end but lets the player FAIL by running the clock too.
+  let arHP = 5000;
+  const arHPMax = 5000;
+  // Player HP — boss attacks deal 18-25 per hit, ~12-15 attacks in a
+  // 120s fight. 300 HP = ~12-15 missed dodges to death (you'd have to
+  // miss EVERY dodge to lose). Bumped from 150 to match the longer
+  // fight; otherwise getting unlucky on dodges in the first 30s
+  // killed you before phase 3 even landed.
+  let playerHP = 300;
+  const playerHPMax = 300;
+  let timeLeft = 150000;
   let lastTickTs = Date.now();
   let won = false;
   let lost = false;
@@ -26349,7 +26355,7 @@ async function openARFinisher(stepIdx) {
         <span class="ar-dodge-icon">🛡</span>
         <span class="ar-dodge-text">DODGE!</span>
       </button>
-      <div class="ar-timer" id="arTimer">60.0s</div>
+      <div class="ar-timer" id="arTimer">150.0s</div>
       <!-- Combo chip — hidden until the chain reaches 2+. Tracks live
            combo count and applies a scaling damage multiplier. -->
       <div class="ar-combo-chip" id="arCombo" style="display:none;">
@@ -26411,12 +26417,18 @@ async function openARFinisher(stepIdx) {
     if (dAlpha < -180) dAlpha += 360;
     const dBeta = (e.beta - initialBeta);
     // Rotating left (positive dAlpha) means the world appears to shift
-    // RIGHT in the camera view → sprite x increases. Multipliers tuned
-    // by feel: at 8/4 the boss felt rigidly bolted to a world point
-    // (turn the phone, boss slides clear off-screen); at 4/2 the boss
-    // drifts with the camera but still reads as anchored in space.
-    const dx = worldOffset.x + dAlpha * 4;
-    const dy = worldOffset.y + dBeta * 2;
+    // RIGHT in the camera view → sprite x increases. Sensitivity is
+    // SCREEN-RELATIVE: a ~30° yaw should push the boss a full screen
+    // width, a ~60° pitch should push it a full height. Previous fixed
+    // multipliers (4 / 2 px/deg) read as "boss follows the camera ~180°
+    // around you" on real phones — way under-anchored. The screen-
+    // relative formula self-tunes across device sizes and is much
+    // closer to true world-lock without going back to the original
+    // hyper-rigid feel.
+    const yawSensitivity   = window.innerWidth  / 30;   // off-screen at ~30° yaw
+    const pitchSensitivity = window.innerHeight / 60;   // off-screen at ~60° pitch
+    const dx = worldOffset.x + dAlpha * yawSensitivity;
+    const dy = worldOffset.y + dBeta  * pitchSensitivity;
     applySpritePos(dx, dy);
   }
   if (orientPermGranted) {
