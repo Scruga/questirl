@@ -5966,6 +5966,117 @@
     100% { transform: translate(-50%, -50%) scale(1); }
   }
 
+  /* ── Player HP bar — sits inside .ar-hud under the boss bar. Teal so
+     it doesn't read as the boss's HP. Bumps on each hit. ── */
+  .ar-player-hp {
+    margin-top: 14px;
+    text-align: center;
+  }
+  .ar-player-hp-label {
+    font-family: var(--px); font-size: 9px;
+    color: var(--neon-3);
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .ar-hpbar.small { height: 12px; }
+  .ar-player-hpfill {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, #2a8c8c 0%, var(--neon-3) 50%, #4adcff 100%);
+    transition: width .18s ease;
+  }
+  .ar-player-hp.ar-player-hit {
+    animation: arPlayerHit .35s ease;
+  }
+  @keyframes arPlayerHit {
+    0%   { transform: translateX(0); filter: none; }
+    20%  { transform: translateX(-6px); filter: brightness(1.6) hue-rotate(-20deg); }
+    40%  { transform: translateX(5px); }
+    60%  { transform: translateX(-3px); }
+    100% { transform: translateX(0); }
+  }
+  .ar-player-dmg-pop {
+    position: fixed;
+    transform: translate(-50%, -50%);
+    font-family: var(--px); font-size: 20px;
+    color: var(--danger);
+    text-shadow: 2px 2px 0 #000, 0 0 14px var(--danger);
+    letter-spacing: 1px;
+    pointer-events: none;
+    z-index: 200;
+    animation: arPlayerDmgFloat 1s ease-out forwards;
+  }
+  @keyframes arPlayerDmgFloat {
+    0%   { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); }
+  }
+
+  /* ── Boss wind-up telegraph: red vignette around screen edges +
+     sprite glow. The wind-up class is set on the modal during the
+     ~1.5s wind-up window. ── */
+  .ar-windup-vignette {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    box-shadow: inset 0 0 0 0 rgba(255,40,80,0);
+    transition: box-shadow .15s ease;
+  }
+  .ar-finisher-modal.ar-windup .ar-windup-vignette {
+    box-shadow: inset 0 0 120px 40px rgba(255,30,80,0.65);
+    animation: arWindupPulse .5s ease-in-out infinite;
+  }
+  @keyframes arWindupPulse {
+    0%, 100% { box-shadow: inset 0 0 100px 30px rgba(255,30,80,0.55); }
+    50%      { box-shadow: inset 0 0 140px 50px rgba(255,30,80,0.85); }
+  }
+  .ar-boss-sprite.ar-windup {
+    filter: drop-shadow(0 0 24px rgba(255,30,80,0.95)) brightness(1.4) saturate(1.4) !important;
+  }
+
+  /* ── Dodge button — bottom-center, big finger target. Pulses while
+     the dodge window is open. ── */
+  .ar-dodge-btn {
+    position: absolute;
+    bottom: 24%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--neon-3);
+    color: #002b27;
+    border: 4px solid #000;
+    box-shadow: 6px 6px 0 #000, 0 0 24px rgba(0,230,195,0.9);
+    padding: 18px 28px;
+    font-family: var(--px);
+    font-size: 18px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    z-index: 8;
+    display: flex; align-items: center; gap: 10px;
+    text-shadow: 1px 1px 0 #fff;
+    animation: arDodgeBtnPulse .35s ease-in-out infinite;
+  }
+  .ar-dodge-icon { font-size: 26px; }
+  @keyframes arDodgeBtnPulse {
+    0%, 100% { transform: translateX(-50%) scale(1); box-shadow: 6px 6px 0 #000, 0 0 18px rgba(0,230,195,0.7); }
+    50%      { transform: translateX(-50%) scale(1.08); box-shadow: 6px 6px 0 #000, 0 0 32px rgba(0,230,195,1); }
+  }
+  .ar-dodge-success {
+    position: absolute;
+    top: 40%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--px); font-size: 22px;
+    color: var(--neon-3);
+    text-shadow: 3px 3px 0 #000, 0 0 16px var(--neon-3);
+    letter-spacing: 3px;
+    pointer-events: none;
+    z-index: 7;
+    animation: arDodgeSuccessFloat .8s ease both;
+  }
+  @keyframes arDodgeSuccessFloat {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+    25%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    100% { opacity: 0; transform: translate(-50%, -90%) scale(1); }
+  }
+
   /* ── Combo chip — pulses up from the side when chain >= 2. ── */
   .ar-combo-chip {
     position: absolute;
@@ -9994,7 +10105,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.293';
+const BUILD_VERSION = '2026.05.23.294';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26177,17 +26288,17 @@ async function openARFinisher(stepIdx) {
   const bossEmoji = boss.ic || '👹';
   const bossName = boss.name || 'BOSS';
 
-  // AR HP is fresh per fight — independent of the boss's run-long HP
-  // pool. Tuned so the tier-1 polish (combo, phases, slam, enrage)
-  // actually surfaces during play:
-  //   Phase 2 (75%) lands ~5s in, phase 3 (50%) ~10s in, ENRAGE
-  //   (25%) ~17s in. Combo can reach the x2 tier (10+ chain) before
-  //   the boss dies. Slam (5s cooldown) fires 3-4 times per fight.
-  //   ~25-30s fights for engaged play, comfortable margin on the 45s
-  //   timer so casual players aren't punished while learning.
-  let arHP = 300;
-  const arHPMax = 300;
-  let timeLeft = 45000;
+  // Boss HP — bumped to 500 to give boss-attack windups room to land
+  // (each attack costs ~3-5 seconds of fight time). Combined with the
+  // 60s timer this is now a real ~40-50s encounter.
+  let arHP = 500;
+  const arHPMax = 500;
+  // Player HP — boss attacks deal 18-25 per hit; 150 HP = 6-8 missed
+  // dodges to death. Player should rarely die unless they ignore the
+  // dodge prompts entirely.
+  let playerHP = 150;
+  const playerHPMax = 150;
+  let timeLeft = 60000;
   let lastTickTs = Date.now();
   let won = false;
   let lost = false;
@@ -26218,8 +26329,27 @@ async function openARFinisher(stepIdx) {
         <div class="ar-boss-name">▶ ${escapeHtml(bossName.toUpperCase())}</div>
         <div class="ar-hpbar"><div class="ar-hpfill" id="arHpFill"></div></div>
         <div class="ar-hpnum" id="arHpNum">${arHP} / ${arHPMax}</div>
+        <!-- Player HP bar — distinct color (teal) so it doesn't read
+             as the boss's. Bumps in via shake animation when damage
+             lands so the player can't miss that they got hit. -->
+        <div class="ar-player-hp" id="arPlayerHP">
+          <div class="ar-player-hp-label">YOU</div>
+          <div class="ar-hpbar small"><div class="ar-player-hpfill" id="arPlayerHpFill"></div></div>
+          <div class="ar-hpnum" id="arPlayerHpNum">${playerHP} / ${playerHPMax}</div>
+        </div>
       </div>
-      <div class="ar-timer" id="arTimer">45.0s</div>
+      <!-- Wind-up red overlay — pulses around the screen edges during
+           boss wind-up so the player feels danger before the attack
+           lands. Toggled by a CSS class on the modal. -->
+      <div class="ar-windup-vignette"></div>
+      <!-- Dodge button — only visible during the dodge window. Big,
+           bottom-center, fingers can't miss it. Tapping it cancels
+           the incoming damage. -->
+      <button class="ar-dodge-btn" id="arDodge" type="button" style="display:none;">
+        <span class="ar-dodge-icon">🛡</span>
+        <span class="ar-dodge-text">DODGE!</span>
+      </button>
+      <div class="ar-timer" id="arTimer">60.0s</div>
       <!-- Combo chip — hidden until the chain reaches 2+. Tracks live
            combo count and applies a scaling damage multiplier. -->
       <div class="ar-combo-chip" id="arCombo" style="display:none;">
@@ -26281,9 +26411,12 @@ async function openARFinisher(stepIdx) {
     if (dAlpha < -180) dAlpha += 360;
     const dBeta = (e.beta - initialBeta);
     // Rotating left (positive dAlpha) means the world appears to shift
-    // RIGHT in the camera view → sprite x increases.
-    const dx = worldOffset.x + dAlpha * 8;
-    const dy = worldOffset.y + dBeta * 4;
+    // RIGHT in the camera view → sprite x increases. Multipliers tuned
+    // by feel: at 8/4 the boss felt rigidly bolted to a world point
+    // (turn the phone, boss slides clear off-screen); at 4/2 the boss
+    // drifts with the camera but still reads as anchored in space.
+    const dx = worldOffset.x + dAlpha * 4;
+    const dy = worldOffset.y + dBeta * 2;
     applySpritePos(dx, dy);
   }
   if (orientPermGranted) {
@@ -26473,6 +26606,109 @@ async function openARFinisher(stepIdx) {
   }
   tryAttachShakeListener();
 
+  // ── Boss attacks + player HP ──────────────────────────────────────
+  // Boss winds up every BOSS_ATK_MIN_GAP–BOSS_ATK_MAX_GAP ms. Each
+  // wind-up is 1500ms total: the first 700ms is just a danger telegraph
+  // (red vignette + sprite glow); the last 800ms also shows the DODGE
+  // button. Tap dodge -> no damage. Miss the window -> player HP drops
+  // by 18-25.
+  const BOSS_ATK_MIN_GAP = 5000;
+  const BOSS_ATK_MAX_GAP = 8000;
+  const BOSS_WINDUP_TELEGRAPH = 700;
+  const BOSS_DODGE_WINDOW   = 800;
+  let bossAtkTimer = null;
+  let bossDodgeTimer = null;
+  let bossWindupActive = false;
+  function scheduleNextBossAttack() {
+    if (won || lost || cancelled) return;
+    const delay = BOSS_ATK_MIN_GAP + Math.random() * (BOSS_ATK_MAX_GAP - BOSS_ATK_MIN_GAP);
+    bossAtkTimer = setTimeout(startBossWindup, delay);
+  }
+  function startBossWindup() {
+    if (won || lost || cancelled) return;
+    bossWindupActive = true;
+    wrap.classList.add('ar-windup');
+    if (sprite) sprite.classList.add('ar-windup');
+    try { sfx.error && sfx.error(); } catch {}
+    // After the telegraph, open the dodge window and surface the button.
+    setTimeout(() => {
+      if (won || lost || cancelled) return;
+      const dodgeBtn = wrap.querySelector('#arDodge');
+      if (dodgeBtn) {
+        dodgeBtn.style.display = '';
+        dodgeBtn.classList.add('arming');
+      }
+      try { navigator.vibrate && navigator.vibrate([20, 30, 20]); } catch {}
+      // Dodge window timer — if the player hasn't tapped by now, the
+      // attack lands.
+      bossDodgeTimer = setTimeout(() => {
+        resolveBossAttack(false);
+      }, BOSS_DODGE_WINDOW);
+    }, BOSS_WINDUP_TELEGRAPH);
+  }
+  function resolveBossAttack(dodged) {
+    if (!bossWindupActive) return;
+    bossWindupActive = false;
+    wrap.classList.remove('ar-windup');
+    if (sprite) sprite.classList.remove('ar-windup');
+    if (bossDodgeTimer) { clearTimeout(bossDodgeTimer); bossDodgeTimer = null; }
+    const dodgeBtn = wrap.querySelector('#arDodge');
+    if (dodgeBtn) {
+      dodgeBtn.style.display = 'none';
+      dodgeBtn.classList.remove('arming');
+    }
+    if (dodged) {
+      try { sfx.success && sfx.success(); } catch {}
+      try { navigator.vibrate && navigator.vibrate(40); } catch {}
+      // Brief "DODGED!" floater so the player feels rewarded.
+      const fl = document.createElement('div');
+      fl.className = 'ar-dodge-success';
+      fl.textContent = '✦ DODGED ✦';
+      wrap.appendChild(fl);
+      fl.addEventListener('animationend', () => fl.remove(), { once: true });
+    } else {
+      // Attack lands.
+      const dmg = 18 + Math.floor(Math.random() * 8);
+      applyPlayerDamage(dmg);
+    }
+    scheduleNextBossAttack();
+  }
+  function applyPlayerDamage(amount) {
+    playerHP = Math.max(0, playerHP - amount);
+    const fill = wrap.querySelector('#arPlayerHpFill');
+    const num  = wrap.querySelector('#arPlayerHpNum');
+    if (fill) fill.style.width = Math.round((playerHP / playerHPMax) * 100) + '%';
+    if (num)  num.textContent  = playerHP + ' / ' + playerHPMax;
+    const playerHPEl = wrap.querySelector('#arPlayerHP');
+    if (playerHPEl) {
+      playerHPEl.classList.remove('ar-player-hit');
+      void playerHPEl.offsetWidth;
+      playerHPEl.classList.add('ar-player-hit');
+    }
+    // Hit feedback popup
+    const hit = document.createElement('div');
+    hit.className = 'ar-player-dmg-pop';
+    hit.textContent = '−' + amount + ' HP';
+    hit.style.left = (window.innerWidth / 2) + 'px';
+    hit.style.top  = '70%';
+    wrap.appendChild(hit);
+    hit.addEventListener('animationend', () => hit.remove(), { once: true });
+    try { sfx.hit && sfx.hit(); } catch {}
+    try { navigator.vibrate && navigator.vibrate([80, 40, 80]); } catch {}
+    if (playerHP <= 0 && !lost && !won) {
+      lost = true;
+      finishAR(false);
+    }
+  }
+  // Dodge button — tap during the window cancels the attack.
+  wrap.querySelector('#arDodge').onclick = (e) => {
+    e.stopPropagation();
+    if (!bossWindupActive) return;
+    resolveBossAttack(true);
+  };
+  // First attack lands somewhere in the first cycle.
+  scheduleNextBossAttack();
+
   wrap.querySelector('#arCancel').onclick = () => {
     if (won || lost) return;
     cancelled = true;
@@ -26523,6 +26759,14 @@ async function openARFinisher(stepIdx) {
       try { window.removeEventListener('devicemotion', _arMotionHandler); } catch {}
       _arMotionHandler = null;
     }
+    // Stop any in-flight boss attack so a wind-up doesn't land after
+    // the fight ends. Both timers are guarded but redundancy is fine.
+    if (bossAtkTimer)   { clearTimeout(bossAtkTimer);   bossAtkTimer = null; }
+    if (bossDodgeTimer) { clearTimeout(bossDodgeTimer); bossDodgeTimer = null; }
+    bossWindupActive = false;
+    wrap.classList.remove('ar-windup');
+    const dodgeBtnEnd = wrap.querySelector('#arDodge');
+    if (dodgeBtnEnd) dodgeBtnEnd.style.display = 'none';
     const overlay = wrap.querySelector('.ar-overlay');
     if (victory) {
       try { sfx.success && sfx.success(); } catch {}
@@ -26559,13 +26803,18 @@ async function openARFinisher(stepIdx) {
       }, 320);
     } else {
       try { sfx.error && sfx.error(); } catch {}
+      // Different banner depending on HOW the player lost — running
+      // out the timer reads different from getting beaten down.
+      const fellInBattle = playerHP <= 0;
       if (overlay) {
         const result = document.createElement('div');
         result.className = 'ar-result ar-defeat';
-        result.textContent = '⌛ TIME UP';
+        result.innerHTML = fellInBattle
+          ? '☠ YOU FELL ☠<div class="ar-result-sub">The boss stands over you.</div>'
+          : '⌛ TIME UP<div class="ar-result-sub">Boss survived.</div>';
         overlay.appendChild(result);
       }
-      toast('Boss survived. Photo proof still works.');
+      toast(fellInBattle ? 'You were defeated. Photo proof still works.' : 'Boss survived. Photo proof still works.');
     }
     setTimeout(() => {
       cleanup();
@@ -26582,6 +26831,11 @@ async function openARFinisher(stepIdx) {
       try { window.removeEventListener('devicemotion', _arMotionHandler); } catch {}
       _arMotionHandler = null;
     }
+    // Belt-and-suspenders timer cleanup. finishAR already clears these
+    // before this runs in the win path, but a Cancel-tap from a
+    // mid-windup state needs to hit them too.
+    if (bossAtkTimer)   { clearTimeout(bossAtkTimer);   bossAtkTimer = null; }
+    if (bossDodgeTimer) { clearTimeout(bossDodgeTimer); bossDodgeTimer = null; }
     try { stream && stream.getTracks().forEach(t => t.stop()); } catch {}
     try { wrap.remove(); } catch {}
   }
