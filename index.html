@@ -5990,7 +5990,59 @@
     z-index: 3;
   }
   .ar-victory { color: var(--gold); }
-  .ar-defeat  { color: var(--danger); }
+  .ar-defeat  {
+    color: var(--danger);
+    /* Defeat banner = a proper opaque card now, so the text doesn't
+       fight the live camera feed + boss sprite behind it. The full-
+       screen darkening overlay comes from .ar-finisher-modal.ar-defeated
+       below — together they pull all focus to the result. */
+    background: rgba(10, 5, 24, 0.94);
+    border: 4px solid var(--danger);
+    box-shadow: 8px 8px 0 #000, 0 0 40px var(--danger), inset 0 0 24px rgba(255, 30, 60, 0.25);
+    padding: 28px 36px 24px;
+    width: min(86vw, 360px);
+    text-align: center;
+    z-index: 12;
+    font-size: 14px;    /* the icon + title carry the visual weight */
+  }
+  .ar-defeat-icon {
+    font-size: 56px;
+    line-height: 1;
+    margin-bottom: 6px;
+    text-shadow: 3px 3px 0 #000, 0 0 24px var(--danger);
+    filter: drop-shadow(0 0 12px var(--danger));
+  }
+  .ar-defeat-title {
+    font-family: var(--px);
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: #fff;
+    text-shadow: 3px 3px 0 #000, 0 0 18px var(--danger);
+    margin-bottom: 10px;
+  }
+  .ar-defeat .ar-result-sub {
+    color: var(--ink-dim);
+    font-family: var(--term);
+    font-style: italic;
+    font-size: 14px;
+    letter-spacing: 0;
+  }
+  /* Full-screen darkening overlay when the player loses. Sits below
+     the result banner (.ar-result has z-index: 12) but above the
+     boss / scrim / heartbeat layers. The animation fades in over
+     150ms so the cut isn't jarring. */
+  .ar-finisher-modal.ar-defeated::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    z-index: 10;
+    pointer-events: none;
+    animation: arDefeatedScrim .18s ease-out both;
+  }
+  @keyframes arDefeatedScrim {
+    0%   { opacity: 0; }
+    100% { opacity: 1; }
+  }
   @keyframes arResultPop {
     0%   { transform: translate(-50%, -50%) scale(0); }
     60%  { transform: translate(-50%, -50%) scale(1.2); }
@@ -10568,7 +10620,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.303';
+const BUILD_VERSION = '2026.05.23.304';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -27842,14 +27894,23 @@ async function openARFinisher(stepIdx) {
     } else {
       try { sfx.error && sfx.error(); } catch {}
       // Different banner depending on HOW the player lost — running
-      // out the timer reads different from getting beaten down.
+      // out the timer reads different from getting beaten down. The
+      // .ar-defeated modal class adds a full-screen darkening overlay
+      // so the boss and camera feed dim behind the banner — user
+      // flagged the previous overlay-on-boss as 'kinda hard to read.'
+      wrap.classList.add('ar-defeated');
       const fellInBattle = playerHP <= 0;
       if (overlay) {
         const result = document.createElement('div');
         result.className = 'ar-result ar-defeat';
-        result.innerHTML = fellInBattle
-          ? '☠ YOU FELL ☠<div class="ar-result-sub">The boss stands over you.</div>'
-          : '⌛ TIME UP<div class="ar-result-sub">Boss survived.</div>';
+        const icon  = fellInBattle ? '☠' : '⌛';
+        const title = fellInBattle ? 'YOU FELL' : 'TIME UP';
+        const sub   = fellInBattle ? 'The boss stands over you.' : 'Boss survived.';
+        result.innerHTML = `
+          <div class="ar-defeat-icon">${icon}</div>
+          <div class="ar-defeat-title">${title}</div>
+          <div class="ar-result-sub">${sub}</div>
+        `;
         overlay.appendChild(result);
       }
       // Dying to the boss = run fails (per tester ask: 'dying to the
