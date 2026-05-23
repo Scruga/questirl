@@ -10532,7 +10532,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.300';
+const BUILD_VERSION = '2026.05.23.301';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26715,20 +26715,34 @@ async function openARFinisher(stepIdx) {
   const bossEmoji = boss.ic || '👹';
   const bossName = boss.name || 'BOSS';
 
-  // Boss HP — halved per playtest. 5000 felt grindy; at 2500 the
-  // fight clocks in around 40-60s of engaged play, leaving plenty
-  // of the 150s timer as margin so the new ENRAGE-juke can stretch
-  // it out without the timer becoming the bottleneck.
-  let arHP = 2500;
-  const arHPMax = 2500;
-  // Player HP — boss attacks deal 18-25 per hit, ~12-15 attacks in a
-  // 120s fight. 300 HP = ~12-15 missed dodges to death (you'd have to
-  // miss EVERY dodge to lose). Bumped from 150 to match the longer
-  // fight; otherwise getting unlucky on dodges in the first 30s
-  // killed you before phase 3 even landed.
-  let playerHP = 300;
-  const playerHPMax = 300;
-  let timeLeft = 150000;
+  // ── Difficulty scaling ────────────────────────────────────────────
+  // All combat numbers (boss HP, player HP, timer, boss attack damage)
+  // scale by the run's chosen difficulty so the AR fight matches the
+  // weight of the rest of the run. 'bold' is the baseline (1.0x);
+  // warmup/brave are progressively gentler; chaos/nightmare bite back.
+  const DIFF_SCALE_TABLE = {
+    warmup:    { bossHp: 0.55, playerHp: 1.5,  timer: 1.20, atkDmg: 0.70 },
+    brave:     { bossHp: 0.75, playerHp: 1.25, timer: 1.10, atkDmg: 0.85 },
+    bold:      { bossHp: 1.00, playerHp: 1.00, timer: 1.00, atkDmg: 1.00 },
+    chaos:     { bossHp: 1.40, playerHp: 0.85, timer: 1.00, atkDmg: 1.40 },
+    nightmare: { bossHp: 2.00, playerHp: 0.70, timer: 1.00, atkDmg: 1.85 },
+  };
+  const diffId = (r.difficulty && r.difficulty.id) || 'bold';
+  const diffScale = DIFF_SCALE_TABLE[diffId] || DIFF_SCALE_TABLE.bold;
+
+  // Boss HP — base 2500 at bold; warmup 1375, brave 1875, chaos 3500,
+  // nightmare 5000. The death sequence + ENRAGE phase still surface
+  // on every tier because the phase thresholds are percentages.
+  const arHPMax = Math.round(2500 * diffScale.bossHp);
+  let arHP = arHPMax;
+  // Player HP — base 300 at bold; warmup 450, nightmare 210. Less
+  // margin on tougher difficulties so missed dodges hurt more.
+  const playerHPMax = Math.round(300 * diffScale.playerHp);
+  let playerHP = playerHPMax;
+  // Timer — base 150s at bold; warmup gets 180s, brave 165s, chaos
+  // and nightmare share the 150s ceiling (the squeeze IS the
+  // difficulty at those tiers).
+  let timeLeft = Math.round(150000 * diffScale.timer);
   let lastTickTs = Date.now();
   let won = false;
   let lost = false;
@@ -26853,7 +26867,7 @@ async function openARFinisher(stepIdx) {
         <span class="ar-dodge-icon">🛡</span>
         <span class="ar-dodge-text">DODGE!</span>
       </button>
-      <div class="ar-timer" id="arTimer">150.0s</div>
+      <div class="ar-timer" id="arTimer">${(timeLeft / 1000).toFixed(1)}s</div>
       <!-- Combo chip — hidden until the chain reaches 2+. Tracks live
            combo count and applies a scaling damage multiplier. -->
       <div class="ar-combo-chip" id="arCombo" style="display:none;">
@@ -27443,11 +27457,21 @@ async function openARFinisher(stepIdx) {
   // player can't memorize "telegraph X ms, dodge at Y ms" — they
   // have to read each cue. The TYPE selection also drives the
   // wind-up class on the modal so the visual cue matches.
-  const BOSS_ATTACKS = [
-    { id: 'jab',   weight: 3, telegraph:  450, dodge:  600, dmgMin: 10, dmgMax: 15, label: '⚡ QUICK' },
-    { id: 'slam',  weight: 4, telegraph:  750, dodge:  800, dmgMin: 18, dmgMax: 25, label: '✦ SLAM' },
-    { id: 'crash', weight: 2, telegraph: 1150, dodge:  900, dmgMin: 30, dmgMax: 42, label: '☠ CRASH' },
+  // Base damages are bold-tier; diffScale.atkDmg multiplies them so
+  // nightmare crashes hit for ~110 dmg (a third of a base playerHP)
+  // and warmup jabs only nick for ~14. Player tester complained
+  // boss damage was too soft — baseline bumped ~60% on top of the
+  // scale system so the fight feels truly competitive.
+  const BASE_BOSS_ATTACKS = [
+    { id: 'jab',   weight: 3, telegraph:  450, dodge:  600, dmgMin: 16, dmgMax: 24, label: '⚡ QUICK' },
+    { id: 'slam',  weight: 4, telegraph:  750, dodge:  800, dmgMin: 28, dmgMax: 40, label: '✦ SLAM' },
+    { id: 'crash', weight: 2, telegraph: 1150, dodge:  900, dmgMin: 55, dmgMax: 75, label: '☠ CRASH' },
   ];
+  const BOSS_ATTACKS = BASE_BOSS_ATTACKS.map(a => ({
+    ...a,
+    dmgMin: Math.max(1, Math.round(a.dmgMin * diffScale.atkDmg)),
+    dmgMax: Math.max(1, Math.round(a.dmgMax * diffScale.atkDmg)),
+  }));
   let bossAtkTimer = null;
   let bossDodgeTimer = null;
   let bossWindupActive = false;
@@ -27674,8 +27698,11 @@ async function openARFinisher(stepIdx) {
       // ── Compute the letter rank from the fight stats. ──
       // S = peak combo 50+, dodge rate >= 90%, finished with >50%
       // time remaining. A = 25+ / 70% / >30%. B = 10+ / 50%. C = default.
+      // Time budget now varies by difficulty — pull the original budget
+      // from the scaled value (timer wasn't decremented in the budget,
+      // it's the timeLeft at fight start).
       const totalMs = Date.now() - fightStartTs;
-      const timeBudget = 150000;
+      const timeBudget = Math.round(150000 * diffScale.timer);
       const timeRemainingPct = Math.max(0, (timeBudget - totalMs) / timeBudget);
       const dodgeRate = dodgesAttempted > 0 ? (dodgesHit / dodgesAttempted) : 1;
       let rank, bonusCoins, rankColor;
