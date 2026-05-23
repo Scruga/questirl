@@ -5957,6 +5957,178 @@
     100% { transform: translate(-50%, -50%) scale(1); }
   }
 
+  /* ── Combo chip — pulses up from the side when chain >= 2. ── */
+  .ar-combo-chip {
+    position: absolute;
+    top: 100px;
+    right: 16px;
+    background: rgba(10, 5, 24, 0.85);
+    border: 3px solid var(--gold);
+    box-shadow: 0 0 14px rgba(245,194,66,0.55), 3px 3px 0 #000;
+    padding: 6px 10px;
+    text-align: center;
+    font-family: var(--px);
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000;
+    z-index: 5;
+  }
+  .ar-combo-x {
+    display: block;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: 1px;
+  }
+  .ar-combo-label {
+    display: block;
+    font-size: 8px;
+    margin-top: 2px;
+    letter-spacing: 2px;
+    color: var(--neon-3);
+  }
+  .ar-combo-chip.arComboBump { animation: arComboBump .25s ease; }
+  @keyframes arComboBump {
+    0%   { transform: scale(1); }
+    40%  { transform: scale(1.25); filter: brightness(1.4); }
+    100% { transform: scale(1); }
+  }
+
+  /* ── Phase damage — tint sprite + screen as boss HP drops. ── */
+  .ar-boss-sprite.ar-phase-2 { filter: drop-shadow(0 6px 18px rgba(0,0,0,0.75)) hue-rotate(-12deg) saturate(1.1); }
+  .ar-boss-sprite.ar-phase-3 { filter: drop-shadow(0 6px 22px rgba(255,87,100,0.6)) hue-rotate(-22deg) saturate(1.3) brightness(0.95); animation: arBossBob 1.8s ease-in-out infinite, arPhaseShake .4s steps(2) infinite; }
+  .ar-boss-sprite.ar-phase-4 { filter: drop-shadow(0 6px 26px rgba(255,61,166,0.8)) hue-rotate(-30deg) saturate(1.5) brightness(1.1); animation: arBossBob 1.2s ease-in-out infinite, arPhaseShake .22s steps(2) infinite; }
+  @keyframes arPhaseShake {
+    0%, 100% { transform: translateX(0); }
+    50%      { transform: translateX(3px); }
+  }
+  .ar-finisher-modal.ar-tint-2 .ar-scrim { background: linear-gradient(180deg, rgba(80,10,30,0.45) 0%, rgba(0,0,0,0.45) 22%, transparent 50%, rgba(60,10,30,0.5) 100%); }
+  .ar-finisher-modal.ar-tint-3 .ar-scrim { background: linear-gradient(180deg, rgba(140,20,40,0.55) 0%, rgba(0,0,0,0.5) 18%, transparent 45%, rgba(120,20,40,0.6) 100%); }
+  .ar-finisher-modal.ar-tint-4 .ar-scrim {
+    background: linear-gradient(180deg, rgba(200,30,60,0.6) 0%, rgba(20,0,8,0.5) 14%, transparent 40%, rgba(200,30,60,0.7) 100%);
+    animation: arEnragePulse 1.2s ease-in-out infinite;
+  }
+  @keyframes arEnragePulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.78; }
+  }
+  .ar-enrage-banner {
+    position: absolute;
+    top: 38%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--px);
+    font-size: 26px;
+    color: var(--danger);
+    text-shadow: 3px 3px 0 #000, 0 0 18px var(--danger);
+    letter-spacing: 4px;
+    pointer-events: none;
+    z-index: 6;
+    animation: arEnrageBannerLife 1.1s ease both;
+  }
+  @keyframes arEnrageBannerLife {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+    70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  }
+
+  /* ── Slam button — bottom-of-screen indicator, cooldown bar. ── */
+  .ar-slam-btn {
+    width: 100%;
+    max-width: 360px;
+    position: relative;
+    background: rgba(10, 5, 24, 0.8);
+    border: 3px solid #000;
+    box-shadow: 3px 3px 0 #000;
+    padding: 10px 14px;
+    text-align: center;
+    overflow: hidden;
+    font-family: var(--px);
+    color: var(--ink-dim);
+    letter-spacing: 2px;
+    font-size: 10px;
+    user-select: none;
+  }
+  .ar-slam-fill {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(123,92,255,0.6) 0%, rgba(255,206,79,0.6) 100%);
+    transition: width .1s linear;
+    z-index: 0;
+  }
+  .ar-slam-label {
+    position: relative;
+    z-index: 1;
+  }
+  .ar-slam-btn.ready {
+    border-color: var(--gold);
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000;
+    box-shadow: 3px 3px 0 #000, 0 0 16px rgba(245,194,66,0.55);
+    animation: arSlamReadyPulse 1s ease-in-out infinite;
+  }
+  @keyframes arSlamReadyPulse {
+    0%, 100% { box-shadow: 3px 3px 0 #000, 0 0 14px rgba(245,194,66,0.45); }
+    50%      { box-shadow: 3px 3px 0 #000, 0 0 26px rgba(245,194,66,0.85); }
+  }
+
+  /* ── Slam flash + screen-shake on big moments. ── */
+  .ar-finisher-modal.ar-slam-flash::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.35);
+    pointer-events: none;
+    animation: arSlamFlash .22s ease-out forwards;
+    z-index: 4;
+  }
+  @keyframes arSlamFlash {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .ar-finisher-modal.ar-screen-shake .ar-video,
+  .ar-finisher-modal.ar-screen-shake .ar-scrim,
+  .ar-finisher-modal.ar-screen-shake .ar-overlay {
+    animation: arScreenShake .45s ease-out;
+  }
+  @keyframes arScreenShake {
+    0%   { transform: translate(0, 0); }
+    15%  { transform: translate(-8px, 6px); }
+    30%  { transform: translate(7px, -5px); }
+    45%  { transform: translate(-5px, 4px); }
+    60%  { transform: translate(4px, -3px); }
+    75%  { transform: translate(-3px, 2px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* ── Death particles + sprite shatter. ── */
+  .ar-particle {
+    position: fixed;
+    width: 10px; height: 10px;
+    z-index: 250;
+    pointer-events: none;
+    border: 1px solid #000;
+    transform: translate(-50%, -50%);
+    animation: arParticleFly 1.1s cubic-bezier(.22,.85,.4,1) forwards;
+  }
+  @keyframes arParticleFly {
+    0%   { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--tx, 0)), calc(-50% + var(--ty, 0))) scale(0.4) rotate(360deg); opacity: 0; }
+  }
+  .ar-boss-sprite.ar-die {
+    animation: arBossDie .9s ease-in forwards;
+  }
+  @keyframes arBossDie {
+    0%   { opacity: 1; filter: brightness(1) drop-shadow(0 0 0 transparent); transform: scale(1) rotate(0); }
+    40%  { opacity: 1; filter: brightness(2.5) drop-shadow(0 0 24px #fff); transform: scale(1.18) rotate(-4deg); }
+    100% { opacity: 0; filter: brightness(0.4) blur(2px); transform: scale(0.3) rotate(28deg); }
+  }
+  .ar-result-sub {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--neon-3);
+    text-shadow: 2px 2px 0 #000;
+    letter-spacing: 2px;
+  }
+
   /* AR Finisher launcher (on the step card, not inside the AR modal). */
   .ar-finisher-btn {
     margin-top: 12px;
@@ -9813,7 +9985,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.290';
+const BUILD_VERSION = '2026.05.23.291';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26008,6 +26180,21 @@ async function openARFinisher(stepIdx) {
   let lost = false;
   let cancelled = false;
 
+  // ── Combat state (Tier-1 polish + shake-to-slam) ──
+  // Combo chain: taps within COMBO_WINDOW_MS chain into a multiplier.
+  // 5+ chain = 1.5x damage; 10+ chain = 2x. Breaking the chain (slow
+  // tap, missed swing, dodge whiff) resets the count.
+  const COMBO_WINDOW_MS = 500;
+  const SLAM_COOLDOWN_MS = 5000;
+  const SHAKE_MAG_THRESHOLD = 22;     // m/s² peak that counts as an intentional shake
+  let comboCount = 0;
+  let lastTapTs = 0;
+  let lastShakeTs = 0;
+  let slamReadyAt = 0;                // wall-clock ms at which slam comes off cooldown
+  let currentPhase = 1;               // 1=full, 2=below 75%, 3=below 50%, 4=below 25% (ENRAGE)
+  // Particle pool for the death celebration. Pre-rendered DOM nodes
+  // recycled out of a holder so we don't thrash the DOM on the win.
+
   const wrap = document.createElement('div');
   wrap.className = 'ar-finisher-modal';
   wrap.innerHTML = `
@@ -26020,12 +26207,25 @@ async function openARFinisher(stepIdx) {
         <div class="ar-hpnum" id="arHpNum">${arHP} / ${arHPMax}</div>
       </div>
       <div class="ar-timer" id="arTimer">30.0s</div>
+      <!-- Combo chip — hidden until the chain reaches 2+. Tracks live
+           combo count and applies a scaling damage multiplier. -->
+      <div class="ar-combo-chip" id="arCombo" style="display:none;">
+        <span class="ar-combo-x" id="arComboX">×2</span>
+        <span class="ar-combo-label" id="arComboLabel">COMBO</span>
+      </div>
       <div class="ar-boss-stage" id="arBossStage">
         ${bossSpriteSrc
           ? `<img class="ar-boss-sprite" id="arBossSprite" src="${bossSpriteSrc}" alt="boss"/>`
           : `<div class="ar-boss-emoji ar-boss-sprite" id="arBossSprite">${bossEmoji}</div>`}
       </div>
-      <div class="ar-tap-hint">▸ TAP THE BOSS — DRAIN HP BEFORE 30s ◂</div>
+      <div class="ar-tap-hint">▸ TAP THE BOSS — SHAKE THE PHONE TO SLAM ◂</div>
+      <!-- Shake-to-slam indicator. The bar drains on use (cooldown
+           overlay) and refills as the cooldown elapses. The label
+           flips to ⚡ SLAM READY when armed. -->
+      <div class="ar-slam-btn" id="arSlam" aria-disabled="true">
+        <div class="ar-slam-fill" id="arSlamFill" style="width:0%;"></div>
+        <div class="ar-slam-label" id="arSlamLabel">⚡ SHAKE TO SLAM</div>
+      </div>
       <button class="ar-cancel" id="arCancel" type="button" aria-label="Cancel">✕</button>
     </div>
   `;
@@ -26069,39 +26269,188 @@ async function openARFinisher(stepIdx) {
     window.addEventListener('deviceorientation', onOrient);
   }
 
-  // Tap-to-attack. Damage range tuned so a focused player drops the
-  // boss in ~15 taps (well within 30s), but mashers don't trivialize
-  // it — average damage with variance, occasional crit.
-  function handleAttack(e) {
-    if (won || lost || cancelled) return;
-    e.stopPropagation();
-    const isCrit = Math.random() < 0.12;
-    const dmg = isCrit ? 18 + Math.floor(Math.random() * 6) : 5 + Math.floor(Math.random() * 5);
+  // Combo / phase / damage helpers ─────────────────────────────────
+  function updatePhase() {
+    // Visual escalation as the boss runs low on HP. Each phase adds a
+    // CSS class to the sprite + a screen-tint hue. Phase 4 (<= 25%)
+    // is the ENRAGE — short cinematic flash + persistent red glow.
+    const pct = arHP / arHPMax;
+    const wantPhase = pct <= 0.25 ? 4 : pct <= 0.5 ? 3 : pct <= 0.75 ? 2 : 1;
+    if (wantPhase === currentPhase) return;
+    const prev = currentPhase;
+    currentPhase = wantPhase;
+    if (sprite) {
+      sprite.classList.remove('ar-phase-2', 'ar-phase-3', 'ar-phase-4');
+      if (wantPhase >= 2) sprite.classList.add('ar-phase-' + wantPhase);
+    }
+    wrap.classList.remove('ar-tint-2', 'ar-tint-3', 'ar-tint-4');
+    if (wantPhase >= 2) wrap.classList.add('ar-tint-' + wantPhase);
+    if (wantPhase === 4 && prev < 4) {
+      // ENRAGE banner — one-shot. Adds drama without blocking attacks.
+      const en = document.createElement('div');
+      en.className = 'ar-enrage-banner';
+      en.textContent = '⚠ ENRAGED ⚠';
+      wrap.querySelector('.ar-overlay')?.appendChild(en);
+      en.addEventListener('animationend', () => en.remove(), { once: true });
+      try { sfx.error && sfx.error(); } catch {}
+      try { navigator.vibrate && navigator.vibrate([40, 40, 40]); } catch {}
+    }
+  }
+  function comboMultiplier() {
+    if (comboCount >= 10) return 2.0;
+    if (comboCount >= 5)  return 1.5;
+    return 1.0;
+  }
+  function updateComboChip() {
+    const chip = wrap.querySelector('#arCombo');
+    const xEl  = wrap.querySelector('#arComboX');
+    if (!chip || !xEl) return;
+    if (comboCount >= 2) {
+      chip.style.display = '';
+      const mult = comboMultiplier();
+      xEl.textContent = '×' + (mult === 1 ? 1 : (mult === 2 ? 2 : '1.5'));
+      // Restart the chip pulse on every increment.
+      chip.classList.remove('arComboBump');
+      void chip.offsetWidth;
+      chip.classList.add('arComboBump');
+    } else {
+      chip.style.display = 'none';
+    }
+  }
+  function breakCombo() {
+    if (comboCount === 0) return;
+    comboCount = 0;
+    updateComboChip();
+  }
+  function applyDamage(rawDmg, opts = {}) {
+    // Centralized damage path — every hit type (tap, crit, slam) ends
+    // here so combo/phase/HP/win logic stays consistent.
+    const dmg = Math.max(1, Math.round(rawDmg));
     arHP = Math.max(0, arHP - dmg);
     const fill = wrap.querySelector('#arHpFill');
     const num  = wrap.querySelector('#arHpNum');
     if (fill) fill.style.width = Math.round((arHP / arHPMax) * 100) + '%';
     if (num)  num.textContent  = arHP + ' / ' + arHPMax;
     if (sprite) {
-      sprite.classList.remove('ar-hit');     // restart the flash
+      sprite.classList.remove('ar-hit');
       void sprite.offsetWidth;
       sprite.classList.add('ar-hit');
     }
-    // Damage popup near the tap point.
+    // Damage popup. opts.crit and opts.slam style differently so the
+    // player reads intent at a glance.
     const dn = document.createElement('div');
-    dn.className = 'ar-dmg-pop' + (isCrit ? ' crit' : '');
-    dn.textContent = (isCrit ? '✦ ' : '−') + dmg;
-    dn.style.left = (e.clientX || window.innerWidth / 2) + 'px';
-    dn.style.top  = (e.clientY || window.innerHeight / 2) + 'px';
+    dn.className = 'ar-dmg-pop' + (opts.crit ? ' crit' : '') + (opts.slam ? ' slam' : '');
+    const prefix = opts.slam ? '⚡ ' : opts.crit ? '✦ ' : '−';
+    dn.textContent = prefix + dmg;
+    dn.style.left = (opts.x != null ? opts.x : window.innerWidth / 2) + 'px';
+    dn.style.top  = (opts.y != null ? opts.y : window.innerHeight / 2) + 'px';
     wrap.appendChild(dn);
     dn.addEventListener('animationend', () => dn.remove(), { once: true });
+    updatePhase();
+    if (arHP <= 0 && !won) { won = true; finishAR(true); }
+  }
+
+  // Tap-to-attack. Damage tuned for ~15 base taps to drop the boss
+  // (well under 30s) — combo and slam shorten that for engaged play.
+  function handleAttack(e) {
+    if (won || lost || cancelled) return;
+    e.stopPropagation();
+    const now = Date.now();
+    // Chain or break the combo based on the gap since the last tap.
+    if (now - lastTapTs <= COMBO_WINDOW_MS) comboCount++;
+    else                                    comboCount = 1;
+    lastTapTs = now;
+    updateComboChip();
+    const isCrit = Math.random() < 0.12;
+    const baseRoll = isCrit ? 18 + Math.floor(Math.random() * 6)
+                            : 5  + Math.floor(Math.random() * 5);
+    const dmg = baseRoll * comboMultiplier();
     try { sfx.hit && sfx.hit(); } catch {}
     try { navigator.vibrate && navigator.vibrate(isCrit ? 30 : 12); } catch {}
-    if (arHP <= 0) { won = true; finishAR(true); }
+    applyDamage(dmg, { crit: isCrit, x: e.clientX, y: e.clientY });
   }
   if (sprite) {
     sprite.addEventListener('pointerdown', handleAttack);
   }
+
+  // ── Shake-to-slam ────────────────────────────────────────────────
+  // DeviceMotion listener with magnitude threshold + cooldown. Counts
+  // ONE intentional shake (above SHAKE_MAG_THRESHOLD) per cooldown
+  // window, ignores ambient jitter. Big damage + screen flash + heavy
+  // haptic make it feel weighty. No combo chain — a slam doesn't
+  // count as a tap and breaks the chain (intentional: slam IS the
+  // big hit, you don't get a combo bonus on top).
+  let _arMotionHandler = null;
+  function updateSlamReadout(forceReady) {
+    const slamBtn   = wrap.querySelector('#arSlam');
+    const slamFill  = wrap.querySelector('#arSlamFill');
+    const slamLabel = wrap.querySelector('#arSlamLabel');
+    if (!slamBtn || !slamFill || !slamLabel) return;
+    const now = Date.now();
+    const remaining = Math.max(0, slamReadyAt - now);
+    const pct = remaining > 0 ? (1 - remaining / SLAM_COOLDOWN_MS) * 100 : 100;
+    slamFill.style.width = pct + '%';
+    const ready = forceReady || remaining <= 0;
+    slamBtn.setAttribute('aria-disabled', ready ? 'false' : 'true');
+    slamBtn.classList.toggle('ready', ready);
+    if (ready) {
+      slamLabel.textContent = '⚡ SLAM READY · SHAKE!';
+    } else {
+      slamLabel.textContent = `COOLDOWN ${(remaining / 1000).toFixed(1)}s`;
+    }
+  }
+  // Tick the slam readout once per rAF so the cooldown bar refills
+  // visibly. Cheap — we already have a rAF tick going for the timer.
+  function slamTickAttach() {
+    function loop() {
+      if (won || lost || cancelled) return;
+      updateSlamReadout(false);
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  }
+  slamTickAttach();
+
+  function tryAttachShakeListener() {
+    if (typeof DeviceMotionEvent === 'undefined') return;
+    // iOS gates motion behind a permission too — we already requested
+    // orient above; motion may need its own request. The boss-fight
+    // works without slam if perm is denied, just silently disabled.
+    const attach = () => {
+      _arMotionHandler = (e) => {
+        if (won || lost || cancelled) return;
+        const now = Date.now();
+        if (now < slamReadyAt) return;             // cooldown
+        if (now - lastShakeTs < 250) return;        // debounce ambient jitter
+        const a = e.accelerationIncludingGravity || e.acceleration;
+        if (!a) return;
+        const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+        if (mag < SHAKE_MAG_THRESHOLD) return;
+        lastShakeTs = now;
+        slamReadyAt = now + SLAM_COOLDOWN_MS;
+        // Slam damage: 25-35, breaks combo intentionally. Bright flash
+        // + heavy haptic + screen shake so it feels like a finisher.
+        const dmg = 25 + Math.floor(Math.random() * 11);
+        breakCombo();
+        wrap.classList.remove('ar-slam-flash');
+        void wrap.offsetWidth;
+        wrap.classList.add('ar-slam-flash');
+        try { sfx.hit && sfx.hit(); } catch {}
+        try { navigator.vibrate && navigator.vibrate([60, 30, 60]); } catch {}
+        applyDamage(dmg, { slam: true });
+        updateSlamReadout(false);
+      };
+      window.addEventListener('devicemotion', _arMotionHandler);
+    };
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      DeviceMotionEvent.requestPermission()
+        .then(p => { if (p === 'granted') attach(); })
+        .catch(() => {});
+    } else {
+      attach();
+    }
+  }
+  tryAttachShakeListener();
 
   wrap.querySelector('#arCancel').onclick = () => {
     if (won || lost) return;
@@ -26123,27 +26472,78 @@ async function openARFinisher(stepIdx) {
   }
   requestAnimationFrame(tick);
 
+  // Burst of confetti-ish particles for the boss-defeated celebration.
+  // Spawns N divs at the sprite's centre with random velocities, lets
+  // CSS animate the trajectory, then drops them when the animation
+  // ends. Cheap; no rAF loop needed.
+  function spawnDeathParticles(originX, originY) {
+    const COLORS = ['#ff3da6', '#7b5cff', '#00e6c3', '#ffce4f', '#ff5764', '#fff'];
+    const COUNT = 26;
+    for (let i = 0; i < COUNT; i++) {
+      const p = document.createElement('div');
+      p.className = 'ar-particle';
+      const angle = (Math.PI * 2 * i) / COUNT + (Math.random() - 0.5) * 0.4;
+      const dist  = 120 + Math.random() * 180;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist - 40;             // slight upward bias
+      p.style.left = originX + 'px';
+      p.style.top  = originY + 'px';
+      p.style.background = COLORS[Math.floor(Math.random() * COLORS.length)];
+      p.style.setProperty('--tx', tx + 'px');
+      p.style.setProperty('--ty', ty + 'px');
+      wrap.appendChild(p);
+      p.addEventListener('animationend', () => p.remove(), { once: true });
+    }
+  }
+
   function finishAR(victory) {
     window.removeEventListener('deviceorientation', onOrient);
-    const overlay = wrap.querySelector('.ar-overlay');
-    if (overlay) {
-      const result = document.createElement('div');
-      result.className = victory ? 'ar-result ar-victory' : 'ar-result ar-defeat';
-      result.textContent = victory ? '★ BOSS DEFEATED' : '⌛ TIME UP';
-      overlay.appendChild(result);
+    if (_arMotionHandler) {
+      try { window.removeEventListener('devicemotion', _arMotionHandler); } catch {}
+      _arMotionHandler = null;
     }
+    const overlay = wrap.querySelector('.ar-overlay');
     if (victory) {
       try { sfx.success && sfx.success(); } catch {}
+      try { navigator.vibrate && navigator.vibrate([60, 40, 60, 40, 120]); } catch {}
+      // Death sequence: screen-shake, particle burst centred on the
+      // sprite's current position, sprite shatter-out animation,
+      // then the result banner lands. Sequenced via timeouts so each
+      // beat reads cleanly instead of all happening at frame zero.
+      wrap.classList.add('ar-screen-shake');
+      const rect = sprite ? sprite.getBoundingClientRect() : null;
+      const ox = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+      const oy = rect ? rect.top  + rect.height / 2 : window.innerHeight / 2;
+      spawnDeathParticles(ox, oy);
+      if (sprite) {
+        sprite.classList.remove('ar-hit');
+        sprite.classList.add('ar-die');
+      }
       // Synthesize a passing proof + judgment so the existing complete
       // pipeline accepts this as a valid step finish. We mark it
       // arFinisher:true on the proof so future code can distinguish
       // AR wins from photo wins (recap art, share-card variants, etc).
       r.proofs = r.proofs || {};
-      r.proofs[stepIdx] = { ts: Date.now(), arFinisher: true, dataUrl: null };
+      r.proofs[stepIdx] = { ts: Date.now(), arFinisher: true, dataUrl: null, comboPeak: comboCount };
       r.judgments = r.judgments || {};
-      r.judgments[stepIdx] = { pass: true, comment: '★ AR Finisher — boss tapped into oblivion.' };
+      const comboTail = comboCount >= 5 ? ` Peak combo ×${comboCount}.` : '';
+      r.judgments[stepIdx] = { pass: true, comment: '★ AR Finisher — boss tapped into oblivion.' + comboTail };
+      setTimeout(() => {
+        if (overlay) {
+          const result = document.createElement('div');
+          result.className = 'ar-result ar-victory';
+          result.innerHTML = `★ BOSS DEFEATED ★${comboCount >= 5 ? `<div class="ar-result-sub">Peak combo · ×${comboCount}</div>` : ''}`;
+          overlay.appendChild(result);
+        }
+      }, 320);
     } else {
       try { sfx.error && sfx.error(); } catch {}
+      if (overlay) {
+        const result = document.createElement('div');
+        result.className = 'ar-result ar-defeat';
+        result.textContent = '⌛ TIME UP';
+        overlay.appendChild(result);
+      }
       toast('Boss survived. Photo proof still works.');
     }
     setTimeout(() => {
@@ -26152,11 +26552,15 @@ async function openARFinisher(stepIdx) {
       if (victory) {
         setTimeout(() => document.querySelector(`[data-complete="${stepIdx}"]`)?.click(), 100);
       }
-    }, 1400);
+    }, victory ? 2000 : 1400);
   }
 
   function cleanup() {
     window.removeEventListener('deviceorientation', onOrient);
+    if (_arMotionHandler) {
+      try { window.removeEventListener('devicemotion', _arMotionHandler); } catch {}
+      _arMotionHandler = null;
+    }
     try { stream && stream.getTracks().forEach(t => t.stop()); } catch {}
     try { wrap.remove(); } catch {}
   }
