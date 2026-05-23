@@ -5863,6 +5863,15 @@
     /* So translate3d on the sprite has parent context to use for compositing. */
     perspective: 600px;
   }
+  /* Gyro anchor — carries the inline `transform: translate(...)` written
+     by the orientation handler. The sprite inside owns the bob /
+     phase-shake / hit-flash / death animations, which also touch
+     transform; without this two-layer split, the phase animations
+     overwrite the gyro position and the boss appears stuck on screen. */
+  .ar-boss-anchor {
+    display: inline-block;
+    will-change: transform;
+  }
   .ar-boss-sprite {
     width: 200px; height: 200px;
     object-fit: contain;
@@ -9985,7 +9994,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.292';
+const BUILD_VERSION = '2026.05.23.293';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26218,9 +26227,16 @@ async function openARFinisher(stepIdx) {
         <span class="ar-combo-label" id="arComboLabel">COMBO</span>
       </div>
       <div class="ar-boss-stage" id="arBossStage">
-        ${bossSpriteSrc
-          ? `<img class="ar-boss-sprite" id="arBossSprite" src="${bossSpriteSrc}" alt="boss"/>`
-          : `<div class="ar-boss-emoji ar-boss-sprite" id="arBossSprite">${bossEmoji}</div>`}
+        <!-- Anchor / sprite split. Gyro writes transform on the anchor;
+             bob + phase-shake animations live on the sprite. Without
+             this split the .ar-phase-3 / .ar-phase-4 animations (which
+             also write to transform) clobber the gyro's inline transform
+             and the boss appears stuck to the centre of the screen. -->
+        <div class="ar-boss-anchor" id="arBossAnchor">
+          ${bossSpriteSrc
+            ? `<img class="ar-boss-sprite" id="arBossSprite" src="${bossSpriteSrc}" alt="boss"/>`
+            : `<div class="ar-boss-emoji ar-boss-sprite" id="arBossSprite">${bossEmoji}</div>`}
+        </div>
       </div>
       <div class="ar-tap-hint">▸ TAP TO STRIKE · SHAKE TO SLAM · CHAIN FOR COMBO ◂</div>
       <!-- Shake-to-slam indicator. The bar drains on use (cooldown
@@ -26249,11 +26265,12 @@ async function openARFinisher(stepIdx) {
     y: (Math.random() - 0.5) * 80,     // ±40px
   };
   const sprite = wrap.querySelector('#arBossSprite');
+  const anchor = wrap.querySelector('#arBossAnchor');
   function applySpritePos(dx, dy) {
-    if (!sprite) return;
-    // CSS translate keeps the existing bob animation intact (the bob is
-    // on the inner sprite, the transform here moves the whole element).
-    sprite.style.transform = `translate(${dx}px, ${dy}px)`;
+    // Write to the OUTER anchor so the inner sprite's bob + phase-shake
+    // animations (which also touch transform) don't fight us. Two
+    // separate elements = two non-overlapping transform stacks.
+    if (anchor) anchor.style.transform = `translate(${dx}px, ${dy}px)`;
   }
   applySpritePos(worldOffset.x, worldOffset.y);
   function onOrient(e) {
