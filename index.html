@@ -6223,6 +6223,18 @@
   .ar-boss-sprite.ar-phase-2 { filter: drop-shadow(0 6px 18px rgba(0,0,0,0.75)) hue-rotate(-12deg) saturate(1.1); }
   .ar-boss-sprite.ar-phase-3 { filter: drop-shadow(0 6px 22px rgba(255,87,100,0.6)) hue-rotate(-22deg) saturate(1.3) brightness(0.95); animation: arBossBob 1.8s ease-in-out infinite, arPhaseShake .4s steps(2) infinite; }
   .ar-boss-sprite.ar-phase-4 { filter: drop-shadow(0 6px 26px rgba(255,61,166,0.8)) hue-rotate(-30deg) saturate(1.5) brightness(1.1); animation: arBossBob 1.2s ease-in-out infinite, arPhaseShake .22s steps(2) infinite; }
+  /* Juke flash — bright pop on each ENRAGE reposition so the move
+     reads as intentional dashing instead of "did it stutter?" */
+  .ar-boss-sprite.ar-juke {
+    animation: arBossBob 1.2s ease-in-out infinite,
+               arPhaseShake .22s steps(2) infinite,
+               arBossJuke .35s ease-out;
+  }
+  @keyframes arBossJuke {
+    0%   { filter: drop-shadow(0 6px 26px rgba(255,61,166,0.8)) hue-rotate(-30deg) saturate(1.5) brightness(1.1); }
+    30%  { filter: drop-shadow(0 0 32px #fff) brightness(3) saturate(0); opacity: 0.6; }
+    100% { filter: drop-shadow(0 6px 26px rgba(255,61,166,0.8)) hue-rotate(-30deg) saturate(1.5) brightness(1.1); opacity: 1; }
+  }
   @keyframes arPhaseShake {
     0%, 100% { transform: translateX(0); }
     50%      { transform: translateX(3px); }
@@ -10212,7 +10224,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.296';
+const BUILD_VERSION = '2026.05.23.297';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26395,15 +26407,12 @@ async function openARFinisher(stepIdx) {
   const bossEmoji = boss.ic || '👹';
   const bossName = boss.name || 'BOSS';
 
-  // Boss HP — bumped 10x per playtest: combo ×2 + crit was draining
-  // 500 HP in ~15s, so the new mechanics (combo, phases, slam,
-  // ENRAGE, boss attacks) couldn't all surface in a single fight.
-  // 5000 HP gives ~60-90s of real engagement at peak-combo play.
-  // Timer scaled to match — a 60s clock on 5000 HP was mathematically
-  // unwinnable even at max sustained damage. 120s is generous on the
-  // top end but lets the player FAIL by running the clock too.
-  let arHP = 5000;
-  const arHPMax = 5000;
+  // Boss HP — halved per playtest. 5000 felt grindy; at 2500 the
+  // fight clocks in around 40-60s of engaged play, leaving plenty
+  // of the 150s timer as margin so the new ENRAGE-juke can stretch
+  // it out without the timer becoming the bottleneck.
+  let arHP = 2500;
+  const arHPMax = 2500;
   // Player HP — boss attacks deal 18-25 per hit, ~12-15 attacks in a
   // 120s fight. 300 HP = ~12-15 missed dodges to death (you'd have to
   // miss EVERY dodge to lose). Bumped from 150 to match the longer
@@ -26556,10 +26565,43 @@ async function openARFinisher(stepIdx) {
   }
 
   // Combo / phase / damage helpers ─────────────────────────────────
+  // ENRAGE juke — while phase 4 is active, the boss re-anchors its
+  // worldOffset every JUKE_INTERVAL ms within a wider range than the
+  // initial spawn, so the player has to track and re-aim. The EMA
+  // smoothing on the gyro already makes the transition look like a
+  // dash (instead of a teleport) — a quick CSS .ar-juke flash sells
+  // the moment too.
+  const JUKE_INTERVAL_MS = 1500;
+  let enrageJukeTimer = null;
+  function startEnrageJuke() {
+    if (enrageJukeTimer) return;
+    enrageJukeTimer = setInterval(() => {
+      if (won || lost || cancelled || currentPhase < 4) return;
+      // Wider range during enrage — ±screen-width-half / ±height-third.
+      // Calibrated to land within view most of the time; combined with
+      // the camera-relative gyro, the player still has to actively
+      // hunt the boss across the frame.
+      worldOffset.x = (Math.random() - 0.5) * window.innerWidth  * 0.6;
+      worldOffset.y = (Math.random() - 0.5) * window.innerHeight * 0.35;
+      if (sprite) {
+        sprite.classList.remove('ar-juke');
+        void sprite.offsetWidth;
+        sprite.classList.add('ar-juke');
+      }
+      try { sfx.tick && sfx.tick(); } catch {}
+    }, JUKE_INTERVAL_MS);
+  }
+  function stopEnrageJuke() {
+    if (enrageJukeTimer) {
+      clearInterval(enrageJukeTimer);
+      enrageJukeTimer = null;
+    }
+  }
   function updatePhase() {
     // Visual escalation as the boss runs low on HP. Each phase adds a
     // CSS class to the sprite + a screen-tint hue. Phase 4 (<= 25%)
-    // is the ENRAGE — short cinematic flash + persistent red glow.
+    // is the ENRAGE — short cinematic flash + persistent red glow +
+    // the boss starts juking around the screen.
     const pct = arHP / arHPMax;
     const wantPhase = pct <= 0.25 ? 4 : pct <= 0.5 ? 3 : pct <= 0.75 ? 2 : 1;
     if (wantPhase === currentPhase) return;
@@ -26580,6 +26622,12 @@ async function openARFinisher(stepIdx) {
       en.addEventListener('animationend', () => en.remove(), { once: true });
       try { sfx.error && sfx.error(); } catch {}
       try { navigator.vibrate && navigator.vibrate([40, 40, 40]); } catch {}
+      startEnrageJuke();
+    }
+    // Defensive: if the player somehow went back UP a phase (item that
+    // heals the AR boss?), stop the juke.
+    if (wantPhase < 4 && prev === 4) {
+      stopEnrageJuke();
     }
   }
   // Combo tier table. Display number climbs to ×500 (the legendary
@@ -26954,6 +27002,7 @@ async function openARFinisher(stepIdx) {
     // the fight ends. Both timers are guarded but redundancy is fine.
     if (bossAtkTimer)   { clearTimeout(bossAtkTimer);   bossAtkTimer = null; }
     if (bossDodgeTimer) { clearTimeout(bossDodgeTimer); bossDodgeTimer = null; }
+    stopEnrageJuke();
     bossWindupActive = false;
     wrap.classList.remove('ar-windup');
     const dodgeBtnEnd = wrap.querySelector('#arDodge');
@@ -27027,6 +27076,7 @@ async function openARFinisher(stepIdx) {
     // mid-windup state needs to hit them too.
     if (bossAtkTimer)   { clearTimeout(bossAtkTimer);   bossAtkTimer = null; }
     if (bossDodgeTimer) { clearTimeout(bossDodgeTimer); bossDodgeTimer = null; }
+    stopEnrageJuke();
     try { stream && stream.getTracks().forEach(t => t.stop()); } catch {}
     try { wrap.remove(); } catch {}
   }
