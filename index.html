@@ -6252,6 +6252,13 @@
     color: var(--ink-dim);
     line-height: 1.45;
   }
+  .geo-skip-hint {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-style: italic;
+  }
 
   /* ---------- Avatar (header + profile) ---------- */
   .avatar {
@@ -9806,7 +9813,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.289';
+const BUILD_VERSION = '2026.05.23.290';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -17467,18 +17474,28 @@ function ensureAtLeastOneWalkGate(r) {
   if (!runPermitsWalking(r)) return;
   const already = r.quest.some(s => s && s.walkDistance);
   if (already) return;
-  // Prefer a Move step (the most natural anchor), then Find, then
-  // any non-timer / non-final step. Skip the absolute-last step on
-  // longer quests because that's the Final Attack and we don't want
-  // to gate the climactic moment behind a walk on first generation.
+  // Strict allow-list of step types that make sense for walking. The
+  // previous fallback ranked everything else equal and grabbed the
+  // first step in order — which meant Pose steps (stand here and hold
+  // still for a photo) were getting walk-gates, which is incoherent.
+  // If the quest doesn't contain any naturally-walkable step type,
+  // the safety net stays out — the AI gets to ship a no-walk run
+  // rather than us forcing a gate onto the wrong step type.
+  const WALKABLE_TYPES = new Set(['Move', 'Find', 'Social']);
   const candidates = r.quest.map((s, i) => ({ s, i }))
-    .filter(({ s, i }) => s && s.proof !== 'timer' && i < r.quest.length - 1)
+    .filter(({ s, i }) => s && WALKABLE_TYPES.has(s.type)
+                       && s.proof !== 'timer'
+                       && i < r.quest.length - 1)
     .sort((a, b) => {
+      // Move > Find > Social — Move is the most obviously walk-shaped.
       const rank = (t) => t === 'Move' ? 0 : t === 'Find' ? 1 : 2;
       return rank(a.s.type) - rank(b.s.type);
     });
   const target = candidates[0];
-  if (!target) return;
+  if (!target) {
+    console.log('[walk-gate] safety net: no walkable step types in this quest, skipping.');
+    return;
+  }
   // 60-90m default — comfortably outdoorsy but doable in a single step
   // time budget. The AI can override on later generations once the
   // prompt's nudge has had a few warm-up runs.
@@ -17646,7 +17663,7 @@ function renderGeoGateUI(s, i) {
       </div>
       <div class="geo-hint">${
         running
-          ? 'Tracking… keep walking. The bar fills as you cover ground.'
+          ? 'Tracking… keep walking. The bar fills as you cover ground.<br/><span class="geo-skip-hint">Can\'t walk right now? Use STUCK? SKIP below.</span>'
           : paused
             ? 'Paused. Tap Resume when you’re ready to walk again.'
             : 'Tap Start, accept location, then walk ' + target + ' meters in any direction. Your photo proof unlocks when the bar fills.'
@@ -18288,6 +18305,14 @@ function bindQuest() {
     if (r.completed.includes(i)) return;
     if (!(await showSkipStepConfirmModal())) return;
     if (r.completed.includes(i)) return;  // re-check — state may have moved while the modal was open
+    // If a walk-gate watcher is live for this step (or motion sensor
+    // listener), tear it down before we advance — otherwise the GPS
+    // chip keeps firing in the background after the step is gone and
+    // the listener can still mutate r.geoState for an index the UI
+    // no longer renders. Both helpers are idempotent / safe to call
+    // when nothing is attached.
+    try { detachGeoWatcher && detachGeoWatcher(); } catch {}
+    try { detachMotionListener && detachMotionListener(); } catch {}
     r.failedSteps = r.failedSteps || [];
     if (!r.failedSteps.includes(i)) r.failedSteps.push(i);
     if (!r.completed.includes(i)) r.completed.push(i);
