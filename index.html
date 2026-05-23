@@ -6077,7 +6077,9 @@
     100% { opacity: 0; transform: translate(-50%, -90%) scale(1); }
   }
 
-  /* ── Combo chip — pulses up from the side when chain >= 2. ── */
+  /* ── Combo chip — pulses up from the side when chain >= 2.
+       Each tier-N class escalates the visual: tier-1 is muted, tier-8
+       is the full GODLIKE rainbow. ── */
   .ar-combo-chip {
     position: absolute;
     top: 100px;
@@ -6086,6 +6088,7 @@
     border: 3px solid var(--gold);
     box-shadow: 0 0 14px rgba(245,194,66,0.55), 3px 3px 0 #000;
     padding: 6px 10px;
+    min-width: 90px;
     text-align: center;
     font-family: var(--px);
     color: var(--gold);
@@ -6100,9 +6103,9 @@
   }
   .ar-combo-label {
     display: block;
-    font-size: 8px;
-    margin-top: 2px;
-    letter-spacing: 2px;
+    font-size: 7px;
+    margin-top: 4px;
+    letter-spacing: 1px;
     color: var(--neon-3);
   }
   .ar-combo-chip.arComboBump { animation: arComboBump .25s ease; }
@@ -6110,6 +6113,110 @@
     0%   { transform: scale(1); }
     40%  { transform: scale(1.25); filter: brightness(1.4); }
     100% { transform: scale(1); }
+  }
+  /* Tier escalation. Each tier swaps border color, glow color, text
+     color so the chip is a glanceable read of how deep the chain is. */
+  .ar-combo-chip.tier-2 { border-color: var(--gold);   box-shadow: 0 0 14px rgba(245,194,66,0.55), 3px 3px 0 #000; color: var(--gold); }
+  .ar-combo-chip.tier-3 { border-color: var(--neon-3); box-shadow: 0 0 18px rgba(0,230,195,0.65),   3px 3px 0 #000; color: var(--neon-3); }
+  .ar-combo-chip.tier-3 .ar-combo-x { font-size: 24px; }
+  .ar-combo-chip.tier-4 { border-color: var(--neon);   box-shadow: 0 0 22px rgba(255,61,166,0.7),   3px 3px 0 #000; color: var(--neon); }
+  .ar-combo-chip.tier-4 .ar-combo-x { font-size: 26px; }
+  .ar-combo-chip.tier-5 { border-color: #ff5764;       box-shadow: 0 0 26px rgba(255,87,100,0.8),   3px 3px 0 #000; color: #ff8c4a; }
+  .ar-combo-chip.tier-5 .ar-combo-x { font-size: 28px; }
+  .ar-combo-chip.tier-5 { animation: arComboTier5Pulse 1.0s ease-in-out infinite; }
+  @keyframes arComboTier5Pulse {
+    0%, 100% { box-shadow: 0 0 22px rgba(255,87,100,0.7), 3px 3px 0 #000; }
+    50%      { box-shadow: 0 0 36px rgba(255,87,100,1), 3px 3px 0 #000; }
+  }
+  .ar-combo-chip.tier-6 { border-color: #ffce4f;       background: rgba(80,30,5,0.85); color: var(--gold); }
+  .ar-combo-chip.tier-6 .ar-combo-x { font-size: 32px; }
+  .ar-combo-chip.tier-6 { animation: arComboTier6Pulse .7s ease-in-out infinite; }
+  @keyframes arComboTier6Pulse {
+    0%, 100% { box-shadow: 0 0 28px var(--gold), 3px 3px 0 #000; filter: hue-rotate(0deg); }
+    50%      { box-shadow: 0 0 50px var(--gold), 3px 3px 0 #000; filter: hue-rotate(20deg); }
+  }
+  .ar-combo-chip.tier-7 {
+    background: rgba(20, 0, 30, 0.9);
+    border-color: var(--neon);
+    color: #fff;
+    text-shadow: 2px 2px 0 #000, 0 0 8px var(--neon);
+  }
+  .ar-combo-chip.tier-7 .ar-combo-x { font-size: 36px; }
+  .ar-combo-chip.tier-7 { animation: arComboTier7Pulse .5s ease-in-out infinite; }
+  @keyframes arComboTier7Pulse {
+    0%, 50%, 100% { box-shadow: 0 0 30px var(--neon), 0 0 60px var(--neon), 3px 3px 0 #000; filter: hue-rotate(0deg) brightness(1); }
+    25%           { box-shadow: 0 0 50px var(--neon-3), 0 0 80px var(--neon-3), 3px 3px 0 #000; filter: hue-rotate(60deg) brightness(1.3); }
+    75%           { box-shadow: 0 0 50px var(--gold), 0 0 80px var(--gold), 3px 3px 0 #000; filter: hue-rotate(-60deg) brightness(1.3); }
+  }
+  /* GODLIKE — chip rainbows + the screen border glows. The dream tier. */
+  .ar-combo-chip.tier-8 {
+    background: rgba(0, 0, 0, 0.85);
+    border-color: #fff;
+    color: #fff;
+    text-shadow: 2px 2px 0 #000, 0 0 12px #fff, 0 0 24px #ff3da6;
+    animation: arComboGodlike .25s linear infinite;
+  }
+  .ar-combo-chip.tier-8 .ar-combo-x { font-size: 40px; }
+  @keyframes arComboGodlike {
+    0%   { box-shadow: 0 0 30px #ff3da6, 0 0 60px #ff3da6, 3px 3px 0 #000; filter: hue-rotate(0deg) brightness(1.4); }
+    25%  { box-shadow: 0 0 30px #ffce4f, 0 0 60px #ffce4f, 3px 3px 0 #000; filter: hue-rotate(72deg) brightness(1.4); }
+    50%  { box-shadow: 0 0 30px #00e6c3, 0 0 60px #00e6c3, 3px 3px 0 #000; filter: hue-rotate(144deg) brightness(1.4); }
+    75%  { box-shadow: 0 0 30px #7b5cff, 0 0 60px #7b5cff, 3px 3px 0 #000; filter: hue-rotate(216deg) brightness(1.4); }
+    100% { box-shadow: 0 0 30px #ff5764, 0 0 60px #ff5764, 3px 3px 0 #000; filter: hue-rotate(288deg) brightness(1.4); }
+  }
+
+  /* ── Tier-up banner — fires on each new tier crossing. ── */
+  .ar-combo-tierup {
+    position: absolute;
+    top: 35%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 9;
+    animation: arComboTierUpLife 1.1s ease both;
+    color: var(--gold);
+    text-shadow: 3px 3px 0 #000, 0 0 14px currentColor;
+  }
+  .ar-combo-tierup-x {
+    font-family: var(--px);
+    font-size: 40px;
+    letter-spacing: 2px;
+    line-height: 1;
+  }
+  .ar-combo-tierup-name {
+    font-family: var(--px);
+    font-size: 14px;
+    letter-spacing: 4px;
+    margin-top: 6px;
+  }
+  .ar-combo-tierup.tier-3 { color: var(--neon-3); }
+  .ar-combo-tierup.tier-4 { color: var(--neon); }
+  .ar-combo-tierup.tier-5 { color: #ff8c4a; }
+  .ar-combo-tierup.tier-5 .ar-combo-tierup-x { font-size: 46px; }
+  .ar-combo-tierup.tier-6 { color: var(--gold); }
+  .ar-combo-tierup.tier-6 .ar-combo-tierup-x { font-size: 52px; }
+  .ar-combo-tierup.tier-7 { color: #fff; }
+  .ar-combo-tierup.tier-7 .ar-combo-tierup-x { font-size: 60px; animation: arComboGodlike .35s linear infinite; }
+  .ar-combo-tierup.tier-8 {
+    color: #fff;
+    animation: arComboTierUpLifeGod 1.6s ease both;
+  }
+  .ar-combo-tierup.tier-8 .ar-combo-tierup-x {
+    font-size: 78px;
+    animation: arComboGodlike .25s linear infinite;
+  }
+  @keyframes arComboTierUpLife {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+    70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -90%) scale(0.95); }
+  }
+  @keyframes arComboTierUpLifeGod {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+    15%  { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+    25%  { transform: translate(-50%, -50%) scale(1.1); }
+    70%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    100% { opacity: 0; transform: translate(-50%, -90%) scale(1); }
   }
 
   /* ── Phase damage — tint sprite + screen as boss HP drops. ── */
@@ -10105,7 +10212,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.295';
+const BUILD_VERSION = '2026.05.23.296';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -26400,6 +26507,15 @@ async function openARFinisher(stepIdx) {
     x: (Math.random() - 0.5) * 220,    // ±110px from screen center
     y: (Math.random() - 0.5) * 80,     // ±40px
   };
+  // EMA-smoothed position. Without this the raw gyro feed is jittery
+  // — accelerometer noise translates to ~1-3px per-frame chatter on
+  // the sprite even when the phone is held still. SMOOTH_FACTOR is
+  // the per-event blend toward the target; 0.2 = 20% target / 80%
+  // last frame, which lands at "responsive but glassy" on a 60Hz
+  // orient feed. Lower if it feels laggy, higher if it feels jumpy.
+  const SMOOTH_FACTOR = 0.2;
+  let smoothedDx = worldOffset.x;
+  let smoothedDy = worldOffset.y;
   const sprite = wrap.querySelector('#arBossSprite');
   const anchor = wrap.querySelector('#arBossAnchor');
   function applySpritePos(dx, dy) {
@@ -26427,9 +26543,13 @@ async function openARFinisher(stepIdx) {
     // hyper-rigid feel.
     const yawSensitivity   = window.innerWidth  / 30;   // off-screen at ~30° yaw
     const pitchSensitivity = window.innerHeight / 60;   // off-screen at ~60° pitch
-    const dx = worldOffset.x + dAlpha * yawSensitivity;
-    const dy = worldOffset.y + dBeta  * pitchSensitivity;
-    applySpritePos(dx, dy);
+    const targetDx = worldOffset.x + dAlpha * yawSensitivity;
+    const targetDy = worldOffset.y + dBeta  * pitchSensitivity;
+    // EMA-blend toward target. Buttery feel without the lag of a
+    // CSS transition fighting our inline transform updates.
+    smoothedDx = smoothedDx + (targetDx - smoothedDx) * SMOOTH_FACTOR;
+    smoothedDy = smoothedDy + (targetDy - smoothedDy) * SMOOTH_FACTOR;
+    applySpritePos(smoothedDx, smoothedDy);
   }
   if (orientPermGranted) {
     window.addEventListener('deviceorientation', onOrient);
@@ -26462,30 +26582,89 @@ async function openARFinisher(stepIdx) {
       try { navigator.vibrate && navigator.vibrate([40, 40, 40]); } catch {}
     }
   }
-  function comboMultiplier() {
-    if (comboCount >= 10) return 2.0;
-    if (comboCount >= 5)  return 1.5;
-    return 1.0;
+  // Combo tier table. Display number climbs to ×500 (the legendary
+  // ceiling — most players will never see it, but having a peak to
+  // chase makes mid-tier values feel earned). The ACTUAL damage
+  // multiplier caps at ×10 — anything higher trivializes the fight.
+  // So the chain-count display is a vanity meter; the damage cap
+  // protects balance.
+  const COMBO_TIERS = [
+    { min: 500, mult: 10, display: 500, name: 'GODLIKE',   tier: 8 },
+    { min: 200, mult: 10, display: 100, name: 'ULTRA',     tier: 7 },
+    { min: 100, mult:  8, display:  50, name: 'MEGA',      tier: 6 },
+    { min:  50, mult:  5, display:  25, name: 'WICKED',    tier: 5 },
+    { min:  25, mult:  3, display:  10, name: 'TRIPLE',    tier: 4 },
+    { min:  10, mult:  2, display:   5, name: 'DOUBLE',    tier: 3 },
+    { min:   5, mult: 1.5, display: 2.5,name: 'COMBO',     tier: 2 },
+    { min:   2, mult:  1, display:   1, name: 'CHAIN',     tier: 1 },
+  ];
+  let lastComboTier = 0;
+  function comboTier() {
+    for (const t of COMBO_TIERS) {
+      if (comboCount >= t.min) return t;
+    }
+    return { min: 0, mult: 1, display: 1, name: '', tier: 0 };
   }
+  function comboMultiplier() { return comboTier().mult; }
   function updateComboChip() {
     const chip = wrap.querySelector('#arCombo');
     const xEl  = wrap.querySelector('#arComboX');
+    const lbl  = wrap.querySelector('#arComboLabel');
     if (!chip || !xEl) return;
     if (comboCount >= 2) {
+      const t = comboTier();
       chip.style.display = '';
-      const mult = comboMultiplier();
-      xEl.textContent = '×' + (mult === 1 ? 1 : (mult === 2 ? 2 : '1.5'));
-      // Restart the chip pulse on every increment.
+      // Show the display ×number (climbs to ×500 even though damage
+      // mult is capped at ×10). Append the chain count below so
+      // players see both the prestige number and the underlying
+      // chain length.
+      xEl.textContent = '×' + t.display;
+      if (lbl) lbl.textContent = `${t.name} · ${comboCount} HIT${comboCount === 1 ? '' : 'S'}`;
+      // Apply tier-specific class so visuals escalate.
+      chip.classList.remove('tier-1','tier-2','tier-3','tier-4','tier-5','tier-6','tier-7','tier-8');
+      chip.classList.add('tier-' + t.tier);
+      // Restart the chip bump on every increment.
       chip.classList.remove('arComboBump');
       void chip.offsetWidth;
       chip.classList.add('arComboBump');
+      // Tier-up announcement — fires when crossing into a NEW tier
+      // (i.e. first hit of that tier). Banner + sfx + haptic.
+      if (t.tier > lastComboTier) {
+        lastComboTier = t.tier;
+        spawnComboTierUp(t);
+      }
     } else {
       chip.style.display = 'none';
     }
   }
+  function spawnComboTierUp(tier) {
+    const banner = document.createElement('div');
+    banner.className = 'ar-combo-tierup tier-' + tier.tier;
+    banner.innerHTML = `
+      <div class="ar-combo-tierup-x">×${tier.display}</div>
+      <div class="ar-combo-tierup-name">${tier.name}</div>
+    `;
+    wrap.querySelector('.ar-overlay')?.appendChild(banner);
+    banner.addEventListener('animationend', () => banner.remove(), { once: true });
+    // Tier-specific feedback: each step up the ladder gets a heavier
+    // sound + haptic pattern. The GODLIKE tier triggers a full
+    // celebratory chain.
+    try {
+      if (tier.tier >= 7)      { sfx.achievement && sfx.achievement(); }
+      else if (tier.tier >= 5) { sfx.success && sfx.success(); }
+      else                      { sfx.step && sfx.step(); }
+    } catch {}
+    try {
+      const buzz = tier.tier >= 7 ? [60, 40, 60, 40, 120]
+                 : tier.tier >= 5 ? [40, 30, 40]
+                 : [30];
+      navigator.vibrate && navigator.vibrate(buzz);
+    } catch {}
+  }
   function breakCombo() {
     if (comboCount === 0) return;
     comboCount = 0;
+    lastComboTier = 0;
     updateComboChip();
   }
   function applyDamage(rawDmg, opts = {}) {
