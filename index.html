@@ -6003,6 +6003,63 @@
     line-height: 1.45;
   }
 
+  /* ---------- Geo-gate stage ---------- */
+  /* "Walk N meters from where you started before this step's proof
+     unlocks" UI. Pixel-paired with .motion-stage so the eye reads them
+     as the same family of "the phone is verifying you actually did the
+     thing" surfaces. Bar fills as the player covers ground. */
+  .geo-stage {
+    background: var(--card);
+    border: 3px solid #000;
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5),
+                inset  2px  2px 0 rgba(255,255,255,0.06),
+                4px 4px 0 #000;
+    padding: 16px 14px 14px;
+    text-align: center;
+    margin-top: 10px;
+  }
+  .geo-label {
+    font-family: var(--px); font-size: 10px;
+    color: var(--neon-3);
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .geo-bar {
+    height: 14px;
+    background: #0a0518;
+    border: 2px solid #000;
+    box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  .geo-bar-fill {
+    height: 100%;
+    /* Distinct palette from motion-bar so the player can tell at a
+       glance which kind of "do the thing" surface they're looking at —
+       blue-ish for "go somewhere," warm for "move the phone." */
+    background: linear-gradient(90deg, #4adcff 0%, var(--neon-3) 55%, var(--gold) 100%);
+    transition: width .25s ease;
+    width: 0%;
+  }
+  .geo-distance {
+    font-family: var(--px); font-size: 14px;
+    color: var(--ink);
+    margin: 10px 0 2px;
+    letter-spacing: 1px;
+  }
+  .geo-meta {
+    font-family: var(--px); font-size: 8px;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+    min-height: 12px;
+  }
+  .geo-hint {
+    font-family: var(--term);
+    font-size: 13px;
+    color: var(--ink-dim);
+    line-height: 1.45;
+  }
+
   /* ---------- Avatar (header + profile) ---------- */
   .avatar {
     position: relative;
@@ -9556,7 +9613,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.22.284';
+const BUILD_VERSION = '2026.05.22.285';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -17109,6 +17166,14 @@ function renderProofUI(s, i) {
       </div>
     `;
   }
+  // ── GEO-GATE — when a step has step.walkDistance, the proof UI is
+  // locked behind "physically walk N meters first." Uses the browser
+  // Geolocation API; permission is requested via a Start button so it
+  // fires inside a user gesture (iOS Safari's requirement). Cleared
+  // gates persist on r.geoCleared[i] so a re-render doesn't re-lock.
+  if (s.walkDistance && !(r.geoCleared && r.geoCleared[i])) {
+    return renderGeoGateUI(s, i);
+  }
   // ── MOTION proof — sensor verification via DeviceMotionEvent. The
   // step.instr tells the player what to do ("walk 10 steps", "do 8
   // jumping jacks", "shake the phone 5 times"); the accelerometer is
@@ -17173,6 +17238,183 @@ function renderProofUI(s, i) {
   // the photo path so the rest of the pipeline keeps working.
   s.proof = 'photo';
   return renderProofUI(s, i);
+}
+
+// ── GEO-GATE lifecycle ──────────────────────────────────────────────
+// Adds a "physically walk N meters from where you started" requirement
+// in front of any step that sets step.walkDistance. Privacy: we never
+// store the raw coordinates on r — we keep a start-anchor in memory
+// only (closure-scoped on _geoActive) and persist nothing but the
+// running distance and the cleared flag. Stops every watcher when the
+// step changes, completes, or the run ends, so the GPS chip doesn't
+// stay hot in the background.
+let _geoWatcherId = null;
+let _geoActive = null;            // { i, run, startCoords:{lat,lng}, cleared, target }
+function haversineMeters(a, b) {
+  if (!a || !b) return 0;
+  // Standard great-circle distance. 6371000 = Earth radius in meters.
+  const toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat), lat2 = toRad(b.lat);
+  const x = Math.sin(dLat / 2) ** 2
+          + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371000 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, x))));
+}
+function detachGeoWatcher() {
+  if (_geoWatcherId != null) {
+    try { navigator.geolocation.clearWatch(_geoWatcherId); } catch {}
+    _geoWatcherId = null;
+  }
+  _geoActive = null;
+}
+function startGeoGateForStep(r, i) {
+  const step = r.quest && r.quest[i];
+  if (!step) return;
+  // Same defensive shape as the motion verifier: if the API isn't
+  // here, auto-clear the gate so the player can keep playing rather
+  // than dead-end on a permission that doesn't exist on this device.
+  if (!navigator.geolocation) {
+    toast('Location unavailable on this device — gate skipped.');
+    r.geoCleared = r.geoCleared || {};
+    r.geoCleared[i] = true;
+    render();
+    return;
+  }
+  const target = Math.max(10, Math.min(500, +step.walkDistance || 100));
+  r.geoState = r.geoState || {};
+  r.geoState[i] = { running: true, paused: false, distance: 0, target, startedAt: Date.now() };
+  detachGeoWatcher();
+  _geoActive = { i, run: r, startCoords: null, target, lastUiUpdate: 0 };
+  // High accuracy on; max 30s before a position is considered stale.
+  // The geolocation prompt itself is what triggers the browser UI;
+  // because this runs inside the Start button's click handler, iOS
+  // Safari accepts it as a valid user gesture.
+  _geoWatcherId = navigator.geolocation.watchPosition(
+    (pos) => {
+      if (!_geoActive || _geoActive.i !== i) return;
+      const cur = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      if (!_geoActive.startCoords) {
+        // First fix — anchor here and zero out the distance. The first
+        // fix can be a coarse Wi-Fi reading on some devices, but every
+        // subsequent fix is GPS-fresh and the distance grows correctly.
+        _geoActive.startCoords = cur;
+      }
+      const dist = haversineMeters(_geoActive.startCoords, cur);
+      const st = _geoActive.run.geoState && _geoActive.run.geoState[i];
+      if (!st || !st.running) return;
+      st.distance = dist;
+      st.accuracy = pos.coords.accuracy || null;
+      // Patch the live counter / bar without re-rendering the whole
+      // step card. Full render is too expensive for 1Hz GPS ticks.
+      const stage = document.getElementById('geo-' + i);
+      if (stage) {
+        const fill = stage.querySelector('.geo-bar-fill');
+        const num  = stage.querySelector('.geo-distance');
+        const acc  = stage.querySelector('.geo-acc');
+        const pct = Math.min(100, Math.round(dist / st.target * 100));
+        if (fill) fill.style.width = pct + '%';
+        if (num)  num.textContent  = `${Math.round(dist)} m / ${st.target} m`;
+        if (acc && pos.coords.accuracy) acc.textContent = `± ${Math.round(pos.coords.accuracy)}m`;
+      }
+      if (dist >= st.target) {
+        // Cleared. Persist the flag, kill the watcher, sweep the UI to
+        // the proof stage. We deliberately don't keep startCoords on r
+        // — even closing the tab loses them, which is what we want.
+        st.running = false;
+        _geoActive.run.geoCleared = _geoActive.run.geoCleared || {};
+        _geoActive.run.geoCleared[i] = true;
+        detachGeoWatcher();
+        try { sfx.success && sfx.success(); } catch {}
+        setTimeout(() => render(), 250);
+      }
+    },
+    (err) => {
+      console.warn('[geo] watch error', err);
+      // Most common: permission denied. Don't trap the player — flip
+      // the gate to cleared so they can submit their proof normally.
+      // The whole quest stops being walk-gated for THIS step only.
+      toast('Location blocked — skipping the walk gate for this step.');
+      r.geoCleared = r.geoCleared || {};
+      r.geoCleared[i] = true;
+      detachGeoWatcher();
+      render();
+    },
+    { enableHighAccuracy: true, maximumAge: 30000, timeout: 60000 }
+  );
+}
+function pauseGeoForStep(r, i) {
+  if (r.geoState && r.geoState[i]) {
+    r.geoState[i].running = false;
+    r.geoState[i].paused = true;
+  }
+  detachGeoWatcher();
+}
+function resetGeoForStep(r, i) {
+  if (r.geoState && r.geoState[i]) {
+    r.geoState[i] = { ...r.geoState[i], distance: 0, running: false, paused: false };
+  }
+  detachGeoWatcher();
+}
+function bindGeoProofs(r) {
+  document.querySelectorAll('[data-geo-start]').forEach(b => b.onclick = () => {
+    startGeoGateForStep(r, +b.dataset.geoStart);
+    render();
+  });
+  document.querySelectorAll('[data-geo-stop]').forEach(b => b.onclick = () => {
+    pauseGeoForStep(r, +b.dataset.geoStop);
+    render();
+  });
+  document.querySelectorAll('[data-geo-reset]').forEach(b => b.onclick = () => {
+    resetGeoForStep(r, +b.dataset.geoReset);
+    render();
+  });
+}
+function renderGeoGateUI(s, i) {
+  const r = state.run;
+  const gs = (r.geoState && r.geoState[i]) || {};
+  const target = Math.max(10, Math.min(500, +s.walkDistance || 100));
+  // Stale-running normalization. If the saved state says we're tracking
+  // but no live watcher is attached (e.g. the player refreshed the
+  // tab), we can't keep the previous startCoords anyway — we never
+  // persisted them. Show as paused so the player gets an explicit
+  // Resume tap, and zero the distance so the next start measures from
+  // the player's CURRENT position rather than mixing with stale data.
+  const watcherLive = _geoWatcherId != null && _geoActive && _geoActive.i === i;
+  if (gs.running && !watcherLive) {
+    gs.running = false;
+    gs.paused = true;
+    gs.distance = 0;
+  }
+  const dist = Math.min(gs.distance || 0, target);
+  const pct = Math.round((dist / target) * 100);
+  const running = !!gs.running;
+  const paused = !!gs.paused;
+  return `
+    <div class="geo-stage" id="geo-${i}" data-geo-target="${target}">
+      <div class="geo-label">▸ WALK GATE · MOVE BEFORE YOU SUBMIT</div>
+      <div class="geo-bar"><div class="geo-bar-fill" style="width:${pct}%"></div></div>
+      <div class="geo-distance">${Math.round(dist)} m / ${target} m</div>
+      <div class="geo-meta">
+        <span class="geo-acc">${gs.accuracy ? `± ${Math.round(gs.accuracy)}m` : ''}</span>
+      </div>
+      <div class="geo-hint">${
+        running
+          ? 'Tracking… keep walking. The bar fills as you cover ground.'
+          : paused
+            ? 'Paused. Tap Resume when you’re ready to walk again.'
+            : 'Tap Start, accept location, then walk ' + target + ' meters in any direction. Your photo proof unlocks when the bar fills.'
+      }</div>
+    </div>
+    <div class="row" style="margin-top:8px; gap:6px;">
+      ${running
+        ? `<button class="btn ghost sm" data-geo-stop="${i}">⏸ Pause</button>
+           <button class="btn ghost sm" data-geo-reset="${i}">↺ Reset</button>`
+        : `<button class="btn primary sm" data-geo-start="${i}">▶ ${paused ? 'Resume tracking' : 'Start tracking'}</button>${
+            paused ? `<button class="btn ghost sm" data-geo-reset="${i}">↺ Reset</button>` : ''
+          }`}
+    </div>
+  `;
 }
 
 // ── MOTION sensor lifecycle ──────────────────────────────────────────
@@ -17610,6 +17852,9 @@ function bindQuest() {
   // baseline). One global listener at a time; the per-step state lives
   // on r.motionState[i] and the active step is tracked by r._motionActive.
   bindMotionProofs(r);
+  // Geo-gate handlers — for steps with step.walkDistance set, the
+  // photo/motion/timer proof UI is locked behind a GPS-verified walk.
+  bindGeoProofs(r);
   // Timer-start handler — kicks off the wait countdown for proof:'timer'
   // steps. We record start time on r.timerStarts[i] and tick render()
   // once per second so the UI refreshes the remaining-seconds label and
@@ -18941,6 +19186,10 @@ function finalizeRun() {
   // home screen doesn't show a stale RESUME card after the player
   // collects their reward and goes home.
   clearResumeState();
+  // Kill any live GPS / motion watchers so the radio chip stops eating
+  // battery between runs. Safe to call even if nothing was attached.
+  try { detachGeoWatcher && detachGeoWatcher(); } catch {}
+  try { detachMotionListener && detachMotionListener(); } catch {}
   // Remember the player's last-run mode so the home-screen welcome bubble
   // and other "between runs" surfaces can stay in the correct character
   // (System vs Gremlin) until the next run starts.
@@ -19253,6 +19502,9 @@ async function failRun(reason) {
   // in-progress save so the home screen doesn't surface a RESUME card
   // for a run that no longer exists.
   clearResumeState();
+  // Kill any live GPS / motion watchers — same teardown as finalizeRun.
+  try { detachGeoWatcher && detachGeoWatcher(); } catch {}
+  try { detachMotionListener && detachMotionListener(); } catch {}
   toast(reason || 'Run failed.');
   // CRT power-off — fires before any cleanup so the player sees the
   // screen visibly "turn off" the moment they confirm abandon.
@@ -22953,6 +23205,15 @@ function validateGeneratedQuest(ai, r) {
     if (stepProof === 'tap' || stepProof === 'confirm' || stepProof === 'hold') {
       violations.push(`Step ${idx + 1} uses banned proof type "${stepProof}". Allowed: "photo", "motion", "timer". Pick whichever fits — most steps want "photo".`);
     }
+    // Walk-gate sanity. Out-of-range values would feel either trivial
+    // (5m = the player stretches and it passes) or impossible (3km in
+    // a 60s step budget). Hard-cap to the documented 20-300m range.
+    if (step && step.walkDistance != null) {
+      const wd = +step.walkDistance;
+      if (!Number.isFinite(wd) || wd < 20 || wd > 300) {
+        violations.push(`Step ${idx + 1} walkDistance=${step.walkDistance} is out of range. Must be an integer 20-300 meters, or omit the field.`);
+      }
+    }
     const SEQUENCE_PATTERN = /\b(?:touch|visit|tap|walk\s+to|approach|reach|enter)\s+(?:each\s+of\s+)?(?:three|four|five|six|seven|3|4|5|6|7)\s+(?:different\s+)?\w+/i;
     if (SEQUENCE_PATTERN.test(text) && stepProof === 'photo' && (!stepPhotoCount || stepPhotoCount < 2)) {
       const m = text.match(SEQUENCE_PATTERN);
@@ -24109,6 +24370,16 @@ PROOF — strict
 - step.motionTarget: integer 3-30. Match it to the action ("walk 10 steps" → 10; "do 5 jumping jacks" → 5; "shake the phone 8 times" → 8). The step.instr should plainly tell the player what to do; the sensor counts for them.
 - One photo per step. No video, no screenshots, no multi-shot, no before/after.
 - A step CAN have photoCount: 2-4 when it genuinely needs multiple distinct photos (e.g. "three different chairs, one photo per chair"), but default to 1.
+
+WALK GATE — optional, ONLY when the step genuinely requires the player to physically move somewhere before they can submit proof. Set step.walkDistance to an integer of meters (20-300). The proof UI is locked until the player has covered that distance from where they tapped "start tracking" — verified by GPS. Examples of GOOD fits:
+- A "Move" step asking the player to find something a block away ("walk to the nearest crosswalk and photograph the button"), walkDistance: 80.
+- A "Final Attack" that demands real distance from the starting spot ("get 200m from where you were sitting before you fire the last shot"), walkDistance: 200.
+- Anti-couch steps where the whole point is "leave the room you started in."
+Examples of BAD fits (do NOT add walkDistance to these):
+- Find/Pose/Puzzle steps where the player can do the action where they're standing.
+- "Quiet 5 minutes" timer steps — the player is meant to stay still.
+- Indoor-locked runs (limit "Keep it indoors") — apartments may not give the player room to walk 80m.
+Defaults: walkDistance 60-120m for normal moves, 150-250m for Final Attacks that want real travel. Don't bolt it onto every step — overuse turns the run into a parade.
 - ⚠ UNVERIFIABLE-SEQUENCE TRAP — strict (testers flagged this). NEVER write a step that requires the player to do N SEQUENTIAL ACTIONS but uses single-photo proof. Single-photo proof can only show ONE MOMENT — the AI judge cannot verify whether the player did the other N-1 actions before the photo. Examples of the FORBIDDEN pattern:
   · "touch five machines in order, then photograph the fifth" — judge can't see the first four → fails.
   · "walk to three zones in sequence and photograph the third" — same issue.
