@@ -5957,6 +5957,52 @@
   .photo-judge.pass .verdict { color: var(--neon-3); }
   .photo-judge.fail .verdict { color: var(--danger); }
 
+  /* ---------- Motion-proof stage ---------- */
+  /* Sensor-based step verification UI. Lives in the step card next to
+     the photo-stage classes so the eye lines them up as the same kind
+     of "do something real to advance" affordance. */
+  .motion-stage {
+    background: var(--card);
+    border: 3px solid #000;
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5),
+                inset  2px  2px 0 rgba(255,255,255,0.06),
+                4px 4px 0 #000;
+    padding: 16px 14px 14px;
+    text-align: center;
+    margin-top: 10px;
+  }
+  .motion-label {
+    font-family: var(--px); font-size: 10px;
+    color: var(--gold);
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .motion-bar {
+    height: 14px;
+    background: #0a0518;
+    border: 2px solid #000;
+    box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  .motion-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-3) 0%, var(--neon) 60%, var(--gold) 100%);
+    transition: width .18s ease;
+    width: 0%;
+  }
+  .motion-count {
+    font-family: var(--px); font-size: 14px;
+    color: var(--ink);
+    margin: 10px 0 6px;
+    letter-spacing: 1px;
+  }
+  .motion-hint {
+    font-family: var(--term);
+    font-size: 13px;
+    color: var(--ink-dim);
+    line-height: 1.45;
+  }
+
   /* ---------- Avatar (header + profile) ---------- */
   .avatar {
     position: relative;
@@ -9510,7 +9556,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.22.283';
+const BUILD_VERSION = '2026.05.22.284';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -11664,7 +11710,7 @@ function buildPartyQuest(diff, vibes, r) {
       type: 'Sabotage', title: 'Secret Saboteur Twist',
       instr: 'A vibe-twist interrupts the arc: one random player has been secretly chosen as the Saboteur. They must subtly slow the group by one minute without admitting it.',
       examples: ['"wait I dropped something"', 'fake bathroom detour', 'stop to read a poster'],
-      proof: 'confirm', dmg: 30 + stepBonus,
+      proof: 'photo', dmg: 30 + stepBonus,
     });
   }
   if (isChaos) {
@@ -11734,7 +11780,7 @@ function buildPartyQuestVariants(diff, vibes, r) {
       type: 'Sabotage', title: 'Secret Saboteur step',
       instr: 'One random player has been chosen as the Saboteur. They must subtly slow the group by one minute without admitting it.',
       examples: ['"wait I dropped something"', 'fake bathroom detour', 'stop to check a poster'],
-      proof: 'confirm', dmg: 30 + stepBonus,
+      proof: 'photo', dmg: 30 + stepBonus,
     });
   }
   if (isChaos) {
@@ -11742,7 +11788,7 @@ function buildPartyQuestVariants(diff, vibes, r) {
       type: 'Twist', title: 'Chaos twist: swap a phone',
       instr: 'Trade your phone with the player on your left for the next step only. No reading their messages.',
       examples: [],
-      proof: 'confirm', dmg: 25 + stepBonus,
+      proof: 'photo', dmg: 25 + stepBonus,
     });
   }
   if (isRoasty) {
@@ -12843,6 +12889,76 @@ function go(view, opts = {}) {
   if (opts.setupStep !== undefined) state.setupStep = opts.setupStep;
   render();
   window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+// Android back-button intercept (tester #4 on Samsung A06 — the system
+// back button bounced them straight to the home screen instead of
+// stepping back inside the PWA). We push a single sentinel history
+// entry on boot; popstate fires it, we handle navigation in-app, then
+// re-push so the next back press also lands on us. Plain anchor links
+// and the legacy ?room= bootstrap still work because we only intercept
+// the popstate event, not link clicks.
+let _backBtnInstalled = false;
+function installBackButtonIntercept() {
+  if (_backBtnInstalled) return;
+  _backBtnInstalled = true;
+  try { history.pushState({ qirl: 'app' }, ''); } catch {}
+  window.addEventListener('popstate', async (e) => {
+    try { await handleHardwareBack(); }
+    finally {
+      // Always re-push so we stay in control of the back button across
+      // the whole session. Even if handleHardwareBack chose to do
+      // nothing, swallowing the pop keeps the PWA from exiting.
+      try { history.pushState({ qirl: 'app' }, ''); } catch {}
+    }
+  });
+}
+
+// In-app back semantics — mirrors what the player expects when they
+// press the system back button on Android. Order matters: dismiss any
+// open overlay first (modals, chat sheet, live camera), then handle
+// mid-run quit confirms, then fall back to "go home". Each branch
+// returns after acting so we don't double-handle.
+async function handleHardwareBack() {
+  // 1. Dismiss the live in-app camera if it's up — captures aren't
+  //    in flight (the user wanted out), kill the stream cleanly via
+  //    the close button so torch + tracks teardown the same as a
+  //    manual cancel.
+  const cam = document.querySelector('.camera-modal');
+  if (cam) { cam.querySelector('#camCancel')?.click(); return; }
+  // 2. Close any other overlay (chat sheet, settings, confirm modals,
+  //    chibi picker, photo wall, etc). Most are wrap-divs that own
+  //    their close logic via the click-on-backdrop pattern.
+  const overlay = document.querySelector('.chat-bg, .modal-bg, .chibi-picker-bg, .photo-wall-bg, .dev-menu-bg');
+  if (overlay) { overlay.remove(); return; }
+  // 3. Mid-quest with the quest revealed → reuse the existing abandon
+  //    confirm so the player can't accidentally torch progress.
+  if (state.view === 'quest' && state.run && state.run.questRevealed
+      && typeof showAbandonConfirmModal === 'function') {
+    const ok = await showAbandonConfirmModal();
+    if (!ok) return;
+    try { stopTimer && stopTimer(); } catch {}
+    if (typeof failRun === 'function') failRun('Run abandoned. Streak reset.');
+    return;
+  }
+  // 4. Setup / pre-quest stages → "back to main menu?" confirm. Same
+  //    set the brand-tap uses so the affordances stay aligned.
+  const SETUP_VIEWS = new Set(['setup', 'generating', 'boss', 'roleReveal', 'wheel']);
+  if (SETUP_VIEWS.has(state.view) && state.run && typeof showBackToMenuModal === 'function') {
+    const ok = await showBackToMenuModal();
+    if (!ok) return;
+    state.run = null;
+    state.view = 'home';
+    render();
+    return;
+  }
+  // 5. Result / reward / inventory / store / profile / etc → home.
+  //    Home itself: do nothing (let the next back-press be the only
+  //    one that could exit the PWA, since we re-pushed on the way in).
+  if (state.view !== 'home') {
+    state.view = 'home';
+    render();
+  }
 }
 
 const FRAME_IMG_IDS = new Set([
@@ -16993,53 +17109,264 @@ function renderProofUI(s, i) {
       </div>
     `;
   }
+  // ── MOTION proof — sensor verification via DeviceMotionEvent. The
+  // step.instr tells the player what to do ("walk 10 steps", "do 8
+  // jumping jacks", "shake the phone 5 times"); the accelerometer is
+  // what proves they did it. A button alone is never enough anymore.
+  if (s.proof === 'motion') {
+    return renderMotionProofUI(s, i);
+  }
+  // ── TIMER proof — passive wait. The countdown IS the verification
+  // (you can't skip past it), and after it ends we still want a
+  // single photo to seal the step so progression isn't just a tap.
   if (s.proof === 'timer') {
-    return `
-      <div class="photo-stage" id="photo-${i}">
-        <div class="placeholder">🧘<br/>STAY PUT ${(s.timerSec/60)|0} MIN</div>
-      </div>
-      <div class="row">
-        <button class="btn primary sm" data-complete="${i}">I Stayed</button>
-      </div>
-    `;
-  }
-  // ── HOLD proof — player must sustain a touch on the button for N
-  // seconds. The button MOVES around the track every 1.2-1.8s while
-  // held, forcing the player to follow it. Losing contact restarts.
-  // Used for sustained-physical-commitment steps (eye contact, no
-  // blinking, prolonged silence). The challenge LIVES in the step.instr
-  // text + the moving button forces embodied engagement.
-  // ── HOLD proof — SHELVED (May 18). Was a press-and-hold mechanic
-  // with a moving button on a track. Wouldn't work reliably on iOS
-  // and required deeper investigation than current priorities allow.
-  // If the AI generates proof:"hold" anyway (stale prompt cache, etc),
-  // we fall through to the Confirm Done button below as a safe default.
-  // See IDEAS tab → "Re-enable hold proof" for the rework plan.
-  if (s.proof === 'hold') {
-    // intentional fall-through to the generic Confirm Done button
-  }
-  // ── TAP proof — player taps a counter N times. Used for counted-
-  // ritual steps where each tap represents something (a breath, a
-  // thing being let go, etc.). The challenge LIVES in the step.instr
-  // (what each tap means, what cadence to use).
-  if (s.proof === 'tap') {
-    const tapTarget = Math.max(3, Math.min(30, s.tapCount || 7));
+    const startTs = (r.timerStarts || {})[i];
+    const target = Math.max(15, Math.min(900, s.timerSec || 60));
+    const elapsed = startTs ? Math.floor((Date.now() - startTs) / 1000) : 0;
+    const remaining = Math.max(0, target - elapsed);
+    const waited = remaining === 0;
     const proof = r.proofs[i];
-    const current = (proof && typeof proof.tapsDone === 'number') ? proof.tapsDone : 0;
-    const completed = current >= tapTarget;
+    if (!waited) {
+      return `
+        <div class="photo-stage" id="photo-${i}">
+          <div class="placeholder">⏳<br/>WAIT ${remaining}s</div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          ${startTs
+            ? `<button class="btn ghost sm" disabled>Waiting…</button>`
+            : `<button class="btn primary sm" data-timer-start="${i}">▶ Start the wait</button>`}
+        </div>
+      `;
+    }
+    // Wait is done — now collect the sealing photo so the step still
+    // ends on real device evidence rather than a naked Done button.
+    const hasApi = aiAvailable();
+    const judgment = r.judgments[i];
+    const submitDisabled = !proof || (judgment && !judgment.pass);
     return `
-      <div class="tap-stage" id="tap-${i}" data-tap-target="${tapTarget}">
-        <div class="tap-label">${completed ? '✓ DONE' : `TAP ${current} / ${tapTarget}`}</div>
-        <button class="btn primary tap-btn ${completed ? 'done' : ''}" data-tap="${i}" ${completed ? 'disabled' : ''}>
-          ${completed ? 'COMPLETE' : 'TAP'}
-        </button>
+      <div class="photo-stage ${proof ? 'has-photo' : ''}" id="photo-${i}" data-shoot="${i}" style="cursor: pointer;">
+        ${proof
+          ? `<img class="snap" src="${proof.dataUrl}" alt="proof"/>`
+          : '<div class="placeholder"><img src="img/ui_camera.png?v=2" class="capture-ic" alt=""/><br/>WAIT DONE · CAPTURE TO SEAL</div>'}
       </div>
-      <div class="row" style="margin-top:8px;">
-        <button class="btn primary sm" data-complete="${i}" ${completed ? '' : 'disabled'}>${completed ? 'Continue' : 'Tap first'}</button>
+      <input type="file" accept="image/*" capture="environment" class="photo-input" id="file-${i}" data-step="${i}"/>
+      ${judgment ? `
+        <div class="photo-judge ${judgment.pass ? 'pass' : 'fail'}">
+          <div class="verdict">${judgment.pass ? '<img src="img/ui_pass.png?v=2" class="ui-ic"/>PASS' : '<img src="img/ui_fail.png?v=2" class="ui-ic"/>FAIL'}</div>
+          <div>${escapeHtml(judgment.comment)}</div>
+        </div>
+      ` : ''}
+      <div class="row" style="margin-top:8px; gap:6px;">
+        <button class="btn ghost sm" data-shoot="${i}"><img src="img/ui_camera.png?v=2" class="btn-ic" alt=""/> ${proof ? 'Retake' : 'Capture'}</button>
+        ${hasApi
+          ? `<button class="btn primary sm" data-submit="${i}" ${submitDisabled ? 'disabled' : ''}>${judgment?.pass ? '✓ Submit' : '🤖 Submit'}</button>
+             <button data-complete="${i}" style="display:none" aria-hidden="true"></button>`
+          : `<button class="btn primary sm" data-complete="${i}" ${proof ? '' : 'disabled'}>Complete</button>`
+        }
       </div>
     `;
   }
-  return `<button class="btn primary sm" data-complete="${i}">Confirm Done</button>`;
+  // Legacy fallback. Steps from older saved runs / stale model output
+  // may still arrive with proof: 'tap' | 'confirm' | 'hold' — those
+  // shapes are retired (tester feedback: "tap-only steps feel broken
+  // because anyone can just press the button"). Funnel them through
+  // the photo path so the rest of the pipeline keeps working.
+  s.proof = 'photo';
+  return renderProofUI(s, i);
+}
+
+// ── MOTION sensor lifecycle ──────────────────────────────────────────
+// One DeviceMotionEvent listener at a time. The active step is stored
+// on r._motionActive so re-renders re-attach to the same step rather
+// than spawning duplicate listeners. We DO NOT lazy-import a separate
+// "no-sensors" fallback — if accelerometer support is missing OR the
+// player denies the iOS permission, we toast + auto-flip the proof
+// type to 'photo' for THIS step only so the run never gets stuck.
+let _motionListener = null;
+let _motionState = null;     // { i, kind, target, lastT, baseline, cooldownMs, count, run }
+function motionThresholdsFor(kind) {
+  // Returns { peak, cooldownMs }. Peaks are deltas from a running
+  // baseline (not absolute magnitudes), so users with phones in pockets
+  // vs hands both work without per-device calibration. Tuned manually
+  // on an A06 + a Pixel 6; iPhone tends to be slightly lower noise.
+  switch (kind) {
+    case 'steps': return { peak: 3.5,  cooldownMs: 320 };   // brisk walking pace
+    case 'jump':  return { peak: 9.0,  cooldownMs: 520 };   // jumping jack landings
+    case 'spin':  return { peak: 6.0,  cooldownMs: 380 };   // spin-the-phone gestures
+    default:      return { peak: 7.0,  cooldownMs: 280 };   // shake (default)
+  }
+}
+function detachMotionListener() {
+  if (_motionListener) {
+    try { window.removeEventListener('devicemotion', _motionListener); } catch {}
+    _motionListener = null;
+  }
+  _motionState = null;
+}
+async function startMotionForStep(r, i) {
+  const step = r.quest && r.quest[i];
+  if (!step) return;
+  // iOS Safari requires a one-shot permission request, only valid from
+  // a user-gesture handler. Android Chrome / Firefox grant implicitly.
+  if (typeof DeviceMotionEvent !== 'undefined'
+      && typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const perm = await DeviceMotionEvent.requestPermission();
+      if (perm !== 'granted') {
+        toast('Motion sensors blocked — flipping this step to photo proof.');
+        step.proof = 'photo';
+        render();
+        return;
+      }
+    } catch (e) {
+      console.warn('[motion] iOS permission request threw', e);
+      toast('Motion sensors unavailable — flipping this step to photo proof.');
+      step.proof = 'photo';
+      render();
+      return;
+    }
+  }
+  if (typeof window.DeviceMotionEvent === 'undefined') {
+    toast('No motion sensors on this device — flipping this step to photo proof.');
+    step.proof = 'photo';
+    render();
+    return;
+  }
+  const kind = step.motionKind || 'shake';
+  const target = Math.max(3, Math.min(50, +step.motionTarget || 10));
+  const thr = motionThresholdsFor(kind);
+  r.motionState = r.motionState || {};
+  // Reset count when the player explicitly starts (vs resume) — the
+  // Reset button is the dedicated path to throw away progress.
+  const prior = r.motionState[i];
+  r.motionState[i] = {
+    kind, target,
+    count: prior && prior.count > 0 && prior.paused ? prior.count : 0,
+    running: true,
+    paused: false,
+    startedAt: Date.now(),
+  };
+  detachMotionListener();        // be safe in case a stale listener lingers
+  _motionState = { i, kind, target, lastT: 0, baseline: 9.81, ...thr, run: r };
+  _motionListener = (e) => {
+    const a = e.accelerationIncludingGravity || e.acceleration;
+    if (!a) return;
+    const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+    // Running baseline tracks the slow average so a phone in a pocket
+    // vs in hand doesn't bias the threshold. EMA with a ~1-second
+    // time-constant is more than enough for the cadences we care about.
+    _motionState.baseline = _motionState.baseline * 0.92 + mag * 0.08;
+    const delta = Math.abs(mag - _motionState.baseline);
+    const now = Date.now();
+    if (delta > _motionState.peak && now - _motionState.lastT > _motionState.cooldownMs) {
+      _motionState.lastT = now;
+      const st = _motionState.run.motionState[_motionState.i];
+      if (!st || !st.running) return;
+      st.count = (st.count || 0) + 1;
+      try { sfx.tick && sfx.tick(); } catch {}
+      try { navigator.vibrate && navigator.vibrate(20); } catch {}
+      // Repaint the counter + bar without a full re-render — full
+      // render() per peak would steal focus from chat, lose scroll, etc.
+      const stage = document.getElementById('motion-' + _motionState.i);
+      if (stage) {
+        const fill = stage.querySelector('.motion-bar-fill');
+        const num  = stage.querySelector('.motion-count');
+        const pct = Math.min(100, Math.round(st.count / st.target * 100));
+        if (fill) fill.style.width = pct + '%';
+        if (num)  num.textContent  = `${Math.min(st.count, st.target)} / ${st.target}`;
+      }
+      if (st.count >= st.target) {
+        // Verified. Record the proof, kill the listener, sweep the UI.
+        st.running = false;
+        st.paused = false;
+        _motionState.run.proofs = _motionState.run.proofs || {};
+        _motionState.run.proofs[_motionState.i] = {
+          ts: Date.now(),
+          motionKind: st.kind,
+          motionCount: st.count,
+          motionTarget: st.target,
+        };
+        detachMotionListener();
+        try { sfx.success && sfx.success(); } catch {}
+        setTimeout(() => render(), 250);
+      }
+    }
+  };
+  window.addEventListener('devicemotion', _motionListener);
+}
+function pauseMotionForStep(r, i) {
+  if (r.motionState && r.motionState[i]) {
+    r.motionState[i].running = false;
+    r.motionState[i].paused = true;
+  }
+  detachMotionListener();
+}
+function resetMotionForStep(r, i) {
+  if (r.motionState && r.motionState[i]) {
+    r.motionState[i] = { ...r.motionState[i], count: 0, running: false, paused: false };
+  }
+  detachMotionListener();
+}
+function bindMotionProofs(r) {
+  document.querySelectorAll('[data-motion-start]').forEach(b => b.onclick = () => {
+    startMotionForStep(r, +b.dataset.motionStart);
+    // Re-render so the Start button swaps for Pause/Reset immediately —
+    // the listener itself updates the count without a full render.
+    render();
+  });
+  document.querySelectorAll('[data-motion-stop]').forEach(b => b.onclick = () => {
+    pauseMotionForStep(r, +b.dataset.motionStop);
+    render();
+  });
+  document.querySelectorAll('[data-motion-reset]').forEach(b => b.onclick = () => {
+    resetMotionForStep(r, +b.dataset.motionReset);
+    render();
+  });
+}
+
+// ── MOTION proof UI ──────────────────────────────────────────────────
+// Renders the live device-sensor verifier. Per-step state lives on
+// r.motionState[i] = { kind, target, count, running, startedAt }.
+// The accelerometer listener is owned by bindMotionProofs() — this
+// function only paints. iOS gates DeviceMotionEvent behind a one-shot
+// permission gesture; Android grants implicitly on first listener attach.
+function renderMotionProofUI(s, i) {
+  const r = state.run;
+  const kind = s.motionKind || 'shake';                 // 'steps' | 'shake' | 'jump' | 'spin'
+  const target = Math.max(3, Math.min(50, +s.motionTarget || 10));
+  const ms = (r.motionState && r.motionState[i]) || { kind, target, count: 0, running: false };
+  const count = Math.min(ms.count || 0, target);
+  const pct = Math.round((count / target) * 100);
+  const proof = (r.proofs || {})[i];
+  const completed = !!proof && (proof.motionCount || 0) >= target;
+  const verb = ({
+    steps: 'STEPS DETECTED',
+    shake: 'SHAKES DETECTED',
+    jump: 'JUMPS DETECTED',
+    spin: 'SPINS DETECTED',
+  })[kind] || 'MOTIONS DETECTED';
+  return `
+    <div class="motion-stage" id="motion-${i}" data-motion-kind="${kind}" data-motion-target="${target}">
+      <div class="motion-label">${completed ? '✓ VERIFIED' : verb}</div>
+      <div class="motion-bar"><div class="motion-bar-fill" style="width:${pct}%"></div></div>
+      <div class="motion-count">${count} / ${target}</div>
+      <div class="motion-hint">${
+        kind === 'steps'  ? 'Hold the phone, then walk it out — natural pace.'
+        : kind === 'jump' ? 'Phone in hand, jump in place. Each landing counts.'
+        : kind === 'spin' ? 'Spin the phone around the long axis. Smooth motions only.'
+        : 'Shake the phone with intent. Limp shakes don’t register.'
+      }</div>
+    </div>
+    <div class="row" style="margin-top:8px; gap:6px;">
+      ${completed
+        ? `<button class="btn primary sm" data-complete="${i}">Continue</button>`
+        : (ms.running
+            ? `<button class="btn ghost sm" data-motion-stop="${i}">⏸ Pause</button>
+               <button class="btn ghost sm" data-motion-reset="${i}">↺ Reset</button>`
+            : `<button class="btn primary sm" data-motion-start="${i}">▶ Start tracking</button>`)
+      }
+    </div>
+  `;
 }
 
 function bindQuest() {
@@ -17274,6 +17601,46 @@ function bindQuest() {
       }
     });
   });
+
+  // ── MOTION proof handlers ───────────────────────────────────────────
+  // DeviceMotionEvent gives us accel in 3 axes (m/s² incl. gravity on
+  // some browsers, excluding on others — we use `accelerationIncluding
+  // Gravity` since it's the most universally supported, and detect a
+  // motion event when the magnitude swings >threshold above its local
+  // baseline). One global listener at a time; the per-step state lives
+  // on r.motionState[i] and the active step is tracked by r._motionActive.
+  bindMotionProofs(r);
+  // Timer-start handler — kicks off the wait countdown for proof:'timer'
+  // steps. We record start time on r.timerStarts[i] and tick render()
+  // once per second so the UI refreshes the remaining-seconds label and
+  // crosses over to the seal-with-photo stage when the wait is up.
+  document.querySelectorAll('[data-timer-start]').forEach(b => b.onclick = () => {
+    const i = +b.dataset.timerStart;
+    const step = r.quest && r.quest[i];
+    if (!step) return;
+    r.timerStarts = r.timerStarts || {};
+    if (r.timerStarts[i]) return;          // already running — guard against double-clicks
+    r.timerStarts[i] = Date.now();
+    try { sfx.tick && sfx.tick(); } catch {}
+    const target = Math.max(15, Math.min(900, step.timerSec || 60));
+    const tick = () => {
+      const r2 = state.run;
+      if (!r2 || r2 !== r || state.view !== 'quest') return;
+      if (!r2.timerStarts || !r2.timerStarts[i]) return;
+      const elapsed = Math.floor((Date.now() - r2.timerStarts[i]) / 1000);
+      if (elapsed >= target) {
+        // Cross-over render — the proof UI now switches to "capture to seal".
+        render();
+        return;
+      }
+      // Light re-render of just the placeholder text — full render() is
+      // overkill once a second but cheap given the file's existing cadence.
+      render();
+      setTimeout(tick, 1000);
+    };
+    setTimeout(tick, 1000);
+  });
+
   document.querySelectorAll('.photo-input').forEach(inp => {
     inp.onchange = e => {
       const i = +e.target.dataset.step;
@@ -21891,6 +22258,14 @@ function screenWheel() {
       `;
       document.querySelector('.wheel-rim')?.classList.remove('spinning');
       applyWheelOutcome(outcome);
+      // Tester #4: the result card sits below the wheel and they
+      // didn't realise the screen had more content — they thought
+      // the wheel was stuck. Smooth-scroll the result into view so
+      // the next beat lands in the camera frame on phones.
+      requestAnimationFrame(() => {
+        const resEl = document.getElementById('wheelResult');
+        if (resEl) resEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
       setTimeout(() => {
         const btn = document.getElementById('spin');
         btn.textContent = 'BACK TO MAIN MENU';
@@ -22572,10 +22947,16 @@ function validateGeneratedQuest(ai, r) {
     // Flag so the retry generates a sensible proof shape.
     const stepProof = (step && step.proof) || 'photo';
     const stepPhotoCount = step && step.photoCount;
+    // Banned proof types — retired (tester feedback: button-only steps
+    // feel broken). The model occasionally generates these on stale
+    // cache; force a retry so it picks photo / motion / timer instead.
+    if (stepProof === 'tap' || stepProof === 'confirm' || stepProof === 'hold') {
+      violations.push(`Step ${idx + 1} uses banned proof type "${stepProof}". Allowed: "photo", "motion", "timer". Pick whichever fits — most steps want "photo".`);
+    }
     const SEQUENCE_PATTERN = /\b(?:touch|visit|tap|walk\s+to|approach|reach|enter)\s+(?:each\s+of\s+)?(?:three|four|five|six|seven|3|4|5|6|7)\s+(?:different\s+)?\w+/i;
     if (SEQUENCE_PATTERN.test(text) && stepProof === 'photo' && (!stepPhotoCount || stepPhotoCount < 2)) {
       const m = text.match(SEQUENCE_PATTERN);
-      violations.push(`Step ${idx + 1} requires a sequence ("${m[0]}") but uses single-photo proof — judge can't verify. Use proof:"tap" or photoCount > 1.`);
+      violations.push(`Step ${idx + 1} requires a sequence ("${m[0]}") but uses single-photo proof — judge can't verify. Use proof:"motion" with motionTarget = N (sensor counts the actions) or photoCount > 1 (one photo per beat).`);
     }
 
     // Unverifiable-conceal detector. A photo step that requires the
@@ -23719,15 +24100,13 @@ UNIVERSAL SAFETY (default — only the PURCHASE rule can be lifted by a matching
 - NEVER write per-step time limits in step.instr ("in under N seconds", "the host is timing it") — the system adds those itself via a post-processor for Nightmare runs.
 
 PROOF — strict
-- Proof types: "photo", "confirm", "timer", "tap". Pick the one that best fits each step's action — NOT always photo.
-- Each proof type:
-  · photo: visual evidence of a physical action/object. The default for most steps.
-  · confirm: simple "I did it" honor-system button. Use for internal/quiet moments that can't be photographed.
-  · timer: passive countdown — player waits N seconds with the screen open.
-  · tap: player must TAP A BUTTON step.tapCount times (3-30). Each tap = one beat of a counted ritual. Strong fit for RITUAL and ECHO archetypes (structured counts), and any moment where each tap can REPRESENT something (one breath, one memory, one promise). The step.instr should tell the player what each tap means.
-- VARIETY NUDGE: when a step's action naturally fits "tap" — counted whispers, counted breaths, three blessings, five promises — prefer tap over photo. Roughly 1 in 5 steps will naturally call for it. Don't force it on steps that don't fit. (Players have flagged that pure-photo quests start feeling samey, so lean tap when the action is countable.)
-- DO NOT use "hold" as a proof type. The hold mechanism is currently shelved; if you generate proof:"hold" it will fall back to a confirm button.
-- For tap proof, add a step.tapCount field (integer 3-30, default 7). Match the count to the ritual: 3 for trinity rituals, 5 for a 5-breath cycle, 7 for a deeper ceremony, etc.
+- Every step must end on REAL DEVICE EVIDENCE. Honor-system buttons are banned. Allowed proof types:
+  · "photo" — visual evidence of a physical action/object. The default for most steps. The AI judge checks the picture against the step.
+  · "motion" — accelerometer verification via DeviceMotionEvent. Use when the action is COUNTABLE PHYSICAL MOVEMENT the phone can feel (walking, jumping, shaking, spinning the phone). Add step.motionKind and step.motionTarget.
+  · "timer" — passive countdown the player can't skip. Use ONLY for steps where the entire point is "do nothing for N seconds" (silent observation, stillness drills). After the wait ends the player still has to capture one sealing photo, so frame the step so a photo at the end makes sense.
+- BANNED proof types: "confirm", "tap", "hold". These were retired because testers flagged that any step that ends in a tap-the-button move feels broken — the player can finish without doing the thing.
+- step.motionKind values: "steps" (walking footsteps), "shake" (shake the phone), "jump" (jumping jacks / vertical jumps), "spin" (rotate the phone around the long axis).
+- step.motionTarget: integer 3-30. Match it to the action ("walk 10 steps" → 10; "do 5 jumping jacks" → 5; "shake the phone 8 times" → 8). The step.instr should plainly tell the player what to do; the sensor counts for them.
 - One photo per step. No video, no screenshots, no multi-shot, no before/after.
 - A step CAN have photoCount: 2-4 when it genuinely needs multiple distinct photos (e.g. "three different chairs, one photo per chair"), but default to 1.
 - ⚠ UNVERIFIABLE-SEQUENCE TRAP — strict (testers flagged this). NEVER write a step that requires the player to do N SEQUENTIAL ACTIONS but uses single-photo proof. Single-photo proof can only show ONE MOMENT — the AI judge cannot verify whether the player did the other N-1 actions before the photo. Examples of the FORBIDDEN pattern:
@@ -23735,9 +24114,8 @@ PROOF — strict
   · "walk to three zones in sequence and photograph the third" — same issue.
   · "say five things to five objects, then photograph the fifth one" — judge can't hear or verify the prior four.
   When a step REQUIRES sequential actions, ALWAYS use one of these proof shapes instead:
-  · proof:"tap" with tapCount = N — each tap = one completed action ("tap once for each zone you touched"). The count provides the verification.
+  · proof:"motion" with motionTarget = N — the accelerometer counts the actions ("walk to each of the 5 zones and the phone will count your steps"). Best when the action is movement.
   · proof:"photo" with photoCount = N (2-4) — one photo per action. Multi-shot UI lets the player capture each step of the sequence.
-  · proof:"confirm" — honor-system button if the action is internal/social and untestable. Be honest about it; don't try to fake verification.
   · Or REWRITE the step so it's a SINGLE OBSERVABLE MOMENT — "photograph the loudest machine you find in the gym" instead of "touch five machines and photograph the last one." The fewer-step version is almost always more interesting.
 
 STEP STRUCTURE
@@ -24925,7 +25303,13 @@ async function openSelfTimerCamera(stepIdx, slotIdx = 0) {
     return;
   }
   let stream = null;
-  let currentFacing = 'user';      // start with selfie cam (most common need)
+  // Default to the rear camera. Tester #4 (Samsung A06) had the front
+  // open when they tapped Capture, which is exactly wrong for "take a
+  // photo of X" — quest steps point the player AT something in the
+  // world, not at themselves. FLIP is still one tap away if they want
+  // a selfie. Using `ideal:` (not `exact:`) so devices with only one
+  // camera still resolve instead of throwing.
+  let currentFacing = 'environment';
   let cancelled = false;
   let captured = false;
   let timerSeconds = 0;            // default to NOW (instant) — matches Capture
@@ -24933,7 +25317,7 @@ async function openSelfTimerCamera(stepIdx, slotIdx = 0) {
 
   async function getStream(facing) {
     return navigator.mediaDevices.getUserMedia({
-      video: { facingMode: facing },
+      video: { facingMode: { ideal: facing } },
       audio: false,
     });
   }
@@ -24971,7 +25355,7 @@ async function openSelfTimerCamera(stepIdx, slotIdx = 0) {
       <span class="chip ${timerSeconds === 5 ? 'on' : ''}" data-sec="5">5s</span>
       <span class="chip ${timerSeconds === 10 ? 'on' : ''}" data-sec="10">10s</span>
     </div>
-    <video class="camera-video" id="camVideo" autoplay playsinline muted style="transform: scaleX(-1);"></video>
+    <video class="camera-video" id="camVideo" autoplay playsinline muted></video>
     <div class="camera-overlay">
       <div class="camera-countdown" id="camCountdown" style="display:none;"></div>
     </div>
@@ -24989,6 +25373,9 @@ async function openSelfTimerCamera(stepIdx, slotIdx = 0) {
   document.body.appendChild(wrap);
   const video = document.getElementById('camVideo');
   video.srcObject = stream;
+  // Mirror only when the SELFIE cam is the active source. The rear cam
+  // (default now) should show the world as-is, not mirrored.
+  video.style.transform = currentFacing === 'user' ? 'scaleX(-1)' : '';
 
   // ---- Flash (torch) — hardware only, hidden if unsupported (iOS) ----
   let flashOn = false;
@@ -30651,6 +31038,7 @@ function render() {
     }
   } catch (e) { /* ignore — fall through to default home view */ }
 })();
+installBackButtonIntercept();
 render();
 
 // Legendary frame animation cycle — each legendary gets its own timer
