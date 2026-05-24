@@ -10699,7 +10699,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.308';
+const BUILD_VERSION = '2026.05.23.309';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15077,18 +15077,36 @@ const music = (() => {
   let _audioCtx = null;
   function ensureAudioCtx() {
     try {
-      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+      if (!_audioCtx) {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('[bgm] AudioContext created, state=', _audioCtx.state, 'sampleRate=', _audioCtx.sampleRate);
+      }
+      const before = _audioCtx.state;
+      if (_audioCtx.state === 'suspended') {
+        _audioCtx.resume().then(
+          () => console.log('[bgm] AudioContext resume() resolved, state=', _audioCtx.state, '(was ' + before + ')'),
+          (e) => console.warn('[bgm] AudioContext resume() rejected:', e && e.message ? e.message : e)
+        );
+      }
       return _audioCtx;
-    } catch (e) { return null; }
+    } catch (e) {
+      console.warn('[bgm] ensureAudioCtx threw:', e && e.message ? e.message : e);
+      return null;
+    }
   }
   function setDeckVolume(deck, vol) {
     if (!deck) return;
     const v = Math.max(0, Math.min(1, vol));
     if (deck._gain) {
-      try { deck._gain.gain.value = v; } catch (e) {}
+      try {
+        deck._gain.gain.value = v;
+        console.log('[bgm] setDeckVolume via GainNode, requested=' + v.toFixed(3) + ', readback=' + deck._gain.gain.value.toFixed(3));
+      } catch (e) { console.warn('[bgm] gain.value set threw:', e); }
     }
-    try { deck.volume = v; } catch (e) {}
+    try {
+      deck.volume = v;
+      console.log('[bgm] setDeckVolume via element, requested=' + v.toFixed(3) + ', readback=' + deck.volume.toFixed(3));
+    } catch (e) { console.warn('[bgm] deck.volume set threw:', e); }
   }
   function getDeckVolume(deck) {
     if (!deck) return 0;
@@ -15103,7 +15121,19 @@ const music = (() => {
       a.preload = 'auto';
       a.style.cssText = 'position:fixed; left:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;';
       document.body.appendChild(a);
-      a.addEventListener('error', () => console.warn('[bgm] failed to load', a.src));
+      a.addEventListener('error', () => {
+        const err = a.error;
+        console.warn('[bgm] audio element ERROR', {
+          src: a.src,
+          code: err && err.code,
+          message: err && err.message,
+        });
+      });
+      a.addEventListener('canplay',  () => console.log('[bgm] deck ' + idx + ' canplay,  src=' + (a.src || '').split('/').pop()));
+      a.addEventListener('playing',  () => console.log('[bgm] deck ' + idx + ' playing,  paused=' + a.paused + ', currentTime=' + a.currentTime.toFixed(2)));
+      a.addEventListener('pause',    () => console.log('[bgm] deck ' + idx + ' pause,    currentTime=' + a.currentTime.toFixed(2)));
+      a.addEventListener('stalled',  () => console.warn('[bgm] deck ' + idx + ' stalled, src=' + a.src));
+      a.addEventListener('suspend',  () => console.log('[bgm] deck ' + idx + ' suspend'));
       a.addEventListener('ended', () => {
         if (!isPlaying || isMuted()) return;
         const mode = getMode();
@@ -15118,6 +15148,7 @@ const music = (() => {
       // element volume works fine, and the AudioContext path can leave
       // music silent if the context sticks in 'suspended' state — so we
       // skip it. (White noise has its own context and is unaffected.)
+      console.log('[bgm] ensureDeck ' + idx + ' created, _isIos=' + _isIos);
       if (_isIos) {
         try {
           const ctx = ensureAudioCtx();
@@ -15127,6 +15158,9 @@ const music = (() => {
             gain.gain.value = 0;
             src.connect(gain).connect(ctx.destination);
             a._gain = gain;
+            console.log('[bgm] GainNode wired for deck ' + idx + ', ctx.state=' + ctx.state);
+          } else {
+            console.warn('[bgm] iOS path but ensureAudioCtx returned null — GainNode NOT wired, volume control will not work');
           }
         } catch (e) {
           console.warn('[bgm] gain wiring failed; falling back to element volume', e);
@@ -15233,14 +15267,34 @@ const music = (() => {
   }
   function startNew() {
     const track = currentTrack();
-    if (!track) return;
+    if (!track) { console.warn('[bgm] startNew: no track resolved'); return; }
     const target = ensureDeck(activeIdx);
+    console.log('[bgm] startNew: track=' + track.id + ', activeIdx=' + activeIdx + ', deck.muted=' + target.muted + ', targetVolume()=' + targetVolume().toFixed(3));
     setDeckVolume(target, 0);
     loadOnDeck(target, track);
     const p = target.play();
-    if (p && p.catch) p.catch(() => { /* gesture required; kickoff handler retries */ });
+    if (p && p.then) {
+      p.then(
+        () => console.log('[bgm] play() resolved, deck.paused=' + target.paused + ', currentTime=' + target.currentTime.toFixed(2) + ', readyState=' + target.readyState),
+        (e) => console.warn('[bgm] play() rejected:', e && e.name, e && e.message ? e.message : e)
+      );
+    }
     crossfade(null, target, targetVolume());
     syncWhiteNoise();
+    // Snapshot state ~500ms after play attempt so we can see whether
+    // the audio is actually progressing (currentTime > 0) or stuck.
+    setTimeout(() => {
+      console.log('[bgm] state +500ms after play():', {
+        paused: target.paused,
+        muted: target.muted,
+        volume: target.volume,
+        gainValue: target._gain ? target._gain.gain.value : '(no gain)',
+        currentTime: target.currentTime,
+        readyState: target.readyState,
+        networkState: target.networkState,
+        ctxState: _audioCtx ? _audioCtx.state : '(no ctx)',
+      });
+    }, 500);
   }
   function fadeOutAll() {
     whiteNoise.stop();
@@ -15421,6 +15475,7 @@ let _bgmKickoff = false;
 function _kickBgm() {
   if (_bgmKickoff) return;
   _bgmKickoff = true;
+  console.log('[bgm] _kickBgm fired (first user gesture), musicMuted=' + (profile && profile.musicMuted) + ', musicVolume=' + (profile && profile.musicVolume));
   if (typeof profile !== 'undefined' && !profile.musicMuted && typeof music !== 'undefined') {
     // iOS Safari's AudioContext is suspended on creation and needs to be
     // resumed FROM a user gesture (not async-after). Hit resume() here
