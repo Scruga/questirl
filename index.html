@@ -6306,6 +6306,87 @@
     opacity: 0.85;
     text-shadow: 2px 2px 0 #000;
   }
+  /* Stagger popup — inverse of harden. Big and gold-bright. */
+  .ar-dmg-pop.stagger {
+    color: #ffce4f;
+    font-size: 38px;
+    text-shadow: 3px 3px 0 #000, 0 0 18px var(--gold), 0 0 28px #ff8c4a;
+  }
+
+  /* ── Ability effect banners + per-effect tints ── */
+  .ar-ability-banner {
+    position: absolute;
+    top: 32%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--px);
+    font-size: 18px;
+    letter-spacing: 3px;
+    text-shadow: 3px 3px 0 #000, 0 0 14px currentColor;
+    pointer-events: none;
+    z-index: 7;
+    animation: arSigBannerLife 1s ease both;
+    text-align: center;
+  }
+  .ar-ability-banner.ar-effect-damage   { color: var(--neon); }
+  .ar-ability-banner.ar-effect-gamble   { color: var(--neon); }
+  .ar-ability-banner.ar-effect-heal     { color: var(--neon-3); }
+  .ar-ability-banner.ar-effect-time     { color: var(--gold); }
+  .ar-ability-banner.ar-effect-shield   { color: var(--neon-3); }
+  .ar-ability-banner.ar-effect-stagger  { color: var(--gold); }
+  .ar-ability-banner.ar-effect-focus    { color: var(--gold); }
+
+  /* Boss sprite while STAGGERED (player just applied a weakpoint
+     buff). Inverse of .ar-hardened — bright cyan/teal glow, slight
+     scale-down so it reads as exposed. */
+  .ar-boss-sprite.ar-staggered {
+    filter: drop-shadow(0 0 30px var(--neon-3)) drop-shadow(0 6px 26px rgba(0,230,195,0.9)) saturate(1.3) brightness(1.1) !important;
+    animation: arBossBob 1.2s ease-in-out infinite, arStaggeredShimmer 0.6s ease-in-out infinite;
+  }
+  @keyframes arStaggeredShimmer {
+    0%, 100% { filter: drop-shadow(0 0 30px var(--neon-3)) drop-shadow(0 6px 26px rgba(0,230,195,0.9)) saturate(1.3) brightness(1.1); }
+    50%      { filter: drop-shadow(0 0 50px #fff) drop-shadow(0 6px 26px rgba(0,230,195,1)) saturate(1.6) brightness(1.5); }
+  }
+
+  /* Heal floater — green-teal '+24 HP' bounce up the screen. */
+  .ar-heal-pop {
+    position: fixed;
+    transform: translate(-50%, -50%);
+    font-family: var(--px); font-size: 28px;
+    color: var(--neon-3);
+    text-shadow: 3px 3px 0 #000, 0 0 18px var(--neon-3);
+    letter-spacing: 1px;
+    pointer-events: none;
+    z-index: 200;
+    animation: arSlamDmgFloat 1.1s ease-out forwards;
+  }
+
+  /* Timer flash when a TIME ability adds seconds. */
+  .ar-timer.ar-timer-bonus {
+    animation: arTimerBonus .8s ease;
+  }
+  @keyframes arTimerBonus {
+    0%   { transform: scale(1);    text-shadow: 3px 3px 0 #000, 0 0 14px var(--neon-3); color: #fff; }
+    30%  { transform: scale(1.25); text-shadow: 3px 3px 0 #000, 0 0 32px var(--gold);   color: var(--gold); }
+    100% { transform: scale(1);    text-shadow: 3px 3px 0 #000, 0 0 14px var(--neon-3); color: #fff; }
+  }
+
+  /* Status badges (shield charges, focus charges) — bottom of HUD,
+     tiny chips that read at a glance. */
+  .ar-status-badge {
+    display: inline-block;
+    margin-top: 6px;
+    margin-right: 6px;
+    padding: 4px 8px;
+    background: rgba(10, 5, 24, 0.85);
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    font-family: var(--px);
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .ar-shield-badge { color: var(--neon-3); border-color: var(--neon-3); box-shadow: 2px 2px 0 #000, 0 0 8px rgba(0,230,195,0.5); }
+  .ar-focus-badge  { color: var(--gold);   border-color: var(--gold);   box-shadow: 2px 2px 0 #000, 0 0 8px rgba(245,194,66,0.5); }
 
   /* ── Combo chip — pulses up from the side when chain >= 2.
        Each tier-N class escalates the visual: tier-1 is muted, tier-8
@@ -10758,7 +10839,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.317';
+const BUILD_VERSION = '2026.05.23.318';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -27774,10 +27855,17 @@ async function openARFinisher(stepIdx) {
     // Centralized damage path — every hit type (tap, crit, slam) ends
     // here so combo/phase/HP/win logic stays consistent.
     // Harden signature: while active, boss soaks 80% of incoming damage.
+    // Stagger ability (WEAKPOINT): inverse — boss takes 2x. Harden
+    // wins if both are somehow active simultaneously (safer for the
+    // player to NOT be tricked into trusting stagger that's getting
+    // soaked anyway).
     let dmg = Math.max(1, Math.round(rawDmg));
     if (hardenActiveUntil > Date.now()) {
       dmg = Math.max(1, Math.round(dmg * 0.2));
       opts = Object.assign({}, opts, { hardened: true });
+    } else if (staggerUntil > Date.now()) {
+      dmg = Math.max(1, Math.round(dmg * 2));
+      opts = Object.assign({}, opts, { stagger: true });
     }
     arHP = Math.max(0, arHP - dmg);
     const fill = wrap.querySelector('#arHpFill');
@@ -27798,8 +27886,9 @@ async function openARFinisher(stepIdx) {
       + (opts.counter ? ' counter' : '')
       + (opts.rage ? ' rage' : '')
       + (opts.ability ? ' ability' : '')
-      + (opts.hardened ? ' hardened' : '');
-    const prefix = opts.hardened ? '◇ ' : opts.rage ? '★ ' : opts.ability ? '✺ ' : opts.slam ? '⚡ ' : opts.counter ? '↺ ' : opts.crit ? '✦ ' : '−';
+      + (opts.hardened ? ' hardened' : '')
+      + (opts.stagger ? ' stagger' : '');
+    const prefix = opts.hardened ? '◇ ' : opts.stagger ? '◈ ' : opts.rage ? '★ ' : opts.ability ? '✺ ' : opts.slam ? '⚡ ' : opts.counter ? '↺ ' : opts.crit ? '✦ ' : '−';
     dn.textContent = prefix + dmg;
     dn.style.left = (opts.x != null ? opts.x : window.innerWidth / 2) + 'px';
     dn.style.top  = (opts.y != null ? opts.y : window.innerHeight / 2) + 'px';
@@ -27821,7 +27910,17 @@ async function openARFinisher(stepIdx) {
     lastTapTs = now;
     if (comboCount > peakComboReached) peakComboReached = comboCount;
     updateComboChip();
-    const isCrit = Math.random() < 0.12;
+    // FOCUS ability: next N taps are guaranteed crits. Decrement on
+    // use; update the indicator. Falls back to natural 12% roll once
+    // the charges run out.
+    let isCrit;
+    if (focusTapsLeft > 0) {
+      focusTapsLeft--;
+      paintFocusIndicator();
+      isCrit = true;
+    } else {
+      isCrit = Math.random() < 0.12;
+    }
     const baseRoll = isCrit ? 18 + Math.floor(Math.random() * 6)
                             : 5  + Math.floor(Math.random() * 5);
     // Counter-attack window: open for 800ms after a successful dodge.
@@ -28055,33 +28154,185 @@ async function openARFinisher(stepIdx) {
     btn.addEventListener('pointercancel', endHold);
   })();
 
-  // ── Ability slots — armed items become tap-to-fire AR abilities ──
-  // First-cut implementation: all abilities deal ABILITY_DAMAGE flat
-  // with a generic flashy burst. Per-item effect tables are a
-  // follow-up; for now the item icon IS the prestige and the
-  // mechanic is shared.
+  // ── Per-item ability state ───────────────────────────────────────
+  // Each item now maps to a distinct AR effect — see ITEM_AR_EFFECTS
+  // below. State vars track ongoing effects (shield charge, stagger
+  // window, focus crit-charges) that applyDamage and the dodge
+  // resolver check.
+  let shieldCharges = 0;             // # of incoming boss attacks to auto-dodge
+  let staggerUntil = 0;              // ms — boss takes 2x damage while now < this
+  let focusTapsLeft = 0;             // # of next taps that are guaranteed crit
+  // Item → effect map. Keys are item ids; effect objects drive
+  // applyAbilityEffect. Each item has type + label + per-type params.
+  const ITEM_AR_EFFECTS = {
+    // Universal
+    reroll:     { type: 'gamble',  label: 'CHAOS',     dmgMin: 20,  dmgMax: 160 },
+    hint:       { type: 'damage',  label: 'INSIGHT',   dmg: 90 },
+    time:       { type: 'time',    label: '+10s',      seconds: 10 },
+    second:     { type: 'heal',    label: 'PHOENIX',   pct: 0.30 },
+    shield:     { type: 'shield',  label: 'AEGIS',     charges: 1 },
+    snack:      { type: 'damage',  label: 'SNACK',     dmg: 60 },
+    kraft:      { type: 'damage',  label: 'KRAFT',     dmg: 70 },
+    bookmark:   { type: 'stagger', label: 'WEAKPOINT', duration: 2500 },
+    compass:    { type: 'damage',  label: 'COMPASS',   dmg: 80 },
+    kibble:     { type: 'damage',  label: 'KIBBLE',    dmg: 80 },
+    lens:       { type: 'damage',  label: 'TRUTH',     dmg: 180 },
+    whistle:    { type: 'time',    label: '+10s',      seconds: 10 },
+    // Solo
+    focus:      { type: 'focus',   label: 'FOCUS',     taps: 5 },
+    innerfire:  { type: 'damage',  label: 'INNERFIRE', dmg: 140 },
+    mood:       { type: 'damage',  label: 'MOOD',      dmg: 70 },
+    champion:   { type: 'damage',  label: 'CHAMPION',  dmg: 100 },
+    grace:      { type: 'damage',  label: 'GRACE',     dmg: 140 },
+    sanctuary:  { type: 'stagger', label: 'SANCTUARY', duration: 3500 },
+    horizon:    { type: 'damage',  label: 'HORIZON',   dmg: 100 },
+    mainchar:   { type: 'focus',   label: 'AURA',      taps: 8 },
+    meditate:   { type: 'shield',  label: 'LOTUS',     charges: 1 },
+    // Party
+    doubledmg:  { type: 'damage',  label: 'WRATH',     dmg: 220 },
+    partypopper:{ type: 'damage',  label: 'CHEER',     dmg: 60 },
+    // Cursed
+    dx:         { type: 'gamble',  label: 'CURSE',     dmgMin: 50,  dmgMax: 280 },
+    contract:   { type: 'damage',  label: 'BLOOD',     dmg: 200, selfDmg: 30 },
+    mirrorcurse:{ type: 'damage',  label: 'MIRROR',    dmg: 120 },
+    shadow:     { type: 'damage',  label: 'SHADOW',    dmg: 220 },
+    chaoscoin:  { type: 'gamble',  label: 'CHAOS',     dmgMin: 0,   dmgMax: 350 },
+    whisperhex: { type: 'damage',  label: 'HEX',       dmg: 100 },
+    overtime:   { type: 'time',    label: '+30s',      seconds: 30 },
+  };
+  const DEFAULT_AR_EFFECT = { type: 'damage', label: 'STRIKE', dmg: 80 };
+
   function fireAbility(slot) {
     if (won || lost || cancelled) return;
     const now = Date.now();
     if (now < abilityReadyAt[slot]) return;
     abilityReadyAt[slot] = now + ABILITY_COOLDOWN_MS;
+    const itemId = armedItems[slot];
+    const effect = (itemId && ITEM_AR_EFFECTS[itemId]) || DEFAULT_AR_EFFECT;
     const rect = sprite ? sprite.getBoundingClientRect() : null;
     const ox = rect ? rect.left + rect.width  / 2 : window.innerWidth  / 2;
     const oy = rect ? rect.top  + rect.height / 2 : window.innerHeight / 2;
-    // Ability also fires the shockwave ring used by slams for a
-    // beefier look without needing new art.
+    // Shockwave + label banner regardless of effect type — consistent
+    // 'something happened here' beat across abilities.
     try {
       const ring = document.createElement('div');
-      ring.className = 'ar-slam-shockwave ability';
+      ring.className = 'ar-slam-shockwave ability ar-effect-' + effect.type;
       ring.style.left = ox + 'px';
       ring.style.top  = oy + 'px';
       wrap.appendChild(ring);
       ring.addEventListener('animationend', () => ring.remove(), { once: true });
     } catch {}
+    spawnAbilityBanner(effect.label, effect.type);
+    applyAbilityEffect(effect, { x: ox, y: oy });
+    refreshAbilityCooldowns();
+  }
+
+  function applyAbilityEffect(effect, anchor) {
+    const t = effect.type;
     try { sfx.projector && sfx.projector(); } catch {}
     try { navigator.vibrate && navigator.vibrate([40, 20, 80]); } catch {}
-    applyDamage(ABILITY_DAMAGE, { ability: true, x: ox, y: oy });
-    refreshAbilityCooldowns();
+    if (t === 'damage') {
+      // Optional self-damage for blood-pact style items (cursed).
+      if (effect.selfDmg) applyPlayerDamage(effect.selfDmg);
+      applyDamage(effect.dmg || 80, { ability: true, x: anchor.x, y: anchor.y });
+      return;
+    }
+    if (t === 'gamble') {
+      // Random roll across the configured range. Skews the damage
+      // popup big — the dramatic number is the point of the gamble.
+      const dmg = Math.round(effect.dmgMin + Math.random() * (effect.dmgMax - effect.dmgMin));
+      applyDamage(Math.max(1, dmg), { ability: true, x: anchor.x, y: anchor.y });
+      return;
+    }
+    if (t === 'heal') {
+      const before = playerHP;
+      const heal = Math.round(playerHPMax * (effect.pct || 0.3));
+      playerHP = Math.min(playerHPMax, playerHP + heal);
+      // Patch the player HP bar inline (no full render).
+      const fill = wrap.querySelector('#arPlayerHpFill');
+      const num  = wrap.querySelector('#arPlayerHpNum');
+      if (fill) fill.style.width = Math.round((playerHP / playerHPMax) * 100) + '%';
+      if (num)  num.textContent  = playerHP + ' / ' + playerHPMax;
+      // Floater so the player feels the heal land.
+      const fl = document.createElement('div');
+      fl.className = 'ar-heal-pop';
+      fl.textContent = '+' + (playerHP - before) + ' HP';
+      fl.style.left = anchor.x + 'px';
+      fl.style.top  = anchor.y + 'px';
+      wrap.appendChild(fl);
+      fl.addEventListener('animationend', () => fl.remove(), { once: true });
+      try { sfx.success && sfx.success(); } catch {}
+      return;
+    }
+    if (t === 'time') {
+      const ms = (effect.seconds || 10) * 1000;
+      timeLeft += ms;
+      try { sfx.success && sfx.success(); } catch {}
+      // Flash the timer so the bonus reads.
+      const timerEl = wrap.querySelector('#arTimer');
+      if (timerEl) {
+        timerEl.classList.remove('ar-timer-bonus');
+        void timerEl.offsetWidth;
+        timerEl.classList.add('ar-timer-bonus');
+      }
+      return;
+    }
+    if (t === 'shield') {
+      shieldCharges += (effect.charges || 1);
+      try { sfx.crtOn && sfx.crtOn(); } catch {}
+      // Lit-shield indicator near the player HP bar so the player
+      // sees the charge banked.
+      paintShieldIndicator();
+      return;
+    }
+    if (t === 'stagger') {
+      // Boss WEAKPOINT — inverse of harden. Taps deal 2x for the window.
+      staggerUntil = Date.now() + (effect.duration || 2500);
+      if (sprite) {
+        sprite.classList.remove('ar-staggered');
+        void sprite.offsetWidth;
+        sprite.classList.add('ar-staggered');
+        setTimeout(() => sprite && sprite.classList.remove('ar-staggered'), effect.duration || 2500);
+      }
+      return;
+    }
+    if (t === 'focus') {
+      focusTapsLeft += (effect.taps || 5);
+      paintFocusIndicator();
+      return;
+    }
+    // Unknown type — fall back to damage so the click feels useful.
+    applyDamage(effect.dmg || 80, { ability: true, x: anchor.x, y: anchor.y });
+  }
+
+  function spawnAbilityBanner(label, type) {
+    const b = document.createElement('div');
+    b.className = 'ar-ability-banner ar-effect-' + type;
+    b.textContent = '✺ ' + label + ' ✺';
+    wrap.querySelector('.ar-overlay')?.appendChild(b);
+    b.addEventListener('animationend', () => b.remove(), { once: true });
+  }
+  function paintShieldIndicator() {
+    let badge = wrap.querySelector('#arShieldBadge');
+    if (shieldCharges <= 0) { if (badge) badge.remove(); return; }
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'arShieldBadge';
+      badge.className = 'ar-status-badge ar-shield-badge';
+      wrap.querySelector('.ar-hud')?.appendChild(badge);
+    }
+    badge.textContent = '🛡 × ' + shieldCharges;
+  }
+  function paintFocusIndicator() {
+    let badge = wrap.querySelector('#arFocusBadge');
+    if (focusTapsLeft <= 0) { if (badge) badge.remove(); return; }
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'arFocusBadge';
+      badge.className = 'ar-status-badge ar-focus-badge';
+      wrap.querySelector('.ar-hud')?.appendChild(badge);
+    }
+    badge.textContent = '🎯 × ' + focusTapsLeft;
   }
   function refreshAbilityCooldowns() {
     armedItems.forEach((_, idx) => {
@@ -28353,14 +28604,23 @@ async function openARFinisher(stepIdx) {
       fl.addEventListener('animationend', () => fl.remove(), { once: true });
       addRage(5);
     } else {
-      // Attack lands. Damage from the attack-type table — jab/slam/
-      // crash deal escalating damage.
-      const atk = currentAttack || { dmgMin: 18, dmgMax: 25 };
-      const dmg = atk.dmgMin + Math.floor(Math.random() * (atk.dmgMax - atk.dmgMin + 1));
-      applyPlayerDamage(dmg);
-      // Damage taken still feeds rage so a struggling player has a
-      // path back. Bigger bump than dodge so failing isn't free.
-      addRage(15);
+      // Shield ability charges convert a missed dodge into a free dodge.
+      if (shieldCharges > 0) {
+        shieldCharges--;
+        paintShieldIndicator();
+        spawnAbilityBanner('🛡 SHIELD', 'shield');
+        try { sfx.success && sfx.success(); } catch {}
+        try { navigator.vibrate && navigator.vibrate(40); } catch {}
+      } else {
+        // Attack lands. Damage from the attack-type table — jab/slam/
+        // crash deal escalating damage.
+        const atk = currentAttack || { dmgMin: 18, dmgMax: 25 };
+        const dmg = atk.dmgMin + Math.floor(Math.random() * (atk.dmgMax - atk.dmgMin + 1));
+        applyPlayerDamage(dmg);
+        // Damage taken still feeds rage so a struggling player has a
+        // path back. Bigger bump than dodge so failing isn't free.
+        addRage(15);
+      }
     }
     // Clear the per-attack visual class so the next telegraph starts clean.
     wrap.classList.remove('ar-atk-jab','ar-atk-slam','ar-atk-crash');
