@@ -4707,6 +4707,24 @@
     50%      { height: 11px; }
   }
 
+  /* SFX top-bar toggle — same chassis as music-btn, swaps in a lightning
+     glyph corner badge instead of soundwaves so the two buttons read
+     differently at a glance. */
+  .sfx-btn { position: relative; overflow: visible; padding: 0; }
+  .sfx-bolt {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    font-size: 12px;
+    line-height: 1;
+    text-shadow: 1px 1px 0 #000;
+    color: var(--gold);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+  .sfx-btn.playing .sfx-bolt { opacity: 1; }
+
   /* ---------- Modal ---------- */
   .modal-bg {
     position: fixed; inset: 0; background: rgba(0,0,0,0.75);
@@ -10572,7 +10590,7 @@ const DEFAULT_PROFILE = {
   // Music defaults to ON. Starts on the first user click (autoplay
   // policies block audio before any gesture).
   musicMuted: false,
-  musicVolume: 0.1,                               // 0.0–1.0, used by the BGM <audio> element
+  musicVolume: 0.45,                              // 0.0–1.0, used by the BGM <audio> element. 0.1 was inaudible on most phones; bumped after multiple "is the music actually playing?" reports
   musicShuffle: true,                             // shuffle is the default play mode (legacy bool, kept for back-compat)
   musicMode: 'shuffle',                           // canonical play mode: 'shuffle' | 'sequential' | 'loop'
   timerTickMuted: false,                          // mute the baseline 1Hz tick during a run; warn/countdown/fail still fire
@@ -10681,7 +10699,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.307';
+const BUILD_VERSION = '2026.05.23.308';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -10944,6 +10962,15 @@ function loadProfile() {
     if (!merged.musicMode) {
       merged.musicMode = 'shuffle';
       merged.musicShuffle = true;
+    }
+    // Music-volume one-time migration. Old default was 0.1 (inaudible
+    // on most phones — multiple testers reported the BGM 'isn't
+    // playing' when actually it just was too quiet to hear over
+    // ambient room noise). Bump any save whose volume is still at or
+    // below the old default to the new default. Players who explicitly
+    // set something above 0.15 keep their choice.
+    if (typeof merged.musicVolume !== 'number' || merged.musicVolume <= 0.15) {
+      merged.musicVolume = 0.45;
     }
     // Sarah Mode is gated by the player's current name. Resync on load:
     // if name === "sarah" → ensure unlocks present; otherwise ensure
@@ -14167,6 +14194,10 @@ function header(title) {
           <img src="img/${music.isAudible() ? 'setting_sound_on' : 'setting_sound_off'}.png?v=3" class="music-btn-img" alt="" draggable="false"/>
           <span class="music-waves" aria-hidden="true"><span></span><span></span><span></span></span>
         </span>
+        <span class="cog-btn sfx-btn ${profile.sfxMuted ? '' : 'playing'}" id="sfxHeaderBtn" title="Toggle sound effects">
+          <img src="img/${profile.sfxMuted ? 'setting_sound_off' : 'setting_sound_on'}.png?v=3" class="music-btn-img" alt="" draggable="false"/>
+          <span class="sfx-bolt" aria-hidden="true">⚡</span>
+        </span>
         <span class="cog-btn" id="cogBtn" title="Settings"><img src="img/ui_settings.png?v=2" class="topbar-ic" alt=""/></span>
         <span class="pill"><img src="img/ui_level.png?v=1" class="pill-ic" alt=""/> Lv <span class="num-tick" data-num="lv">${profile.accountLevel}</span></span>
         <span class="pill"><img src="img/ui_coins.png?v=1" class="pill-ic" alt=""/> <span class="num-tick" data-num="coins">${profile.coins}</span></span>
@@ -14202,6 +14233,32 @@ function bindHeader() {
       refreshMusicBtn();
     };
     refreshMusicBtn();
+  }
+  // SFX toggle living next to the music button. Player wanted a
+  // top-bar mute for effects too so they don't have to dive into
+  // settings to silence them mid-run.
+  const sfxBtn = document.getElementById('sfxHeaderBtn');
+  if (sfxBtn) {
+    const refreshSfxBtn = () => {
+      const muted = !!profile.sfxMuted;
+      sfxBtn.classList.toggle('playing', !muted);
+      const img = sfxBtn.querySelector('.music-btn-img');
+      if (img) img.src = `img/${muted ? 'setting_sound_off' : 'setting_sound_on'}.png?v=3`;
+    };
+    sfxBtn.onclick = () => {
+      const wasMuted = !!profile.sfxMuted;
+      if (wasMuted) {
+        sfx.setMuted(false);
+        try { sfx.click && sfx.click(); } catch {}
+        toast('🔊 Sound effects on');
+      } else {
+        try { sfx.click && sfx.click(); } catch {}    // confirmation blip BEFORE muting
+        sfx.setMuted(true);
+        toast('🔇 Sound effects muted');
+      }
+      refreshSfxBtn();
+    };
+    refreshSfxBtn();
   }
   // Avatar + brand both toggle Profile ↔ <previous view>. We stash any
   // view the player was on before they opened Profile — tab views slide
@@ -15299,6 +15356,13 @@ const music = (() => {
       if (a) { try { a.pause(); } catch (e) {} }
       syncWhiteNoise();
     },
+    // Expose the AudioContext resume so _kickBgm can call it from
+    // inside the user-gesture handler. iOS Safari requires this exact
+    // sequencing: resume MUST happen synchronously inside the handler,
+    // not in an async chain after.
+    _resumeCtx() {
+      ensureAudioCtx();
+    },
     resume() {
       const a = decks[activeIdx];
       if (!a) return;
@@ -15358,6 +15422,17 @@ function _kickBgm() {
   if (_bgmKickoff) return;
   _bgmKickoff = true;
   if (typeof profile !== 'undefined' && !profile.musicMuted && typeof music !== 'undefined') {
+    // iOS Safari's AudioContext is suspended on creation and needs to be
+    // resumed FROM a user gesture (not async-after). Hit resume() here
+    // inside the gesture handler so the GainNode is alive by the time
+    // music.start() reads it. Without this, the audio element thinks
+    // it's playing but the GainNode is at 0 and nothing comes out —
+    // exactly the 'shows playing but I can't hear it' report.
+    try { music._resumeCtx && music._resumeCtx(); } catch {}
+    // Also re-apply the current volume so the gain node has a real
+    // value the moment audio begins, instead of inheriting whatever
+    // initial-state value the deck had.
+    try { music.setVolume && music.setVolume(profile.musicVolume); } catch {}
     music.start();
   }
   // Remove all listeners — already fired.
@@ -18670,7 +18745,7 @@ function motionThresholdsFor(kind) {
   // lower noise so the thresholds were dropped after tester reported
   // the step counter taking 3-5 steps before the first one registered.
   switch (kind) {
-    case 'steps': return { peak: 2.8,  cooldownMs: 340 };   // normal walking — 3.5/320 too strict, 2.0/260 too sensitive; this lands in the middle
+    case 'steps': return { peak: 3.2,  cooldownMs: 360 };   // normal walking — tuning history: 3.5 too strict, 2.0 too sensitive, 2.8 still too sensitive, this is ~12% stricter than 2.8
     case 'jump':  return { peak: 9.0,  cooldownMs: 520 };   // jumping jack landings
     case 'spin':  return { peak: 6.0,  cooldownMs: 380 };   // spin-the-phone gestures
     default:      return { peak: 7.0,  cooldownMs: 280 };   // shake (default)
