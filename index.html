@@ -4841,6 +4841,66 @@
   .stat-cell .v { font-family: var(--px); font-size: 14px; color: var(--neon-3); }
   .stat-cell .l { font-family: var(--px); font-size: 7px; color: var(--ink-faint); margin-top: 6px; letter-spacing: 1px; }
 
+  /* ---------- Tutorial card (first-run home screen) ---------- */
+  /* Prominent first-time player offer to take the 3-step tutorial.
+     Surfaces only when profile.runs === 0 AND !profile.tutorialDone,
+     so existing players never see it. Sits above the mode grid so
+     it's the first thing a new player reads on the home screen. */
+  .tutorial-card {
+    background: linear-gradient(135deg, rgba(245,194,66,0.18), rgba(0,230,195,0.18));
+    border: 3px solid var(--gold);
+    box-shadow: 4px 4px 0 #000, 0 0 20px rgba(245,194,66,0.35);
+    padding: 16px;
+    margin-bottom: 18px;
+    text-align: center;
+    animation: tutCardPulse 2s ease-in-out infinite;
+  }
+  @keyframes tutCardPulse {
+    0%, 100% { box-shadow: 4px 4px 0 #000, 0 0 18px rgba(245,194,66,0.30); }
+    50%      { box-shadow: 4px 4px 0 #000, 0 0 32px rgba(245,194,66,0.55); }
+  }
+  .tutorial-tag {
+    font-family: var(--px); font-size: 8px;
+    color: var(--neon-3);
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+  }
+  .tutorial-title {
+    font-family: var(--px); font-size: 16px;
+    color: var(--gold);
+    text-shadow: 2px 2px 0 #000, 0 0 10px var(--gold);
+    letter-spacing: 3px;
+    margin-bottom: 10px;
+  }
+  .tutorial-body {
+    font-family: var(--term); font-size: 14px;
+    color: var(--ink);
+    line-height: 1.45;
+    margin-bottom: 14px;
+  }
+  .tutorial-actions {
+    display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .btn.tutorial-start {
+    width: 100%;
+    max-width: 320px;
+    font-size: 12px;
+    letter-spacing: 2px;
+    padding: 12px 18px;
+  }
+  .tutorial-skip {
+    background: none;
+    border: none;
+    color: var(--ink-faint);
+    font-family: var(--term);
+    font-size: 12px;
+    font-style: italic;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 2px;
+  }
+  .tutorial-skip:hover { color: var(--ink-dim); }
+
   /* ---------- Welcome bubble ---------- */
   .welcome-bubble {
     display: flex; gap: 10px; align-items: flex-start;
@@ -10508,6 +10568,7 @@ const DEFAULT_PROFILE = {
   armedItems: [],                                 // item ids armed for next run; consumed at run start
   sfxMuted: false,                                // toggled from settings; respected by sfx.*
   sfxVolume: 0.7,                                 // 0.0–1.0, multiplies every sfx peak so effects can sit above the music
+  tutorialDone: false,                            // flips true after the player finishes (or dismisses) the 3-step intro tutorial
   // Music defaults to ON. Starts on the first user click (autoplay
   // policies block audio before any gesture).
   musicMuted: false,
@@ -10620,7 +10681,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.304';
+const BUILD_VERSION = '2026.05.23.305';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -12755,6 +12816,53 @@ const SOLO_BOSSES = [
     hp: 190,
   },
 ];
+
+// ── TUTORIAL BOSS + QUEST ────────────────────────────────────────────
+// A fixed 3-step intro run for first-time players. Surfaces on the
+// home screen for anyone with profile.runs === 0 + !tutorialDone.
+// Soft-judged so the photo step passes guaranteed (the tutorial
+// teaches the loop, not gates it). Last step is AR-mode finisher
+// so the player meets the climactic mechanic too.
+const TUTORIAL_BOSS = {
+  name: 'The Trial Sprite',
+  ic: '✨',
+  iconImg: 'img/bosses/the_inertia_beast.png',  // reuse an existing friendly sprite
+  desc: 'A pale apprentice spirit. Brittle. Polite. Beats first-timers gently — but only just.',
+  wants: 'You unsure of yourself.',
+  beat: 'Three small acts of confidence.',
+  timeoutPunish: 'You owe yourself one slow exhale.',
+  hp: 240,
+};
+function buildTutorialQuest() {
+  return [
+    {
+      type: 'Find',
+      title: 'Photograph anything nearby',
+      instr: "Look around. Tap CAPTURE. Photograph literally anything — the floor, a chair, your sock. This step's judge is friendly — just take ONE photo and you'll pass.",
+      examples: ['the wall in front of you', 'a chair you can see', 'your own sock'],
+      proof: 'photo',
+      dmg: 60,
+    },
+    {
+      type: 'Move',
+      title: 'Walk five steps',
+      instr: "Hold the phone in your hand. Tap START TRACKING when you're ready. Take five normal walking steps in any direction. The accelerometer counts them.",
+      examples: [],
+      proof: 'motion',
+      motionKind: 'steps',
+      motionTarget: 5,
+      dmg: 80,
+    },
+    {
+      type: 'Final Attack',
+      title: 'Finish the sprite in AR',
+      instr: "Tap ⚔ FINISH IT - AR MODE. Tap the boss to attack. Shake the phone for a slam. Watch for the DODGE button when the sprite winds up. Drop them to 0 HP before time runs out.",
+      examples: [],
+      proof: 'photo',
+      dmg: 100,
+    },
+  ];
+}
 
 /* ----- Quest generators ----- */
 
@@ -15590,6 +15698,18 @@ function screenHome() {
     <div id="reconnectSlot"></div>
     <div id="resumeSlot"></div>
 
+    ${(!profile.tutorialDone && (profile.runs || 0) === 0) ? `
+      <div class="tutorial-card" id="tutorialCard">
+        <div class="tutorial-tag">▶ NEW PLAYER · 3 MINUTES</div>
+        <div class="tutorial-title">TRY THE TUTORIAL</div>
+        <div class="tutorial-body">Quick boss fight that teaches the loop — take a photo, walk a few steps, finish in AR. No setup, no risk.</div>
+        <div class="tutorial-actions">
+          <button class="btn primary tutorial-start" id="tutorialStartBtn">▶ START TUTORIAL</button>
+          <button class="tutorial-skip" id="tutorialSkipBtn">skip — I know how to play</button>
+        </div>
+      </div>
+    ` : ''}
+
     <div class="mode-grid">
       <div class="mode-card party" id="modeParty">
         <span class="badge">START!</span>
@@ -15656,6 +15776,17 @@ function screenHome() {
   applyTabTransition();
   document.getElementById('modeParty').onclick = () => zoomIntoArcadeScreen(() => enterPartyLobby());
   document.getElementById('modeSolo').onclick = () => zoomIntoArcadeScreen(() => startSetup('solo'));
+  // Tutorial card — first-time players only. Start launches the
+  // hardcoded tutorial run; skip flips the flag so the card never
+  // returns.
+  const tutorialStart = document.getElementById('tutorialStartBtn');
+  if (tutorialStart) tutorialStart.onclick = () => zoomIntoArcadeScreen(() => startTutorialRun());
+  const tutorialSkip = document.getElementById('tutorialSkipBtn');
+  if (tutorialSkip) tutorialSkip.onclick = () => {
+    profile.tutorialDone = true;
+    try { saveProfile(); } catch {}
+    render();
+  };
   // PARTY card stop-motion idle loop — hero-crew trio cycles 3 frames
   // (skipping the narrower frame 1) at the same cadence as the solo
   // fight loop. Stops on its own when the home screen unmounts.
@@ -15791,6 +15922,66 @@ function startSetup(mode) {
   state.setupStep = 0;
   state._styleAdvancedOpen = false;
   go('setup');
+}
+
+// Skip the whole setup wizard + AI quest generation and drop the player
+// straight into a hardcoded 3-step run with a fixed boss + a soft-pass
+// judge. Used by the home-screen TUTORIAL card so first-time players
+// learn the loop without being asked to configure anything.
+function startTutorialRun() {
+  const warmupDiff = DIFFICULTIES.find(d => d.id === 'warmup') || DIFFICULTIES[0];
+  state.run = {
+    mode: 'solo',
+    qmpRoomCode: null,
+    qmpIsHost: true,
+    qmpRoomMode: null,
+    secretTraitor: false,
+    contextChoice: 'home',
+    contextNote: '',
+    vibes: ['chill'],
+    unhinged: false,
+    theme: null,
+    risks: [...RISKS],
+    limits: ['Keep it indoors'],     // tutorial should fit in a small apartment
+    allowances: [],
+    petContext: { type: 'dog' },
+    difficulty: warmupDiff,
+    players: ['You'],
+    secretRoles: false,
+    traitor: null,
+    rolesViewed: [],
+    boss: { ...TUTORIAL_BOSS, maxHP: TUTORIAL_BOSS.hp },
+    bossHP: TUTORIAL_BOSS.hp,
+    bossMaxHP: TUTORIAL_BOSS.hp,
+    quest: buildTutorialQuest(),
+    currentStep: 0,
+    completed: [],
+    proofs: {},
+    judgments: {},
+    bestQuip: '',
+    photoCount: 0,
+    accusations: {},
+    chat: [],
+    chatOpen: false,
+    chatBusy: false,
+    rerollsUsed: 0,
+    timeTauntsFired: [],
+    factsUsed: [],
+    failedSteps: [],
+    stepTimerStarts: {},
+    twistTriggered: false,
+    activeTwists: [],
+    questRevealed: true,
+    armed: [],
+    // Flag the run as the tutorial so:
+    //  - photo judge auto-passes (teaches loop, not gatekeeps)
+    //  - finalizeRun marks profile.tutorialDone instead of polluting
+    //    streak/runs stats
+    //  - other code can branch on this if needed
+    isTutorial: true,
+  };
+  state.setupStep = 0;
+  go('boss');
 }
 
 function screenSetup() {
@@ -19038,6 +19229,16 @@ function bindQuest() {
       render();
       return;
     }
+    // Tutorial soft-pass — the intro run teaches the LOOP, not the
+    // gate. Any photo passes with a friendly comment so the player
+    // makes it through the 3 steps without bouncing off a stricter
+    // judge while they're still learning where the buttons are.
+    if (r.isTutorial) {
+      r.judgments[i] = { pass: true, comment: '✓ The Trial Sprite winces. You\'re getting it.' };
+      profile.photosJudged++; saveProfile();
+      render();
+      return;
+    }
     toast('Sending photo to judge…');
     let result;
     try {
@@ -19078,6 +19279,14 @@ function bindQuest() {
       toast('Auto-passed by item.');
       // After render, the Submit button now says "✓ Submit" — but we
       // proceed straight to complete since the player already pressed.
+      render();
+      setTimeout(() => document.querySelector(`[data-complete="${i}"]`)?.click(), 0);
+      return;
+    }
+    // Tutorial soft-pass for the submit-path (matches the judge path).
+    if (r.isTutorial) {
+      r.judgments[i] = { pass: true, comment: '✓ Nice. The sprite drops a chunk of HP.' };
+      profile.photosJudged = (profile.photosJudged || 0) + 1; saveProfile();
       render();
       setTimeout(() => document.querySelector(`[data-complete="${i}"]`)?.click(), 0);
       return;
@@ -20310,6 +20519,20 @@ function finalizeRun() {
   // battery between runs. Safe to call even if nothing was attached.
   try { detachGeoWatcher && detachGeoWatcher(); } catch {}
   try { detachMotionListener && detachMotionListener(); } catch {}
+  // Tutorial run — mark complete and short-circuit the normal reward /
+  // stats / history pipeline. The tutorial is a teaching tool, not a
+  // scored encounter; we don't want it polluting streak, runs count,
+  // boss-defeat history, or anti-repetition memory. Player still lands
+  // on a celebratory screen so the completion feels real.
+  if (r && r.isTutorial) {
+    profile.tutorialDone = true;
+    try { saveProfile(); } catch {}
+    toast('🎓 Tutorial complete. Go try a real run.');
+    state.run = null;
+    state.view = 'home';
+    render();
+    return;
+  }
   // Remember the player's last-run mode so the home-screen welcome bubble
   // and other "between runs" surfaces can stay in the correct character
   // (System vs Gremlin) until the next run starts.
