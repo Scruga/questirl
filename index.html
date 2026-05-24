@@ -10715,7 +10715,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.312';
+const BUILD_VERSION = '2026.05.23.313';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -31405,7 +31405,35 @@ function maybeShowOnboarding() {
   const wrap = document.createElement('div');
   wrap.className = 'onboard-bg';
   document.body.appendChild(wrap);
-  const close = () => wrap.remove();
+  // Defensive wrapper for unexpected removal. Tester reported the
+  // onboarding modal auto-closing ~7s after load on fresh sessions
+  // and suspected the recent BGM changes. We can't repro from
+  // grep alone, so this:
+  //   1. Flags any intentional close before calling remove.
+  //   2. Watches body for removal of `wrap` via MutationObserver.
+  //   3. If wrap is removed and _intentionalClose is false, logs
+  //      a stack trace AND re-appends wrap so the player isn't
+  //      stranded mid-name-pick. The protection auto-detaches
+  //      once the modal is legitimately closed.
+  let _intentionalClose = false;
+  const _onboardWatcher = new MutationObserver((muts) => {
+    for (const m of muts) {
+      for (const removed of m.removedNodes) {
+        if (removed === wrap && !_intentionalClose) {
+          console.warn('[onboard] modal removed unexpectedly — re-appending');
+          console.warn(new Error('onboard removal stack').stack);
+          try { document.body.appendChild(wrap); } catch {}
+          return;
+        }
+      }
+    }
+  });
+  _onboardWatcher.observe(document.body, { childList: true });
+  const close = () => {
+    _intentionalClose = true;
+    try { _onboardWatcher.disconnect(); } catch {}
+    wrap.remove();
+  };
   const renderSlide = () => {
     const s = ONBOARD_SLIDES[slideIdx];
     const isLast = slideIdx === ONBOARD_SLIDES.length - 1;
