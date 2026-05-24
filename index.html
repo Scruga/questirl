@@ -10681,7 +10681,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.305';
+const BUILD_VERSION = '2026.05.23.306';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -12826,7 +12826,7 @@ const SOLO_BOSSES = [
 const TUTORIAL_BOSS = {
   name: 'The Trial Sprite',
   ic: '✨',
-  iconImg: 'img/bosses/the_inertia_beast.png',  // reuse an existing friendly sprite
+  iconImg: 'img/bosses/inertia_beast.png',  // reuse an existing friendly sprite
   desc: 'A pale apprentice spirit. Brittle. Polite. Beats first-timers gently — but only just.',
   wants: 'You unsure of yourself.',
   beat: 'Three small acts of confidence.',
@@ -18707,9 +18707,11 @@ function motionThresholdsFor(kind) {
   // Returns { peak, cooldownMs }. Peaks are deltas from a running
   // baseline (not absolute magnitudes), so users with phones in pockets
   // vs hands both work without per-device calibration. Tuned manually
-  // on an A06 + a Pixel 6; iPhone tends to be slightly lower noise.
+  // on an A06 + a Pixel 6 + an iPhone; iPhone tends to be slightly
+  // lower noise so the thresholds were dropped after tester reported
+  // the step counter taking 3-5 steps before the first one registered.
   switch (kind) {
-    case 'steps': return { peak: 3.5,  cooldownMs: 320 };   // brisk walking pace
+    case 'steps': return { peak: 2.0,  cooldownMs: 260 };   // normal walking — was 3.5/320, too strict
     case 'jump':  return { peak: 9.0,  cooldownMs: 520 };   // jumping jack landings
     case 'spin':  return { peak: 6.0,  cooldownMs: 380 };   // spin-the-phone gestures
     default:      return { peak: 7.0,  cooldownMs: 280 };   // shake (default)
@@ -27088,10 +27090,13 @@ async function openARFinisher(stepIdx) {
   const diffId = (r.difficulty && r.difficulty.id) || 'bold';
   const diffScale = DIFF_SCALE_TABLE[diffId] || DIFF_SCALE_TABLE.bold;
 
-  // Boss HP — base 2500 at bold; warmup 1375, brave 1875, chaos 3500,
-  // nightmare 5000. The death sequence + ENRAGE phase still surface
-  // on every tier because the phase thresholds are percentages.
-  const arHPMax = Math.round(2500 * diffScale.bossHp);
+  // Boss HP — halved per playtest. Base 1250 at bold; warmup ~688,
+  // brave ~938, chaos 1500, nightmare 1750. Fights now resolve ~2x
+  // faster across the board, leaving the timer with more cushion so
+  // the new boss-attack windups + ENRAGE juke don't eat the player's
+  // damage budget. Phase thresholds are percentages, so the polish
+  // (phase shifts, ENRAGE, heartbeat tempo) still lands on every tier.
+  const arHPMax = Math.round(1250 * diffScale.bossHp);
   let arHP = arHPMax;
   // Player HP — base 300 at bold; warmup 450, nightmare 210. Less
   // margin on tougher difficulties so missed dodges hurt more.
