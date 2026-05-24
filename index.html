@@ -10715,7 +10715,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.314';
+const BUILD_VERSION = '2026.05.23.315';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -10747,9 +10747,28 @@ if ('serviceWorker' in navigator) {
 
     // When the new SW takes control (after SKIP_WAITING), reload once
     // so the page picks up the new assets atomically.
+    // CRITICAL: only reload on UPDATE, not on first activation.
+    // controllerchange fires in TWO scenarios:
+    //   1. First-ever activation (no controller existed before; SW
+    //      claims the page for the first time). The page already
+    //      has the right assets — no reload needed.
+    //   2. SW UPDATE (an existing controller is replaced by a new
+    //      one after SKIP_WAITING). Reload to swap assets atomically.
+    // Previously this reloaded in BOTH cases, which torched the
+    // onboarding modal for brand-new visitors ~5-10s into their
+    // first session (the exact 'modal disappears at ~7s' bug).
+    const _hadControllerAtBoot = !!navigator.serviceWorker.controller;
     let _swReloading = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       if (_swReloading) return;
+      if (!_hadControllerAtBoot) {
+        // First-ever activation for this client. The page is fine
+        // as-is; reloading would kill any in-flight UI (onboarding,
+        // half-completed setup, etc).
+        console.log('[sw] first activation — skipping reload');
+        return;
+      }
+      console.log('[sw] update activation — reloading to swap assets');
       _swReloading = true;
       window.location.reload();
     });
