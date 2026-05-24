@@ -10699,7 +10699,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.309';
+const BUILD_VERSION = '2026.05.23.310';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15468,6 +15468,93 @@ const music = (() => {
 // don't need to be touched; both are no-ops now. To re-enable later,
 // restore the AudioContext-driven implementation from git history.
 const whiteNoise = { start() {}, stop() {} };
+
+// ── In-page BGM log capture ─────────────────────────────────────────
+// iOS gives developers no on-device console (Safari Web Inspector
+// needs a Mac). This intercepts every [bgm]-prefixed console.log /
+// warn / error into an in-memory ring buffer and surfaces a floating
+// 🔧 button (when URL includes ?debug=1 or dev mode is on) that
+// opens a fullscreen panel showing the captured log + a COPY
+// button. Tester pastes the output back so we can diagnose the
+// audio choke point without ever needing a Mac.
+const _bgmDebugLog = [];
+const _BGM_DEBUG_MAX = 250;
+(function captureBgmLogs() {
+  const orig = { log: console.log.bind(console), warn: console.warn.bind(console), error: console.error.bind(console) };
+  const capture = (level, args) => {
+    try {
+      const first = args[0];
+      if (typeof first !== 'string' || first.indexOf('[bgm]') !== 0) return;
+      const ts = new Date().toISOString().slice(11, 23);
+      const rendered = args.map(a => {
+        if (typeof a === 'string') return a;
+        try { return JSON.stringify(a); } catch { return String(a); }
+      }).join(' ');
+      _bgmDebugLog.push(`${ts} ${level.toUpperCase()}: ${rendered}`);
+      if (_bgmDebugLog.length > _BGM_DEBUG_MAX) _bgmDebugLog.shift();
+    } catch {}
+  };
+  console.log   = function (...args) { capture('log',   args); orig.log  .apply(console, args); };
+  console.warn  = function (...args) { capture('warn',  args); orig.warn .apply(console, args); };
+  console.error = function (...args) { capture('error', args); orig.error.apply(console, args); };
+})();
+function _isBgmDebugEnabled() {
+  try { if (location.search.indexOf('debug=1') >= 0) return true; } catch {}
+  return typeof profile !== 'undefined' && !!profile.devMode;
+}
+function openBgmDebugViewer() {
+  const existing = document.getElementById('bgmDebugWrap');
+  if (existing) { existing.remove(); return; }
+  const wrap = document.createElement('div');
+  wrap.id = 'bgmDebugWrap';
+  wrap.style.cssText = 'position:fixed; inset:0; z-index:99999; background:rgba(0,0,0,0.95); padding:14px; display:flex; flex-direction:column; gap:8px;';
+  const heading = document.createElement('div');
+  heading.style.cssText = 'color:#ffce4f; font-family:"Press Start 2P",monospace; font-size:11px; letter-spacing:2px;';
+  heading.textContent = `[BGM DEBUG] ${_bgmDebugLog.length} entries`;
+  const ta = document.createElement('textarea');
+  ta.style.cssText = 'flex:1; background:#0a0518; color:#7fffaf; border:2px solid #444; padding:8px; font-family:ui-monospace,Menlo,monospace; font-size:11px; line-height:1.4; resize:none; overflow:auto; -webkit-user-select:text; user-select:text;';
+  ta.value = _bgmDebugLog.join('\n') || '(no [bgm] logs yet — tap somewhere on the page first to trigger music kickoff, then reopen this panel)';
+  ta.readOnly = true;
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex; gap:8px;';
+  const copyBtn = document.createElement('button');
+  copyBtn.style.cssText = 'flex:1; background:#ffce4f; color:#000; border:0; padding:14px; font-family:"Press Start 2P",monospace; font-size:11px; letter-spacing:2px; cursor:pointer;';
+  copyBtn.textContent = 'COPY';
+  copyBtn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(ta.value);
+      copyBtn.textContent = '✓ COPIED';
+      setTimeout(() => { copyBtn.textContent = 'COPY'; }, 1500);
+    } catch {
+      ta.focus(); ta.select();
+      try { document.execCommand('copy'); copyBtn.textContent = '✓ COPIED'; }
+      catch { copyBtn.textContent = 'long-press the text instead'; }
+    }
+  };
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'flex:1; background:#333; color:#fff; border:0; padding:14px; font-family:"Press Start 2P",monospace; font-size:11px; letter-spacing:2px; cursor:pointer;';
+  closeBtn.textContent = 'CLOSE';
+  closeBtn.onclick = () => wrap.remove();
+  row.appendChild(copyBtn); row.appendChild(closeBtn);
+  wrap.appendChild(heading); wrap.appendChild(ta); wrap.appendChild(row);
+  document.body.appendChild(wrap);
+}
+function mountBgmDebugFab() {
+  if (!_isBgmDebugEnabled()) return;
+  if (document.getElementById('bgmDebugFab')) return;
+  const btn = document.createElement('button');
+  btn.id = 'bgmDebugFab';
+  btn.type = 'button';
+  btn.textContent = '🔧';
+  btn.title = 'Show BGM debug log';
+  btn.style.cssText = 'position:fixed; bottom:14px; right:14px; z-index:9998; width:52px; height:52px; border-radius:50%; border:3px solid #ffce4f; background:#0a0518; color:#fff; font-size:24px; cursor:pointer; box-shadow:3px 3px 0 #000;';
+  btn.onclick = openBgmDebugViewer;
+  document.body.appendChild(btn);
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountBgmDebugFab);
+else mountBgmDebugFab();
+setTimeout(mountBgmDebugFab, 800);   // retry after profile + boot settle
+
 // Browsers gate audio playback behind a user gesture, so we kick off
 // the BGM on the FIRST anything — click, tap, or keypress. Whichever
 // fires earliest wins; the others are torn down.
