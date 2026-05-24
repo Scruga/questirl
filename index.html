@@ -6264,6 +6264,49 @@
     100% { opacity: 0; transform: translate(-50%, -90%) scale(1); }
   }
 
+  /* ── Per-boss signature-move banners + states. ── */
+  .ar-sig-banner {
+    position: absolute;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--px);
+    font-size: 22px;
+    letter-spacing: 3px;
+    text-shadow: 3px 3px 0 #000, 0 0 14px currentColor;
+    pointer-events: none;
+    z-index: 7;
+    animation: arSigBannerLife 1.1s ease both;
+    text-align: center;
+  }
+  .ar-sig-teleport { color: var(--neon-3); }
+  .ar-sig-harden   { color: var(--gold); }
+  .ar-sig-multijab { color: var(--neon); }
+  @keyframes arSigBannerLife {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -90%) scale(0.95); }
+  }
+  /* Hardened — gold shimmer overlay on the sprite during the 2s
+     damage-soak window. Pairs with the ◇ HARDENED ◇ banner. */
+  .ar-boss-sprite.ar-hardened {
+    filter: drop-shadow(0 0 30px var(--gold)) drop-shadow(0 6px 26px rgba(245,194,66,0.9)) saturate(1.4) brightness(1.2) !important;
+    animation: arBossBob 1.2s ease-in-out infinite, arHardenedShimmer 0.6s ease-in-out infinite;
+  }
+  @keyframes arHardenedShimmer {
+    0%, 100% { filter: drop-shadow(0 0 30px var(--gold)) drop-shadow(0 6px 26px rgba(245,194,66,0.9)) saturate(1.4) brightness(1.2); }
+    50%      { filter: drop-shadow(0 0 50px #fff) drop-shadow(0 6px 26px rgba(245,194,66,1)) saturate(1.6) brightness(1.5); }
+  }
+  /* Damage popup variant when the hit landed during harden — small,
+     dim, with a deflected look so the player feels the soak. */
+  .ar-dmg-pop.hardened {
+    color: var(--gold);
+    font-size: 14px;
+    opacity: 0.85;
+    text-shadow: 2px 2px 0 #000;
+  }
+
   /* ── Combo chip — pulses up from the side when chain >= 2.
        Each tier-N class escalates the visual: tier-1 is muted, tier-8
        is the full GODLIKE rainbow. ── */
@@ -10715,7 +10758,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.316';
+const BUILD_VERSION = '2026.05.23.317';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -27730,7 +27773,12 @@ async function openARFinisher(stepIdx) {
   function applyDamage(rawDmg, opts = {}) {
     // Centralized damage path — every hit type (tap, crit, slam) ends
     // here so combo/phase/HP/win logic stays consistent.
-    const dmg = Math.max(1, Math.round(rawDmg));
+    // Harden signature: while active, boss soaks 80% of incoming damage.
+    let dmg = Math.max(1, Math.round(rawDmg));
+    if (hardenActiveUntil > Date.now()) {
+      dmg = Math.max(1, Math.round(dmg * 0.2));
+      opts = Object.assign({}, opts, { hardened: true });
+    }
     arHP = Math.max(0, arHP - dmg);
     const fill = wrap.querySelector('#arHpFill');
     const num  = wrap.querySelector('#arHpNum');
@@ -27749,8 +27797,9 @@ async function openARFinisher(stepIdx) {
       + (opts.slam ? ' slam' : '')
       + (opts.counter ? ' counter' : '')
       + (opts.rage ? ' rage' : '')
-      + (opts.ability ? ' ability' : '');
-    const prefix = opts.rage ? '★ ' : opts.ability ? '✺ ' : opts.slam ? '⚡ ' : opts.counter ? '↺ ' : opts.crit ? '✦ ' : '−';
+      + (opts.ability ? ' ability' : '')
+      + (opts.hardened ? ' hardened' : '');
+    const prefix = opts.hardened ? '◇ ' : opts.rage ? '★ ' : opts.ability ? '✺ ' : opts.slam ? '⚡ ' : opts.counter ? '↺ ' : opts.crit ? '✦ ' : '−';
     dn.textContent = prefix + dmg;
     dn.style.left = (opts.x != null ? opts.x : window.innerWidth / 2) + 'px';
     dn.style.top  = (opts.y != null ? opts.y : window.innerHeight / 2) + 'px';
@@ -28077,8 +28126,39 @@ async function openARFinisher(stepIdx) {
     { id: 'slam',  weight: 4, telegraph:  750, dodge:  800, dmgMin:  56, dmgMax:  80, label: '✦ SLAM' },
     { id: 'crash', weight: 2, telegraph: 1150, dodge:  900, dmgMin: 110, dmgMax: 150, label: '☠ CRASH' },
   ];
+  // ── Per-boss attack profiles ────────────────────────────────────
+  // Each profile re-weights the jab/slam/crash mix and assigns one
+  // signature move. Boss-name keyword match below picks the profile;
+  // unknown bosses fall back to 'default'. Signature moves fire on
+  // their own slow cadence (every ~12-18s with a chance) so they're
+  // a punctuation, not a constant.
+  const BOSS_AR_PROFILES = {
+    default:    { weights: { jab: 3, slam: 4, crash: 2 }, signature: null },
+    doomscroll: { weights: { jab: 7, slam: 2, crash: 1 }, signature: 'teleport',  flavor: 'rapid-fire' },
+    inertia:    { weights: { jab: 1, slam: 4, crash: 5 }, signature: 'harden',    flavor: 'slow-tank' },
+    goblin:     { weights: { jab: 4, slam: 3, crash: 2 }, signature: 'multijab',  flavor: 'chaos' },
+    hydra:      { weights: { jab: 3, slam: 3, crash: 2 }, signature: 'multijab',  flavor: 'multi-headed' },
+    wraith:     { weights: { jab: 5, slam: 2, crash: 2 }, signature: 'teleport',  flavor: 'phantom' },
+  };
+  function pickBossArProfile(boss) {
+    const name = String(boss && boss.name || '').toLowerCase();
+    if (name.includes('doomscroll')) return BOSS_AR_PROFILES.doomscroll;
+    if (name.includes('hydra'))      return BOSS_AR_PROFILES.hydra;
+    if (name.includes('inertia') || name.includes('couch') || name.includes('trial sprite'))
+                                     return BOSS_AR_PROFILES.inertia;
+    if (name.includes('goblin') || name.includes('gremlin'))
+                                     return BOSS_AR_PROFILES.goblin;
+    if (name.includes('wraith') || name.includes('specter') || name.includes('echo') || name.includes('spectre'))
+                                     return BOSS_AR_PROFILES.wraith;
+    return BOSS_AR_PROFILES.default;
+  }
+  const arProfile = pickBossArProfile(boss);
+  console.log('[ar-finisher] boss=' + bossName + ', profile=' + (arProfile.flavor || 'default'));
   const BOSS_ATTACKS = BASE_BOSS_ATTACKS.map(a => ({
     ...a,
+    // Apply per-profile weights here so the random pick respects
+    // each boss's signature attack mix.
+    weight: arProfile.weights[a.id] != null ? arProfile.weights[a.id] : a.weight,
     dmgMin: Math.max(1, Math.round(a.dmgMin * diffScale.atkDmg)),
     dmgMax: Math.max(1, Math.round(a.dmgMax * diffScale.atkDmg)),
   }));
@@ -28086,7 +28166,18 @@ async function openARFinisher(stepIdx) {
   let bossDodgeTimer = null;
   let bossWindupActive = false;
   let currentAttack = null;
+  // ── Signature-move state ───────────────────────────────────────
+  // Each profile has at most one signature move (teleport / harden /
+  // multijab). Scheduled on a slow independent timer (10-16s gap with
+  // a 50% fire chance per cycle so it's a punctuation, not a constant).
+  let sigMoveTimer = null;
+  let hardenActiveUntil = 0;
+  let multijabActive = false;
   function pickBossAttack() {
+    // Multijab signature: each beat of the 3-jab barrage is a jab.
+    if (multijabActive) {
+      return BOSS_ATTACKS.find(a => a.id === 'jab') || BOSS_ATTACKS[0];
+    }
     const totalWeight = BOSS_ATTACKS.reduce((s, a) => s + a.weight, 0);
     let roll = Math.random() * totalWeight;
     for (const a of BOSS_ATTACKS) {
@@ -28099,6 +28190,89 @@ async function openARFinisher(stepIdx) {
     if (won || lost || cancelled) return;
     const delay = BOSS_ATK_MIN_GAP + Math.random() * (BOSS_ATK_MAX_GAP - BOSS_ATK_MIN_GAP);
     bossAtkTimer = setTimeout(startBossWindup, delay);
+  }
+
+  // ── Signature-move scheduler + handlers ────────────────────────
+  // Profile.signature is one of: 'teleport' | 'harden' | 'multijab'.
+  // Each fires with 50% chance every 10-16s; the un-rolled gap re-
+  // schedules so we don't burn one until the next cycle. Multijab is
+  // implemented as 'set a flag' that the next bossWindup reads — it
+  // chains 3 jabs back-to-back via the attack scheduler.
+  const SIG_MIN_GAP = 10000;
+  const SIG_MAX_GAP = 16000;
+  function scheduleNextSignatureMove() {
+    if (won || lost || cancelled) return;
+    if (!arProfile.signature) return;
+    const delay = SIG_MIN_GAP + Math.random() * (SIG_MAX_GAP - SIG_MIN_GAP);
+    sigMoveTimer = setTimeout(() => {
+      if (won || lost || cancelled) return;
+      // Don't step on a live wind-up — defer one cycle if the player
+      // is mid-dodge. Keeps the cues legible.
+      if (bossWindupActive) { scheduleNextSignatureMove(); return; }
+      if (Math.random() < 0.5) fireSignatureMove(arProfile.signature);
+      scheduleNextSignatureMove();
+    }, delay);
+  }
+  function fireSignatureMove(kind) {
+    if (kind === 'teleport') return fireTeleport();
+    if (kind === 'harden')   return fireHarden();
+    if (kind === 'multijab') return fireMultijab();
+  }
+  function fireTeleport() {
+    // Phantom-style reposition — bigger range than the ENRAGE juke
+    // since this is a stand-alone moment, not a repeated pattern.
+    worldOffset.x = (Math.random() - 0.5) * window.innerWidth  * 0.7;
+    worldOffset.y = (Math.random() - 0.5) * window.innerHeight * 0.4;
+    if (sprite) {
+      sprite.classList.remove('ar-juke');
+      void sprite.offsetWidth;
+      sprite.classList.add('ar-juke');
+    }
+    spawnSigBanner('✦ TELEPORT ✦', 'teleport');
+    try { sfx.phoosh && sfx.phoosh(); } catch {}
+    try { navigator.vibrate && navigator.vibrate([20, 20, 20]); } catch {}
+  }
+  function fireHarden() {
+    // 2-second damage soak. Visual: a gold shimmer class on the
+    // sprite. Damage popup classes also flip via the hardened flag
+    // applyDamage already checks.
+    hardenActiveUntil = Date.now() + 2000;
+    if (sprite) {
+      sprite.classList.add('ar-hardened');
+      setTimeout(() => sprite && sprite.classList.remove('ar-hardened'), 2000);
+    }
+    spawnSigBanner('◇ HARDENED ◇', 'harden');
+    try { sfx.crtOn && sfx.crtOn(); } catch {}
+    try { navigator.vibrate && navigator.vibrate([60, 30, 60]); } catch {}
+  }
+  function fireMultijab() {
+    // Three jabs back-to-back. Cancel any pending normal attack so we
+    // don't overlap, then queue three jab wind-ups with short gaps.
+    if (bossAtkTimer) { clearTimeout(bossAtkTimer); bossAtkTimer = null; }
+    multijabActive = true;
+    spawnSigBanner('⚡⚡⚡ BARRAGE ⚡⚡⚡', 'multijab');
+    try { sfx.tick && sfx.tick(); } catch {}
+    let i = 0;
+    const fireNext = () => {
+      if (won || lost || cancelled) { multijabActive = false; return; }
+      i++;
+      startBossWindup();
+      if (i < 3) {
+        // Queue next jab after the current dodge window closes + a
+        // brief beat. Reads as a rapid combo, not a chord.
+        setTimeout(fireNext, 1700);
+      } else {
+        multijabActive = false;
+      }
+    };
+    fireNext();
+  }
+  function spawnSigBanner(text, klass) {
+    const banner = document.createElement('div');
+    banner.className = 'ar-sig-banner ar-sig-' + klass;
+    banner.textContent = text;
+    wrap.querySelector('.ar-overlay')?.appendChild(banner);
+    banner.addEventListener('animationend', () => banner.remove(), { once: true });
   }
   function startBossWindup() {
     if (won || lost || cancelled) return;
@@ -28228,6 +28402,9 @@ async function openARFinisher(stepIdx) {
   };
   // First attack lands somewhere in the first cycle.
   scheduleNextBossAttack();
+  // Signature-move scheduler runs in parallel; first roll comes after
+  // the normal 10-16s gap so the player meets standard attacks first.
+  scheduleNextSignatureMove();
 
   wrap.querySelector('#arCancel').onclick = () => {
     if (won || lost) return;
@@ -28283,8 +28460,11 @@ async function openARFinisher(stepIdx) {
     // the fight ends. Both timers are guarded but redundancy is fine.
     if (bossAtkTimer)   { clearTimeout(bossAtkTimer);   bossAtkTimer = null; }
     if (bossDodgeTimer) { clearTimeout(bossDodgeTimer); bossDodgeTimer = null; }
+    if (sigMoveTimer)   { clearTimeout(sigMoveTimer);   sigMoveTimer = null; }
     stopEnrageJuke();
     bossWindupActive = false;
+    multijabActive = false;
+    hardenActiveUntil = 0;
     wrap.classList.remove('ar-windup');
     const dodgeBtnEnd = wrap.querySelector('#arDodge');
     if (dodgeBtnEnd) dodgeBtnEnd.style.display = 'none';
@@ -28426,6 +28606,7 @@ async function openARFinisher(stepIdx) {
     // mid-windup state needs to hit them too.
     if (bossAtkTimer)   { clearTimeout(bossAtkTimer);   bossAtkTimer = null; }
     if (bossDodgeTimer) { clearTimeout(bossDodgeTimer); bossDodgeTimer = null; }
+    if (sigMoveTimer)   { clearTimeout(sigMoveTimer);   sigMoveTimer = null; }
     stopEnrageJuke();
     try { stream && stream.getTracks().forEach(t => t.stop()); } catch {}
     try { wrap.remove(); } catch {}
