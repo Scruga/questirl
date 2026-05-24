@@ -10681,7 +10681,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.306';
+const BUILD_VERSION = '2026.05.23.307';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15344,53 +15344,12 @@ const music = (() => {
 // Continuous low-volume white noise — adds an arcade "tape hiss" floor
 // underneath the music. High-pass filtered so it sits above bass and
 // doesn't muddy the mix. Tied to music start/stop.
-const whiteNoise = (() => {
-  let ctx = null;
-  let src = null;
-  let gain = null;
-
-  function ensureCtx() {
-    try {
-      if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-      if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-      return ctx;
-    } catch (e) { return null; }
-  }
-  return {
-    start() {
-      const ac = ensureCtx();
-      if (!ac) return;
-      if (src) return;  // already running
-      const buffer = ac.createBuffer(2, ac.sampleRate * 2, ac.sampleRate);
-      for (let ch = 0; ch < 2; ch++) {
-        const data = buffer.getChannelData(ch);
-        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1);
-      }
-      const s = ac.createBufferSource();
-      s.buffer = buffer;
-      s.loop = true;
-      const hp = ac.createBiquadFilter();
-      hp.type = 'highpass';
-      hp.frequency.value = 800;
-      const lp = ac.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 6000;
-      const g = ac.createGain();
-      g.gain.value = 0.00048;     // another 80% drop — almost subliminal hiss
-      s.connect(hp).connect(lp).connect(g).connect(ac.destination);
-      s.start();
-      src = s;
-      gain = g;
-    },
-    stop() {
-      if (!src) return;
-      try { src.stop(); } catch (e) {}
-      try { src.disconnect(); } catch (e) {}
-      src = null;
-      gain = null;
-    },
-  };
-})();
+// White noise hiss disabled per playtest — tester thought BGM wasn't
+// loading because the only thing they heard was the layered hiss.
+// Kept the start/stop shape so the existing syncWhiteNoise call sites
+// don't need to be touched; both are no-ops now. To re-enable later,
+// restore the AudioContext-driven implementation from git history.
+const whiteNoise = { start() {}, stop() {} };
 // Browsers gate audio playback behind a user gesture, so we kick off
 // the BGM on the FIRST anything — click, tap, or keypress. Whichever
 // fires earliest wins; the others are torn down.
@@ -18711,7 +18670,7 @@ function motionThresholdsFor(kind) {
   // lower noise so the thresholds were dropped after tester reported
   // the step counter taking 3-5 steps before the first one registered.
   switch (kind) {
-    case 'steps': return { peak: 2.0,  cooldownMs: 260 };   // normal walking — was 3.5/320, too strict
+    case 'steps': return { peak: 2.8,  cooldownMs: 340 };   // normal walking — 3.5/320 too strict, 2.0/260 too sensitive; this lands in the middle
     case 'jump':  return { peak: 9.0,  cooldownMs: 520 };   // jumping jack landings
     case 'spin':  return { peak: 6.0,  cooldownMs: 380 };   // spin-the-phone gestures
     default:      return { peak: 7.0,  cooldownMs: 280 };   // shake (default)
@@ -19179,9 +19138,14 @@ function bindQuest() {
         render();
         return;
       }
-      // Light re-render of just the placeholder text — full render() is
-      // overkill once a second but cheap given the file's existing cadence.
-      render();
+      // Tester reported the timer step "blinks" every second — that was
+      // because the previous tick called render() (full step-card
+      // rebuild) instead of just refreshing the countdown text. Patch
+      // only the placeholder text now so the rest of the page stays
+      // mounted across the wait.
+      const remaining = Math.max(0, target - elapsed);
+      const placeholder = document.querySelector(`#photo-${i} .placeholder`);
+      if (placeholder) placeholder.innerHTML = `⏳<br/>WAIT ${remaining}s`;
       setTimeout(tick, 1000);
     };
     setTimeout(tick, 1000);
@@ -20605,12 +20569,11 @@ function finalizeRun() {
   if (r.mode === 'party') {
     profile.partyXP += reward.xp;
     if (profile.partyXP >= profile.partyLevel * 100) { profile.partyLevel++; profile.partyXP = 0; toast('Party level up!'); }
-  } else {
-    profile.soloXP += reward.xp;
-    if (profile.soloXP >= profile.soloLevel * 100) { profile.soloLevel++; profile.soloXP = 0; toast('Solo level up!'); }
   }
+  // Solo XP/Level tracking was merged into the single LEVEL pool per
+  // playtest — solo runs only feed the unified accountXP from here.
   profile.accountXP += reward.xp;
-  if (profile.accountXP >= profile.accountLevel * 200) { profile.accountLevel++; profile.accountXP = 0; toast('Account level up!'); }
+  if (profile.accountXP >= profile.accountLevel * 200) { profile.accountLevel++; profile.accountXP = 0; toast('Level up!'); }
   // Stash level-up info on the reward object for the reward screen to render.
   reward.levelUps = {
     account: (profile.accountLevel || 1) > _preLevels.account
@@ -22675,13 +22638,12 @@ function applyChestReward(chestItem, invIndex) {
       profile.partyLevel = (profile.partyLevel || 1) + 1; profile.partyXP = 0;
       toast('Party level up!');
     }
-  } else {
-    profile.soloXP = (profile.soloXP || 0) + (r.xp || 0);
   }
+  // Solo XP retired — unified into accountXP since the playtest merge.
   profile.accountXP = (profile.accountXP || 0) + (r.xp || 0);
   if (profile.accountXP >= (profile.accountLevel || 1) * 200) {
     profile.accountLevel = (profile.accountLevel || 1) + 1; profile.accountXP = 0;
-    toast('Account level up!');
+    toast('Level up!');
   }
   (r.items || []).forEach(it => {
     profile.inventory = profile.inventory || [];
@@ -23366,7 +23328,7 @@ function screenProfile() {
       <div class="profile-stat-row">
         <img src="img/ui_level.png" class="ic-img" alt=""/>
         <div>
-          <div class="stat-label">ACCOUNT · LV ${profile.accountLevel}</div>
+          <div class="stat-label">LEVEL · LV ${profile.accountLevel}</div>
           <div class="stat-bar"><div class="stat-bar-fill" style="width:${acctPct}%"></div></div>
         </div>
         <div class="stat-value">${profile.accountXP}<span class="stat-sub">/ ${xpToNext(profile.accountLevel)} XP</span></div>
@@ -23378,14 +23340,6 @@ function screenProfile() {
           <div class="stat-bar"><div class="stat-bar-fill" style="width:${partyPct}%"></div></div>
         </div>
         <div class="stat-value">${profile.partyXP}<span class="stat-sub">/ ${xpToNext(profile.partyLevel)} XP</span></div>
-      </div>
-      <div class="profile-stat-row">
-        <img src="img/solo.png" class="ic-img" alt=""/>
-        <div>
-          <div class="stat-label">SOLO · LV ${profile.soloLevel}</div>
-          <div class="stat-bar"><div class="stat-bar-fill" style="width:${soloPct}%"></div></div>
-        </div>
-        <div class="stat-value">${profile.soloXP}<span class="stat-sub">/ ${xpToNext(profile.soloLevel)} XP</span></div>
       </div>
       <div class="profile-stat-row coins-row">
         <img src="img/ui_coins.png" class="ic-img" alt=""/>
@@ -30123,9 +30077,8 @@ function showAccusationReveal(onDone) {
       if (profile.partyXP >= (profile.partyLevel || 1) * 100) {
         profile.partyLevel = (profile.partyLevel || 1) + 1; profile.partyXP = 0;
       }
-    } else {
-      profile.soloXP = (profile.soloXP || 0) + bountyXp;
     }
+    // Solo XP retired — unified into accountXP since the playtest merge.
     profile.accountXP = (profile.accountXP || 0) + bountyXp;
     if (profile.accountXP >= (profile.accountLevel || 1) * 200) {
       profile.accountLevel = (profile.accountLevel || 1) + 1; profile.accountXP = 0;
