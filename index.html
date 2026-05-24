@@ -10715,7 +10715,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.313';
+const BUILD_VERSION = '2026.05.23.314';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15146,8 +15146,16 @@ const music = (() => {
         });
       });
       a.addEventListener('canplay',  () => console.log('[bgm] deck ' + idx + ' canplay,  src=' + (a.src || '').split('/').pop()));
-      a.addEventListener('playing',  () => console.log('[bgm] deck ' + idx + ' playing,  paused=' + a.paused + ', currentTime=' + a.currentTime.toFixed(2)));
-      a.addEventListener('pause',    () => console.log('[bgm] deck ' + idx + ' pause,    currentTime=' + a.currentTime.toFixed(2)));
+      a.addEventListener('playing',  () => {
+        console.log('[bgm] deck ' + idx + ' playing,  paused=' + a.paused + ', currentTime=' + a.currentTime.toFixed(2));
+        // Nudge the top-bar music icon — the player might be on a
+        // screen that doesn't re-render() when audio actually starts.
+        try { window.dispatchEvent(new CustomEvent('music-audible-change')); } catch {}
+      });
+      a.addEventListener('pause',    () => {
+        console.log('[bgm] deck ' + idx + ' pause,    currentTime=' + a.currentTime.toFixed(2));
+        try { window.dispatchEvent(new CustomEvent('music-audible-change')); } catch {}
+      });
       a.addEventListener('stalled',  () => console.warn('[bgm] deck ' + idx + ' stalled, src=' + a.src));
       a.addEventListener('suspend',  () => console.log('[bgm] deck ' + idx + ' suspend'));
       a.addEventListener('ended', () => {
@@ -15508,7 +15516,10 @@ const _BGM_DEBUG_MAX = 250;
   const capture = (level, args) => {
     try {
       const first = args[0];
-      if (typeof first !== 'string' || first.indexOf('[bgm]') !== 0) return;
+      if (typeof first !== 'string') return;
+      // Capture both audio + onboarding diagnostic logs so we can
+      // diagnose either subsystem from the same in-page panel.
+      if (first.indexOf('[bgm]') !== 0 && first.indexOf('[onboard]') !== 0) return;
       const ts = new Date().toISOString().slice(11, 23);
       const rendered = args.map(a => {
         if (typeof a === 'string') return a;
@@ -15578,6 +15589,19 @@ function mountBgmDebugFab() {
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountBgmDebugFab);
 else mountBgmDebugFab();
 setTimeout(mountBgmDebugFab, 800);   // retry after profile + boot settle
+
+// Global music-icon syncer — listens for the music-audible-change
+// event the BGM decks dispatch on playing / pause and re-applies the
+// top-bar music button's audible-vs-muted styling. Wired here once
+// so it survives header re-renders without being re-bound each time.
+window.addEventListener('music-audible-change', () => {
+  const musicBtn = document.getElementById('musicHeaderBtn');
+  if (!musicBtn) return;
+  const audible = (typeof music !== 'undefined' && music.isAudible && music.isAudible());
+  musicBtn.classList.toggle('playing', !!audible);
+  const img = musicBtn.querySelector('.music-btn-img');
+  if (img) img.src = `img/${audible ? 'music_on' : 'music_off'}.png`;
+});
 
 // Browsers gate audio playback behind a user gesture, so we kick off
 // the BGM on the FIRST anything — click, tap, or keypress. Whichever
@@ -31405,33 +31429,70 @@ function maybeShowOnboarding() {
   const wrap = document.createElement('div');
   wrap.className = 'onboard-bg';
   document.body.appendChild(wrap);
-  // Defensive wrapper for unexpected removal. Tester reported the
-  // onboarding modal auto-closing ~7s after load on fresh sessions
-  // and suspected the recent BGM changes. We can't repro from
-  // grep alone, so this:
-  //   1. Flags any intentional close before calling remove.
-  //   2. Watches body for removal of `wrap` via MutationObserver.
-  //   3. If wrap is removed and _intentionalClose is false, logs
-  //      a stack trace AND re-appends wrap so the player isn't
-  //      stranded mid-name-pick. The protection auto-detaches
-  //      once the modal is legitimately closed.
+  // Defensive layered protection. The MutationObserver alone wasn't
+  // enough — tester's debug log .313 showed the modal still
+  // disappearing without the observer firing, which means whatever
+  // is closing it isn't a childList removal of body. Could be:
+  //   - The wrap is being hidden (display/opacity/visibility)
+  //   - The wrap is being moved to a different parent
+  //   - body itself is being replaced (very rare)
+  //   - The wrap's contents are being wiped (innerHTML)
+  // So we layer three checks:
+  //   1. MutationObserver on body's childList (catches direct removal)
+  //   2. MutationObserver on wrap's attributes + subtree (catches
+  //      style mutations, content wipes)
+  //   3. Polling interval that periodically verifies wrap is in the
+  //      DOM, visible, and contains its child. If any check fails
+  //      while _intentionalClose is false, force-restore.
   let _intentionalClose = false;
-  const _onboardWatcher = new MutationObserver((muts) => {
+  const _ensureWrapPresent = () => {
+    if (_intentionalClose) return;
+    if (!document.body.contains(wrap)) {
+      console.warn('[onboard] wrap not in DOM — re-appending');
+      try { document.body.appendChild(wrap); } catch {}
+    }
+    // Restore visibility if something display:none'd it.
+    if (wrap.style.display === 'none') {
+      console.warn('[onboard] wrap was display:none — restoring');
+      wrap.style.display = '';
+    }
+    if (wrap.style.visibility === 'hidden') {
+      console.warn('[onboard] wrap was visibility:hidden — restoring');
+      wrap.style.visibility = '';
+    }
+    if (wrap.style.opacity === '0') {
+      console.warn('[onboard] wrap was opacity:0 — restoring');
+      wrap.style.opacity = '';
+    }
+    // If contents were wiped (no .onboard child), re-render the slide.
+    if (!wrap.querySelector('.onboard')) {
+      console.warn('[onboard] wrap contents wiped — re-rendering current slide');
+      renderSlide();
+    }
+  };
+  const _onboardBodyWatcher = new MutationObserver((muts) => {
     for (const m of muts) {
       for (const removed of m.removedNodes) {
         if (removed === wrap && !_intentionalClose) {
-          console.warn('[onboard] modal removed unexpectedly — re-appending');
-          console.warn(new Error('onboard removal stack').stack);
+          console.warn('[onboard] modal removed from body — re-appending');
+          console.warn(new Error('onboard body-removal stack').stack);
           try { document.body.appendChild(wrap); } catch {}
           return;
         }
       }
     }
   });
-  _onboardWatcher.observe(document.body, { childList: true });
+  _onboardBodyWatcher.observe(document.body, { childList: true });
+  const _onboardSelfWatcher = new MutationObserver(() => _ensureWrapPresent());
+  _onboardSelfWatcher.observe(wrap, { attributes: true, childList: true, subtree: false, attributeFilter: ['style', 'class', 'hidden'] });
+  // Belt + suspenders: poll every 500ms to catch anything the
+  // observers miss. Cheap, stops as soon as legitimate close fires.
+  const _onboardPollTimer = setInterval(_ensureWrapPresent, 500);
   const close = () => {
     _intentionalClose = true;
-    try { _onboardWatcher.disconnect(); } catch {}
+    try { _onboardBodyWatcher.disconnect(); } catch {}
+    try { _onboardSelfWatcher.disconnect(); } catch {}
+    try { clearInterval(_onboardPollTimer); } catch {}
     wrap.remove();
   };
   const renderSlide = () => {
