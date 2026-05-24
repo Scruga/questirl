@@ -10606,7 +10606,7 @@ const DEFAULT_PROFILE = {
   // Music defaults to ON. Starts on the first user click (autoplay
   // policies block audio before any gesture).
   musicMuted: false,
-  musicVolume: 0.45,                              // 0.0–1.0, used by the BGM <audio> element. 0.1 was inaudible on most phones; bumped after multiple "is the music actually playing?" reports
+  musicVolume: 0.34,                              // 0.0–1.0. Tuning history: 0.1 inaudible -> 0.45 audible but loud -> 0.34 (-25%) per tester ask. Migration in loadProfile also bumps any save <=0.15 to this default.
   musicShuffle: true,                             // shuffle is the default play mode (legacy bool, kept for back-compat)
   musicMode: 'shuffle',                           // canonical play mode: 'shuffle' | 'sequential' | 'loop'
   timerTickMuted: false,                          // mute the baseline 1Hz tick during a run; warn/countdown/fail still fire
@@ -10715,7 +10715,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.315';
+const BUILD_VERSION = '2026.05.23.316';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -11005,7 +11005,16 @@ function loadProfile() {
     // below the old default to the new default. Players who explicitly
     // set something above 0.15 keep their choice.
     if (typeof merged.musicVolume !== 'number' || merged.musicVolume <= 0.15) {
-      merged.musicVolume = 0.45;
+      merged.musicVolume = 0.34;
+    }
+    // Second pass: anyone still at exactly the prior default 0.45 gets
+    // dropped to the new 0.34 default (-25%). Tester ask. Done via
+    // a one-shot flag so it doesn't repeat if they re-adjust upward.
+    if (!merged._musicVol34Migrated && merged.musicVolume === 0.45) {
+      merged.musicVolume = 0.34;
+      merged._musicVol34Migrated = true;
+    } else if (!merged._musicVol34Migrated) {
+      merged._musicVol34Migrated = true;   // mark migrated regardless so we don't keep checking
     }
     // Sarah Mode is gated by the player's current name. Resync on load:
     // if name === "sarah" → ensure unlocks present; otherwise ensure
