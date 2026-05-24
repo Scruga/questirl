@@ -1823,6 +1823,22 @@
     background: #444;
     color: var(--danger);
   }
+  /* Walk-gate badge — surfaces on the step-tag (visible even when the
+     step is locked) so the player anticipates 'oh, step 3 will make
+     me walk.' Disappears once the gate is cleared (proof unlocked). */
+  .step-walk-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 4px 8px;
+    background: linear-gradient(90deg, #4adcff, var(--neon-3));
+    color: #002b27;
+    font-family: var(--px); font-size: 8px;
+    border: 2px solid #000;
+    box-shadow: 2px 2px 0 #000;
+    letter-spacing: 1px;
+    vertical-align: middle;
+    text-shadow: 1px 1px 0 rgba(255,255,255,0.4);
+  }
   /* Nightmare rules notice — wrapped in moving yellow/black hazard tape
      so it reads like a roped-off crime scene. */
   .nightmare-notice {
@@ -10699,7 +10715,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.311';
+const BUILD_VERSION = '2026.05.23.312';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -18398,7 +18414,7 @@ function renderStep(s, i) {
   const hasHint = !!(r.hintsUsed && r.hintsUsed[i]);
   return `
     <div class="step-card step-accent-${Math.min(5, i + 1)} ${done ? 'done' : ''} ${locked ? 'locked' : ''} ${trueFinalClass} ${failedClass}" data-step="${i}">
-      <div class="step-tag">Step ${i+1} · ${s.type}${failedClass ? ' · <img src="img/ui_timeout.png?v=2" class="ui-ic-sm"/>FAILED' : ''}${showStepTimer ? `<span class="step-timer" id="stepTimer-${i}"><img src="img/ui_waiting.png?v=2" class="ui-ic-sm"/>${s.stepTimerSec}s</span>` : ''}${hasHint ? `<span class="step-hint-icon" data-replay-hint="${i}" title="Replay hint"><img src="img/ui_bulb.png?v=2" class="ui-ic-sm"/></span>` : ''}</div>
+      <div class="step-tag">Step ${i+1} · ${s.type}${failedClass ? ' · <img src="img/ui_timeout.png?v=2" class="ui-ic-sm"/>FAILED' : ''}${showStepTimer ? `<span class="step-timer" id="stepTimer-${i}"><img src="img/ui_waiting.png?v=2" class="ui-ic-sm"/>${s.stepTimerSec}s</span>` : ''}${hasHint ? `<span class="step-hint-icon" data-replay-hint="${i}" title="Replay hint"><img src="img/ui_bulb.png?v=2" class="ui-ic-sm"/></span>` : ''}${(s.walkDistance && !(r.geoCleared && r.geoCleared[i])) ? `<span class="step-walk-badge" title="Walk-gated step — you'll need to walk ${s.walkDistance}m to unlock proof">🚶 ${s.walkDistance}m</span>` : ''}</div>
       <h3>${s.title}</h3>
       ${active || done ? `
         <div class="instr">${s.instr}</div>
