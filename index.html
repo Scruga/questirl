@@ -10699,7 +10699,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.310';
+const BUILD_VERSION = '2026.05.23.311';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -15149,23 +15149,17 @@ const music = (() => {
       // music silent if the context sticks in 'suspended' state — so we
       // skip it. (White noise has its own context and is unaffected.)
       console.log('[bgm] ensureDeck ' + idx + ' created, _isIos=' + _isIos);
-      if (_isIos) {
-        try {
-          const ctx = ensureAudioCtx();
-          if (ctx) {
-            const src = ctx.createMediaElementSource(a);
-            const gain = ctx.createGain();
-            gain.gain.value = 0;
-            src.connect(gain).connect(ctx.destination);
-            a._gain = gain;
-            console.log('[bgm] GainNode wired for deck ' + idx + ', ctx.state=' + ctx.state);
-          } else {
-            console.warn('[bgm] iOS path but ensureAudioCtx returned null — GainNode NOT wired, volume control will not work');
-          }
-        } catch (e) {
-          console.warn('[bgm] gain wiring failed; falling back to element volume', e);
-        }
-      }
+      // iOS GainNode routing REMOVED. Per playtest logs, iOS Safari's
+      // AudioContext was sticking in 'suspended' for the whole
+      // session — resume() never resolved — so audio routed through
+      // createMediaElementSource -> GainNode -> destination produced
+      // ZERO sound, even though the audio element thought it was
+      // playing (currentTime advancing). The native element output
+      // path always works on iOS even with a stuck context.
+      // Trade-off: profile.musicVolume is now inert on iOS (the
+      // element's volume property is hardware-locked to system
+      // volume there). Player adjusts via the phone's hardware
+      // volume buttons. Android + desktop still respect the slider.
       // Initial volume — must come AFTER gain wiring so it routes correctly.
       setDeckVolume(a, 0);
       decks[idx] = a;
@@ -15276,7 +15270,21 @@ const music = (() => {
     if (p && p.then) {
       p.then(
         () => console.log('[bgm] play() resolved, deck.paused=' + target.paused + ', currentTime=' + target.currentTime.toFixed(2) + ', readyState=' + target.readyState),
-        (e) => console.warn('[bgm] play() rejected:', e && e.name, e && e.message ? e.message : e)
+        (e) => {
+          console.warn('[bgm] play() rejected:', e && e.name, e && e.message ? e.message : e);
+          // First-play race: iOS rejects play() when the audio file
+          // hasn't buffered enough data yet (readyState 0). Queue a
+          // single retry on canplay so the music starts as soon as
+          // the file is actually ready, without needing a second
+          // user gesture.
+          const retry = () => {
+            target.removeEventListener('canplay', retry);
+            console.log('[bgm] canplay-retry firing play() again');
+            const p2 = target.play();
+            if (p2 && p2.catch) p2.catch((e2) => console.warn('[bgm] canplay-retry play() also rejected:', e2 && e2.message ? e2.message : e2));
+          };
+          target.addEventListener('canplay', retry, { once: true });
+        }
       );
     }
     crossfade(null, target, targetVolume());
