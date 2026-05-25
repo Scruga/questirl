@@ -7284,6 +7284,174 @@
     color: var(--ink-faint);
     font-style: italic;
   }
+  /* ---------- Walk-gate compass + POI line ---------- */
+  .geo-compass {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 10px 0 6px;
+    padding: 10px 8px;
+    background: rgba(74, 220, 255, 0.05);
+    border: 2px solid rgba(74, 220, 255, 0.25);
+    box-shadow: inset 2px 2px 0 rgba(0,0,0,0.4);
+  }
+  .geo-compass-ring {
+    flex: 0 0 64px;
+    width: 64px; height: 64px;
+    border: 3px solid #000;
+    border-radius: 50%;
+    background: radial-gradient(circle, #061122 0%, #02060f 100%);
+    box-shadow: inset 2px 2px 0 rgba(0,0,0,0.6),
+                inset -2px -2px 0 rgba(74,220,255,0.18);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .geo-compass-ring::before {
+    content: 'N';
+    position: absolute;
+    top: 2px; left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--px); font-size: 8px;
+    color: #ff5b5b;
+    letter-spacing: 1px;
+  }
+  .geo-compass-arrow {
+    font-size: 30px;
+    color: var(--gold);
+    text-shadow: 0 0 8px var(--gold), 0 0 14px rgba(255,209,102,0.4);
+    transition: transform .25s ease-out;
+    transform-origin: 50% 50%;
+    line-height: 1;
+    user-select: none;
+  }
+  .geo-compass-arrow.no-heading {
+    opacity: 0.4;
+    color: var(--ink-dim);
+    text-shadow: none;
+  }
+  .geo-poi-line {
+    flex: 1 1 auto;
+    text-align: left;
+    min-width: 0;
+  }
+  .geo-poi-name {
+    font-family: var(--px); font-size: 12px;
+    color: var(--ink);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .geo-poi-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .geo-poi-dist {
+    font-family: var(--px); font-size: 13px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+  .btn.xs {
+    padding: 5px 10px;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .geo-compass-loading {
+    font-family: var(--px); font-size: 10px;
+    color: var(--ink-faint);
+    letter-spacing: 1px;
+    margin: 10px 0 4px;
+    opacity: 0.7;
+    animation: geoScan 1.4s ease-in-out infinite;
+  }
+  @keyframes geoScan {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 0.85; }
+  }
+  /* ---------- Walk-gate map overlay ---------- */
+  .geo-map-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9000;
+    padding: 16px;
+    animation: gmFade 0.18s ease-out;
+  }
+  @keyframes gmFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .geo-map-card {
+    background: var(--card);
+    border: 3px solid #000;
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.5),
+                inset  2px  2px 0 rgba(255,255,255,0.06),
+                6px 6px 0 #000;
+    padding: 12px;
+    max-width: 360px;
+    width: 100%;
+  }
+  .geo-map-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .geo-map-title {
+    font-family: var(--px); font-size: 11px;
+    color: var(--neon-3);
+    letter-spacing: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-right: 10px;
+  }
+  .geo-map-close {
+    background: #1a0a0a;
+    color: var(--ink);
+    border: 2px solid #000;
+    font-family: var(--px); font-size: 12px;
+    padding: 4px 10px;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 #000;
+  }
+  .geo-map-close:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 #000;
+  }
+  .geo-map-canvas {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 320px;
+    margin: 0 auto;
+    border: 2px solid #000;
+    image-rendering: pixelated;
+    background: #0a0518;
+  }
+  .geo-map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 10px;
+    font-family: var(--px); font-size: 9px;
+    color: var(--ink-dim);
+    letter-spacing: 1px;
+  }
+  .geo-map-legend .dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    margin-right: 4px;
+    vertical-align: middle;
+    border: 1px solid #000;
+  }
+  .geo-map-legend .dot.user  { background: #4adcff; }
+  .geo-map-legend .dot.poi   { background: #ffd166; }
+  .geo-map-legend .dot.start { background: #888; }
 
   /* ---------- Avatar (header + profile) ---------- */
   .avatar {
@@ -10839,7 +11007,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.23.318';
+const BUILD_VERSION = '2026.05.25.319';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -18914,14 +19082,187 @@ function haversineMeters(a, b) {
           + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * 6371000 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, x))));
 }
+// Compass bearing from `from` -> `to`. Returns 0-360 degrees clockwise
+// from north. Used to point the geo-gate arrow at the chosen POI.
+function bearingDegrees(from, to) {
+  if (!from || !to) return 0;
+  const toRad = (d) => d * Math.PI / 180;
+  const lat1 = toRad(from.lat), lat2 = toRad(to.lat);
+  const dLng = toRad(to.lng - from.lng);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2)
+          - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  const brng = Math.atan2(y, x) * 180 / Math.PI;
+  return (brng + 360) % 360;
+}
+
+// ── Device compass heading (for the walk-gate arrow) ────────────────
+let _compassHeading = null;       // 0-360, clockwise from north
+let _compassListener = null;
+let _compassGranted = false;
+async function requestCompassPermission() {
+  if (_compassGranted) return true;
+  if (typeof DeviceOrientationEvent === 'undefined') return false;
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const perm = await DeviceOrientationEvent.requestPermission();
+      _compassGranted = (perm === 'granted');
+      return _compassGranted;
+    } catch (e) {
+      console.warn('[compass] permission threw', e);
+      return false;
+    }
+  }
+  // Android / desktop: no permission gate, listener attach is implicit.
+  _compassGranted = true;
+  return true;
+}
+function attachCompassListener() {
+  if (_compassListener) return;
+  if (typeof window.DeviceOrientationEvent === 'undefined') return;
+  _compassListener = (e) => {
+    // iOS Safari exposes a true compass heading; Android Chrome gives
+    // alpha (0-360, counter-clockwise from north). Convert to a unified
+    // "0 = facing north, 90 = east" frame.
+    let h = null;
+    if (typeof e.webkitCompassHeading === 'number') {
+      h = e.webkitCompassHeading;                    // iOS
+    } else if (typeof e.alpha === 'number') {
+      h = (360 - e.alpha) % 360;                     // Android
+    }
+    if (h == null || Number.isNaN(h)) return;
+    _compassHeading = h;
+    // Live-update any visible geo-compass arrow without full re-render.
+    if (_geoActive && typeof _geoActive.i === 'number') {
+      try { updateCompassUI(_geoActive.i); } catch {}
+    }
+  };
+  try {
+    window.addEventListener('deviceorientation', _compassListener, true);
+  } catch (e) {
+    console.warn('[compass] attach failed', e);
+    _compassListener = null;
+  }
+}
+function detachCompassListener() {
+  if (_compassListener) {
+    try { window.removeEventListener('deviceorientation', _compassListener, true); } catch {}
+    _compassListener = null;
+  }
+  _compassHeading = null;
+}
+
+// ── Overpass POI fetcher ────────────────────────────────────────────
+// Hits the public Overpass endpoint for OpenStreetMap nodes within
+// `radiusM` of the start anchor. No API key needed. We bias the query
+// per step type — Move favors parks/plazas, Find favors small landmarks
+// (benches/statues/postboxes), Social favors cafes/bars. Times out at
+// 5s and falls back gracefully — the walk-gate still works without a
+// POI; the player just gets a distance bar with no destination.
+const POI_CATEGORIES_BY_TYPE = {
+  Move: [
+    ['leisure', ['park','playground','pitch','garden','dog_park']],
+    ['amenity', ['fountain','townhall','library']],
+    ['tourism', ['viewpoint','attraction','artwork']],
+    ['highway', ['pedestrian']],
+  ],
+  Find: [
+    ['amenity', ['bench','post_box','drinking_water','telephone','public_bookcase','clock','recycling']],
+    ['tourism', ['artwork','information','attraction','viewpoint']],
+    ['historic', ['monument','statue','memorial','tomb','wayside_shrine','milestone']],
+    ['natural', ['tree','rock']],
+  ],
+  Social: [
+    ['amenity', ['cafe','restaurant','bar','pub','fast_food','ice_cream','biergarten','food_court','marketplace']],
+    ['shop',    ['convenience','bakery','books','gift']],
+    ['leisure', ['park']],
+  ],
+};
+const _poiCache = new Map();      // key: `${lat3},${lng3},${type}` -> [poi]
+function _poiCacheKey(center, stepType) {
+  // Round to ~110m precision so nearby gates share a cache entry.
+  const k = (n) => Math.round(n * 1000) / 1000;
+  return `${k(center.lat)},${k(center.lng)},${stepType}`;
+}
+async function fetchOverpassPOIs(center, radiusM, stepType) {
+  if (!center || typeof center.lat !== 'number') return [];
+  const cats = POI_CATEGORIES_BY_TYPE[stepType] || POI_CATEGORIES_BY_TYPE.Find;
+  const cacheKey = _poiCacheKey(center, stepType);
+  if (_poiCache.has(cacheKey)) return _poiCache.get(cacheKey);
+  const r = Math.max(80, Math.min(400, radiusM | 0));
+  const around = `around:${r},${center.lat},${center.lng}`;
+  const lines = cats.map(([k, vals]) =>
+    `node["${k}"~"^(${vals.join('|')})$"](${around});`
+  ).join('');
+  const ql = `[out:json][timeout:5];(${lines});out body 40;`;
+  const url = 'https://overpass-api.de/api/interpreter';
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 5500);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(ql),
+      signal: ctrl.signal,
+    });
+    clearTimeout(tid);
+    if (!res.ok) throw new Error('overpass http ' + res.status);
+    const data = await res.json();
+    const out = (data.elements || [])
+      .filter(el => el.type === 'node' && typeof el.lat === 'number' && typeof el.lon === 'number')
+      .map(el => {
+        const tags = el.tags || {};
+        const cat = tags.amenity || tags.leisure || tags.tourism
+                 || tags.historic || tags.shop || tags.natural || tags.highway || 'place';
+        const name = tags.name
+                  || (cat.charAt(0).toUpperCase() + cat.slice(1)).replace(/_/g, ' ');
+        return {
+          id: el.id,
+          lat: el.lat,
+          lng: el.lon,
+          name,
+          category: cat,
+          tags,
+          distance: haversineMeters(center, { lat: el.lat, lng: el.lon }),
+        };
+      });
+    _poiCache.set(cacheKey, out);
+    return out;
+  } catch (e) {
+    clearTimeout(tid);
+    console.warn('[poi] fetch failed', e && e.message ? e.message : e);
+    _poiCache.set(cacheKey, []);    // negative cache so we don't spam Overpass
+    return [];
+  }
+}
+// Pick the POI that best matches the requested walk distance. We aim
+// for something in 70-130% of the target — close enough to be reachable
+// but far enough that the compass meaningfully changes direction as you
+// walk. If nothing in that band, fall back to the closest candidate
+// past 30m so the arrow doesn't aim at the player's own position.
+function pickWalkPOI(pois, targetM) {
+  if (!Array.isArray(pois) || pois.length === 0) return null;
+  const lo = targetM * 0.7, hi = targetM * 1.3;
+  const inBand = pois.filter(p => p.distance >= lo && p.distance <= hi);
+  if (inBand.length) {
+    return inBand.sort((a, b) =>
+      Math.abs(a.distance - targetM) - Math.abs(b.distance - targetM)
+    )[0];
+  }
+  const past = pois.filter(p => p.distance >= 30)
+                   .sort((a, b) => a.distance - b.distance);
+  return past[0] || null;
+}
+
 function detachGeoWatcher() {
   if (_geoWatcherId != null) {
     try { navigator.geolocation.clearWatch(_geoWatcherId); } catch {}
     _geoWatcherId = null;
   }
+  detachCompassListener();
   _geoActive = null;
 }
-function startGeoGateForStep(r, i) {
+async function startGeoGateForStep(r, i) {
   const step = r.quest && r.quest[i];
   if (!step) return;
   // Same defensive shape as the motion verifier: if the API isn't
@@ -18938,7 +19279,13 @@ function startGeoGateForStep(r, i) {
   r.geoState = r.geoState || {};
   r.geoState[i] = { running: true, paused: false, distance: 0, target, startedAt: Date.now() };
   detachGeoWatcher();
-  _geoActive = { i, run: r, startCoords: null, target, lastUiUpdate: 0 };
+  _geoActive = { i, run: r, startCoords: null, target, lastUiUpdate: 0, poi: null, poiFetched: false };
+  // Compass permission must be requested inside this user-gesture click
+  // handler, otherwise iOS Safari silently denies. We don't block the
+  // GPS watcher on it — even without a compass the bar still works.
+  requestCompassPermission().then(ok => {
+    if (ok) attachCompassListener();
+  });
   // High accuracy on; max 30s before a position is considered stale.
   // The geolocation prompt itself is what triggers the browser UI;
   // because this runs inside the Start button's click handler, iOS
@@ -18952,7 +19299,30 @@ function startGeoGateForStep(r, i) {
         // fix can be a coarse Wi-Fi reading on some devices, but every
         // subsequent fix is GPS-fresh and the distance grows correctly.
         _geoActive.startCoords = cur;
+        // Fire-and-forget Overpass call. When it returns, we attach the
+        // pick to _geoActive.poi and call render() so the compass arrow
+        // and destination line surface. The bar / GPS keep ticking the
+        // whole time — POI is purely additive UX.
+        if (!_geoActive.poiFetched) {
+          _geoActive.poiFetched = true;
+          const stepRef = _geoActive.run.quest && _geoActive.run.quest[i];
+          const sType = (stepRef && stepRef.type) || 'Find';
+          fetchOverpassPOIs(cur, Math.max(150, _geoActive.target * 2), sType)
+            .then(pois => {
+              if (!_geoActive || _geoActive.i !== i) return;
+              const pick = pickWalkPOI(pois, _geoActive.target);
+              if (pick) {
+                _geoActive.poi = pick;
+                console.log('[poi] picked', pick.name, '@', Math.round(pick.distance), 'm');
+                // Full render so the compass arrow + name line appear.
+                render();
+              } else {
+                console.log('[poi] no usable POI in range — compass stays hidden.');
+              }
+            });
+        }
       }
+      _geoActive.lastCoords = cur;
       const dist = haversineMeters(_geoActive.startCoords, cur);
       const st = _geoActive.run.geoState && _geoActive.run.geoState[i];
       if (!st || !st.running) return;
@@ -18970,6 +19340,8 @@ function startGeoGateForStep(r, i) {
         if (num)  num.textContent  = `${Math.round(dist)} m / ${st.target} m`;
         if (acc && pos.coords.accuracy) acc.textContent = `± ${Math.round(pos.coords.accuracy)}m`;
       }
+      // Refresh the compass arrow + POI distance line each tick.
+      updateCompassUI(i);
       if (dist >= st.target) {
         // Cleared. Persist the flag, kill the watcher, sweep the UI to
         // the proof stage. We deliberately don't keep startCoords on r
@@ -19022,6 +19394,149 @@ function bindGeoProofs(r) {
     resetGeoForStep(r, +b.dataset.geoReset);
     render();
   });
+  document.querySelectorAll('[data-geo-map]').forEach(b => b.onclick = () => {
+    openGeoMap(+b.dataset.geoMap);
+  });
+}
+// Live patch the compass arrow + POI distance line for the active step.
+// Called from the GPS tick (for distance) and from the orientation
+// event (for arrow rotation). Cheap DOM writes only — no innerHTML.
+function updateCompassUI(i) {
+  if (!_geoActive || _geoActive.i !== i) return;
+  const stage = document.getElementById('geo-' + i);
+  if (!stage) return;
+  const arrow = stage.querySelector('.geo-compass-arrow');
+  const dEl   = stage.querySelector('.geo-poi-dist');
+  const poi = _geoActive.poi;
+  const cur = _geoActive.lastCoords || _geoActive.startCoords;
+  if (!poi || !cur) return;
+  if (dEl) {
+    const m = Math.round(haversineMeters(cur, poi));
+    dEl.textContent = m + ' m';
+  }
+  if (arrow) {
+    const brg = bearingDegrees(cur, poi);
+    const heading = (typeof _compassHeading === 'number') ? _compassHeading : 0;
+    // Arrow shows direction-to-POI relative to where the phone is facing.
+    const rel = ((brg - heading) % 360 + 360) % 360;
+    arrow.style.transform = `rotate(${rel.toFixed(1)}deg)`;
+    arrow.classList.toggle('no-heading', typeof _compassHeading !== 'number');
+  }
+}
+// Lightweight canvas radar overlay — no Leaflet, no tiles, no network.
+// User dot sits in the centre, POI pin sits at relative bearing/distance,
+// north marker shows compass orientation. Auto-refreshes via rAF while
+// open. Closes on backdrop tap or ✕.
+let _geoMapRafId = null;
+function openGeoMap(i) {
+  if (!_geoActive || _geoActive.i !== i) {
+    toast('Start walking first — the map needs your position.');
+    return;
+  }
+  const existing = document.getElementById('geoMapOverlay');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'geoMapOverlay';
+  overlay.className = 'geo-map-overlay';
+  const poiName = (_geoActive.poi && _geoActive.poi.name) || 'walking';
+  overlay.innerHTML = `
+    <div class="geo-map-card">
+      <div class="geo-map-head">
+        <div class="geo-map-title">▸ NAV · ${escapeHtml(poiName.toUpperCase())}</div>
+        <button class="geo-map-close" type="button" aria-label="Close map">✕</button>
+      </div>
+      <canvas class="geo-map-canvas" width="320" height="320"></canvas>
+      <div class="geo-map-legend">
+        <span><span class="dot user"></span> You</span>
+        <span><span class="dot poi"></span> Destination</span>
+        <span><span class="dot start"></span> Start</span>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  const close = () => {
+    if (_geoMapRafId != null) { cancelAnimationFrame(_geoMapRafId); _geoMapRafId = null; }
+    overlay.remove();
+  };
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('.geo-map-close').onclick = close;
+  const canvas = overlay.querySelector('.geo-map-canvas');
+  const ctx = canvas.getContext('2d');
+  const draw = () => {
+    if (!_geoActive) { close(); return; }
+    const W = canvas.width, H = canvas.height;
+    const cx = W / 2, cy = H / 2;
+    ctx.clearRect(0, 0, W, H);
+    // backdrop grid
+    ctx.fillStyle = '#0a0518';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(74, 220, 255, 0.12)';
+    ctx.lineWidth = 1;
+    for (let r = 40; r <= 160; r += 40) {
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    }
+    // axes
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H);
+    ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
+    const cur = _geoActive.lastCoords || _geoActive.startCoords;
+    const poi = _geoActive.poi;
+    // Scale: show out to ~1.6× the gate target, min 80m so a tiny target
+    // doesn't squish everything into 1 pixel.
+    const rangeM = Math.max(80, (_geoActive.target || 100) * 1.6);
+    const mToPx = 150 / rangeM;
+    const heading = (typeof _compassHeading === 'number') ? _compassHeading : 0;
+    // Convert a world bearing/distance to canvas-relative xy, rotated so
+    // the top of the canvas always points where the phone is facing.
+    const worldTo = (origin, target) => {
+      const brg = bearingDegrees(origin, target);
+      const d   = haversineMeters(origin, target);
+      const rel = ((brg - heading) % 360 + 360) % 360;
+      const rad = rel * Math.PI / 180;
+      return { x: cx + Math.sin(rad) * d * mToPx, y: cy - Math.cos(rad) * d * mToPx };
+    };
+    // start pin (where you tapped Start)
+    if (_geoActive.startCoords && cur) {
+      const s = worldTo(cur, _geoActive.startCoords);
+      ctx.fillStyle = '#888';
+      ctx.beginPath(); ctx.arc(s.x, s.y, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    // poi pin
+    if (poi && cur) {
+      const p = worldTo(cur, poi);
+      ctx.fillStyle = '#ffd166';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      const m = Math.round(haversineMeters(cur, poi));
+      ctx.fillText(m + 'm', p.x, p.y + 4);
+    }
+    // user dot (centre)
+    ctx.fillStyle = '#4adcff';
+    ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+    // direction wedge (where you're facing — straight up since canvas is heading-relative)
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 18);
+    ctx.lineTo(cx - 6, cy - 6);
+    ctx.lineTo(cx + 6, cy - 6);
+    ctx.closePath();
+    ctx.fillStyle = '#4adcff';
+    ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.stroke();
+    // N marker — where true north sits on a heading-relative canvas.
+    const nRad = (-heading) * Math.PI / 180;
+    const nx = cx + Math.sin(nRad) * 145;
+    const ny = cy - Math.cos(nRad) * 145;
+    ctx.fillStyle = '#ff5b5b';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('N', nx, ny + 5);
+    _geoMapRafId = requestAnimationFrame(draw);
+  };
+  draw();
 }
 function renderGeoGateUI(s, i) {
   const r = state.run;
@@ -19043,6 +19558,25 @@ function renderGeoGateUI(s, i) {
   const pct = Math.round((dist / target) * 100);
   const running = !!gs.running;
   const paused = !!gs.paused;
+  const poi = (watcherLive && _geoActive && _geoActive.poi) ? _geoActive.poi : null;
+  const cur = (_geoActive && (_geoActive.lastCoords || _geoActive.startCoords)) || null;
+  const poiDist = (poi && cur) ? Math.round(haversineMeters(cur, poi)) : null;
+  const compassBlock = poi ? `
+    <div class="geo-compass">
+      <div class="geo-compass-ring">
+        <div class="geo-compass-arrow no-heading">▲</div>
+      </div>
+      <div class="geo-poi-line">
+        <div class="geo-poi-name">→ ${escapeHtml(poi.name)}</div>
+        <div class="geo-poi-meta">
+          <span class="geo-poi-dist">${poiDist != null ? poiDist + ' m' : '— m'}</span>
+          <button class="btn ghost xs geo-map-btn" data-geo-map="${i}" type="button">MAP</button>
+        </div>
+      </div>
+    </div>
+  ` : (running ? `
+    <div class="geo-compass-loading">▸ Scanning nearby points…</div>
+  ` : '');
   return `
     <div class="geo-stage" id="geo-${i}" data-geo-target="${target}">
       <div class="geo-label">▸ WALK GATE · MOVE BEFORE YOU SUBMIT</div>
@@ -19051,9 +19585,12 @@ function renderGeoGateUI(s, i) {
       <div class="geo-meta">
         <span class="geo-acc">${gs.accuracy ? `± ${Math.round(gs.accuracy)}m` : ''}</span>
       </div>
+      ${compassBlock}
       <div class="geo-hint">${
         running
-          ? 'Tracking… keep walking. The bar fills as you cover ground.<br/><span class="geo-skip-hint">Can\'t walk right now? Use STUCK? SKIP below.</span>'
+          ? (poi
+              ? 'Follow the arrow. Distance ticks down as you close the gap.<br/><span class="geo-skip-hint">Can\'t walk right now? Use STUCK? SKIP below.</span>'
+              : 'Tracking… keep walking. The bar fills as you cover ground.<br/><span class="geo-skip-hint">Can\'t walk right now? Use STUCK? SKIP below.</span>')
           : paused
             ? 'Paused. Tap Resume when you’re ready to walk again.'
             : 'Tap Start, accept location, then walk ' + target + ' meters in any direction. Your photo proof unlocks when the bar fills.'
