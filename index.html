@@ -7343,6 +7343,21 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .geo-poi-open {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 5px;
+    font-family: var(--px); font-size: 8px;
+    letter-spacing: 1px;
+    background: #16321a;
+    color: #6fe278;
+    border: 1px solid #000;
+    vertical-align: middle;
+  }
+  .geo-poi-open.unknown {
+    background: #312716;
+    color: #ffd166;
+  }
   .geo-poi-meta {
     display: flex;
     align-items: center;
@@ -11007,7 +11022,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.25.319';
+const BUILD_VERSION = '2026.05.26.320';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -19178,6 +19193,78 @@ const POI_CATEGORIES_BY_TYPE = {
     ['leisure', ['park']],
   ],
 };
+// Bare-bones OSM opening_hours parser. Handles the ~80% common shapes:
+// "24/7", "Mo-Fr 09:00-17:00", "Mo,We,Fr 10:00-22:00; Sa-Su off",
+// multiple time ranges per day (",") and multiple blocks (";"). Skips
+// PH / SH / season rules — treats them as no-op so we don't lock out
+// otherwise-valid hours. Returns true / false / null (unknown).
+// We deliberately keep this small instead of pulling opening_hours.js
+// (~70kb) — better to be slightly imprecise than to bloat the bundle.
+const _OH_DAY_INDEX = { Su: 0, Mo: 1, Tu: 2, We: 3, Th: 4, Fr: 5, Sa: 6 };
+function _ohParseDays(part) {
+  if (!part) return new Set([0, 1, 2, 3, 4, 5, 6]);
+  const set = new Set();
+  const tokens = part.split(/\s*,\s*/);
+  for (const tok of tokens) {
+    const m = tok.match(/^([A-Z][a-z])\s*-\s*([A-Z][a-z])$/);
+    if (m) {
+      const a = _OH_DAY_INDEX[m[1]], b = _OH_DAY_INDEX[m[2]];
+      if (a == null || b == null) continue;
+      let i = a;
+      // Inclusive day-of-week range, wrapping through Sunday if needed
+      // (e.g. "Fr-Mo" → Fr, Sa, Su, Mo).
+      for (let safety = 0; safety < 8; safety++) {
+        set.add(i);
+        if (i === b) break;
+        i = (i + 1) % 7;
+      }
+    } else if (/^[A-Z][a-z]$/.test(tok)) {
+      const idx = _OH_DAY_INDEX[tok];
+      if (idx != null) set.add(idx);
+    }
+  }
+  return set.size ? set : null;
+}
+function isPoiOpenNow(hoursStr, now) {
+  if (!hoursStr || typeof hoursStr !== 'string') return null;
+  const s = hoursStr.trim();
+  if (!s) return null;
+  if (/^24\s*\/\s*7$/i.test(s)) return true;
+  const d = now.getDay();
+  const minOfDay = now.getHours() * 60 + now.getMinutes();
+  // Strip parenthetical comments and quoted strings (rare but appear).
+  const cleaned = s.replace(/\([^)]*\)/g, '').replace(/"[^"]*"/g, '');
+  const blocks = cleaned.split(/\s*;\s*/).filter(Boolean);
+  let sawDayMatch = false;
+  let isOpen = false;
+  for (const block of blocks) {
+    // Skip rules that target public/school holidays or specific years —
+    // we don't know if today is one, so be permissive and ignore them.
+    if (/\b(PH|SH|easter)\b/i.test(block) || /\b\d{4}\b/.test(block)) continue;
+    const m = block.match(/^([A-Za-z][A-Za-z0-9,\s\-]*?)?\s*(off|closed|\d.*)$/i);
+    if (!m) continue;
+    const daysPart = (m[1] || '').trim();
+    const timePart = (m[2] || '').trim();
+    const daysSet = _ohParseDays(daysPart);
+    if (!daysSet || !daysSet.has(d)) continue;
+    sawDayMatch = true;
+    if (/^(off|closed)$/i.test(timePart)) { isOpen = false; continue; }
+    const ranges = timePart.split(/\s*,\s*/);
+    for (const rng of ranges) {
+      const tm = rng.match(/^(\d{1,2}):?(\d{2})?\s*-\s*(\d{1,2}):?(\d{2})?/);
+      if (!tm) continue;
+      const start = (+tm[1]) * 60 + (+(tm[2] || 0));
+      let end = (+tm[3]) * 60 + (+(tm[4] || 0));
+      if (end === 0) end = 24 * 60;             // "00:00" = end-of-day shorthand
+      if (end <= start) end += 24 * 60;         // cross-midnight, e.g. 18:00-02:00
+      if (minOfDay >= start && minOfDay < end) isOpen = true;
+    }
+  }
+  // No block claimed today → opening_hours tag exists but doesn't cover
+  // the current day. Treat as unknown so we don't wrongly exclude.
+  if (!sawDayMatch) return null;
+  return isOpen;
+}
 const _poiCache = new Map();      // key: `${lat3},${lng3},${type}` -> [poi]
 function _poiCacheKey(center, stepType) {
   // Round to ~110m precision so nearby gates share a cache entry.
@@ -19223,6 +19310,10 @@ async function fetchOverpassPOIs(center, radiusM, stepType) {
           name,
           category: cat,
           tags,
+          openHours: tags.opening_hours || null,
+          // openNow is computed at pick time (see pickWalkPOI) so the
+          // in-memory cache can be reused across multiple gates without
+          // serving stale "is the cafe open" flags.
           distance: haversineMeters(center, { lat: el.lat, lng: el.lon }),
         };
       });
@@ -19240,17 +19331,44 @@ async function fetchOverpassPOIs(center, radiusM, stepType) {
 // but far enough that the compass meaningfully changes direction as you
 // walk. If nothing in that band, fall back to the closest candidate
 // past 30m so the arrow doesn't aim at the player's own position.
-function pickWalkPOI(pois, targetM) {
+//
+// For Social steps we additionally drop any POI we can prove is closed
+// right now via the OSM opening_hours tag. Unknown / missing tags are
+// kept (OSM coverage is patchy — being too strict would empty the pool
+// in most cities). If filtering empties the band we re-include closed
+// candidates so the player still gets a destination rather than nothing.
+function pickWalkPOI(pois, targetM, stepType) {
   if (!Array.isArray(pois) || pois.length === 0) return null;
+  const now = new Date();
+  const annotated = pois.map(p => ({
+    ...p,
+    openNow: isPoiOpenNow(p.openHours, now),
+  }));
   const lo = targetM * 0.7, hi = targetM * 1.3;
-  const inBand = pois.filter(p => p.distance >= lo && p.distance <= hi);
+  const isSocial = stepType === 'Social';
+  const openish = (p) => p.openNow !== false;          // true OR unknown
+  const inBand = annotated.filter(p => p.distance >= lo && p.distance <= hi);
+  if (isSocial) {
+    const openInBand = inBand.filter(openish);
+    if (openInBand.length) {
+      return openInBand.sort((a, b) =>
+        Math.abs(a.distance - targetM) - Math.abs(b.distance - targetM)
+      )[0];
+    }
+    const openAny = annotated.filter(p => p.distance >= 30 && openish(p))
+                             .sort((a, b) => a.distance - b.distance);
+    if (openAny[0]) return openAny[0];
+    // Last resort — every Social option appears closed. Better to send
+    // the player walking past a closed cafe than to give them no
+    // destination at all. The plain bar still works either way.
+  }
   if (inBand.length) {
     return inBand.sort((a, b) =>
       Math.abs(a.distance - targetM) - Math.abs(b.distance - targetM)
     )[0];
   }
-  const past = pois.filter(p => p.distance >= 30)
-                   .sort((a, b) => a.distance - b.distance);
+  const past = annotated.filter(p => p.distance >= 30)
+                        .sort((a, b) => a.distance - b.distance);
   return past[0] || null;
 }
 
@@ -19310,10 +19428,11 @@ async function startGeoGateForStep(r, i) {
           fetchOverpassPOIs(cur, Math.max(150, _geoActive.target * 2), sType)
             .then(pois => {
               if (!_geoActive || _geoActive.i !== i) return;
-              const pick = pickWalkPOI(pois, _geoActive.target);
+              const pick = pickWalkPOI(pois, _geoActive.target, sType);
               if (pick) {
                 _geoActive.poi = pick;
-                console.log('[poi] picked', pick.name, '@', Math.round(pick.distance), 'm');
+                console.log('[poi] picked', pick.name, '@', Math.round(pick.distance), 'm',
+                            'open=', pick.openNow, pick.openHours ? `(${pick.openHours})` : '');
                 // Full render so the compass arrow + name line appear.
                 render();
               } else {
@@ -19561,13 +19680,18 @@ function renderGeoGateUI(s, i) {
   const poi = (watcherLive && _geoActive && _geoActive.poi) ? _geoActive.poi : null;
   const cur = (_geoActive && (_geoActive.lastCoords || _geoActive.startCoords)) || null;
   const poiDist = (poi && cur) ? Math.round(haversineMeters(cur, poi)) : null;
+  const openBadge = (poi && s.type === 'Social' && poi.openNow === true)
+    ? '<span class="geo-poi-open">OPEN</span>'
+    : (poi && s.type === 'Social' && poi.openNow == null && poi.openHours)
+      ? '<span class="geo-poi-open unknown">HOURS?</span>'
+      : '';
   const compassBlock = poi ? `
     <div class="geo-compass">
       <div class="geo-compass-ring">
         <div class="geo-compass-arrow no-heading">▲</div>
       </div>
       <div class="geo-poi-line">
-        <div class="geo-poi-name">→ ${escapeHtml(poi.name)}</div>
+        <div class="geo-poi-name">→ ${escapeHtml(poi.name)} ${openBadge}</div>
         <div class="geo-poi-meta">
           <span class="geo-poi-dist">${poiDist != null ? poiDist + ' m' : '— m'}</span>
           <button class="btn ghost xs geo-map-btn" data-geo-map="${i}" type="button">MAP</button>
