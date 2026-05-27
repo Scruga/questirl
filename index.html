@@ -10914,6 +10914,12 @@ const DEFAULT_PROFILE = {
   // policies block audio before any gesture).
   musicMuted: false,
   musicVolume: 0.34,                              // 0.0–1.0. Tuning history: 0.1 inaudible -> 0.45 audible but loud -> 0.34 (-25%) per tester ask. Migration in loadProfile also bumps any save <=0.15 to this default.
+  // Location-aware quest gen — when ON, tapping Generate triggers a one-
+  // shot GPS + Overpass POI scan whose summary is fed to the AI so the
+  // quest can reference real nearby places. Defaults ON because the
+  // location prompt only fires after the user commits to generating
+  // (not at setup-screen entry), so we're not gating playability on it.
+  locationAwareMode: true,
   musicShuffle: true,                             // shuffle is the default play mode (legacy bool, kept for back-compat)
   musicMode: 'shuffle',                           // canonical play mode: 'shuffle' | 'sequential' | 'loop'
   timerTickMuted: false,                          // mute the baseline 1Hz tick during a run; warn/countdown/fail still fire
@@ -11022,7 +11028,7 @@ const FRAME_BY_ID = Object.fromEntries(FRAMES.map(f => [f.id, f]));
 // user can verify their browser is running the latest deploy by
 // checking Settings → bottom of the modal. Format: YYYY.MM.DD.N
 // where N increments per change on the same day.
-const BUILD_VERSION = '2026.05.26.320';
+const BUILD_VERSION = '2026.05.26.321';
 
 // ──────────────────────────────────────────────────────────────────
 // SERVICE WORKER REGISTRATION
@@ -11322,6 +11328,12 @@ function loadProfile() {
       merged._musicVol34Migrated = true;
     } else if (!merged._musicVol34Migrated) {
       merged._musicVol34Migrated = true;   // mark migrated regardless so we don't keep checking
+    }
+    // Default location-aware to ON for old profiles that never saw the
+    // field. The GPS prompt only fires at Generate-time so even users
+    // who never wanted location features won't be surprised at setup.
+    if (typeof merged.locationAwareMode !== 'boolean') {
+      merged.locationAwareMode = true;
     }
     // Sarah Mode is gated by the player's current name. Resync on load:
     // if name === "sarah" → ensure unlocks present; otherwise ensure
@@ -16430,6 +16442,11 @@ function startSetup(mode) {
     secretTraitor: inMpRoom ? !!qmpRoomState.hostSetup?.secretTraitor : false,
     contextChoice: null,
     contextNote: '',
+    // Populated by prefetchLocationContext() inside generateRunInner when
+    // profile.locationAwareMode is on. Stays null if the player declined
+    // GPS, the fetch timed out, or location-aware mode is off — every
+    // downstream consumer falls back to the blind-AI path in that case.
+    locationContext: null,
     vibes: [],
     unhinged: false,     // Unhinged Mode toggle — swaps host to The Gremlin
     // Story-mode theme id (null = standard, no theme). When set, the
@@ -16638,6 +16655,17 @@ function setupContext() {
         </p>
       </div>
     ` : ''}
+    ${isMpGuest ? '' : `
+      <div class="toggle-row loc-aware-row" style="margin-top:18px;">
+        <div class="info">
+          <h4>📍 LOCATION-AWARE QUEST</h4>
+          <p>${profile.locationAwareMode
+              ? 'Boss gen pulls real cafes/parks/landmarks from your area. GPS prompt only fires when you tap Generate.'
+              : 'Off — quests are generated blind to your surroundings. Walk-gates still work, but no real place names.'}</p>
+        </div>
+        <div class="toggle ${profile.locationAwareMode ? 'on' : ''}" id="locAwareToggle" role="button" tabindex="0" aria-pressed="${profile.locationAwareMode ? 'true' : 'false'}"><div class="knob"></div></div>
+      </div>
+    `}
   `;
 }
 
@@ -17160,6 +17188,12 @@ function bindSetup(STEPS) {
         }, 1500);
       }
     };
+    const locTog = document.getElementById('locAwareToggle');
+    if (locTog) locTog.onclick = () => {
+      profile.locationAwareMode = !profile.locationAwareMode;
+      saveProfile();
+      render();
+    };
   }
   if (stepName === 'Players') {
     document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => {
@@ -17599,6 +17633,30 @@ async function generateRunInner() {
     let cleared = false;
     profile.inventory.forEach(it => { if (it.isNew) { it.isNew = false; cleared = true; } });
     if (cleared) saveProfile();
+  }
+
+  // Location-aware prefetch. Solo only for v1 — compete/chaos players
+  // are physically distributed so a single host-side scan doesn't help
+  // them. Permission prompt fires here because this is inside the same
+  // call chain as the user's GENERATE tap (still a valid gesture on iOS
+  // Safari as long as we don't await anything else first). Failure of
+  // any kind (denied, timeout, network) leaves r.locationContext null
+  // and every downstream consumer falls back to the original flow.
+  if (profile.locationAwareMode && r.mode === 'solo') {
+    try {
+      toast('📍 scanning nearby places…');
+      const lc = await prefetchLocationContext();
+      if (lc) {
+        r.locationContext = lc;
+        const n = (lc.pois.Social?.length||0) + (lc.pois.Move?.length||0) + (lc.pois.Find?.length||0);
+        console.log('[loc-prefetch] context ready —', n, 'POIs across categories');
+      } else {
+        console.log('[loc-prefetch] no context — falling back to blind AI');
+      }
+    } catch (e) {
+      console.warn('[loc-prefetch] threw, falling back', e);
+      r.locationContext = null;
+    }
   }
 
   // Pick the run type — Bold/Chaos can roll into Investigation tier.
@@ -19372,6 +19430,72 @@ function pickWalkPOI(pois, targetM, stepType) {
   return past[0] || null;
 }
 
+// One-shot location + nearby-POI prefetch, run at quest-generation time
+// when the player has location-aware mode on. Returns a LocationContext
+// object (or null on any failure — caller treats null as "fall back to
+// the blind-AI flow exactly as before"). Permission prompts must fire
+// inside a user gesture; this is called from the Generate Run click.
+async function prefetchLocationContext() {
+  if (!navigator.geolocation) return null;
+  const coords = await new Promise(resolve => {
+    let done = false;
+    const finish = (v) => { if (!done) { done = true; resolve(v); } };
+    const tid = setTimeout(() => finish(null), 8500);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { clearTimeout(tid); finish({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy || null }); },
+      (err) => { clearTimeout(tid); console.warn('[loc-prefetch] gps err', err && err.code); finish(null); },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 }
+    );
+  });
+  if (!coords) return null;
+  // Fan out the three category-typed fetches in parallel. Each one is
+  // independently cached + has its own 5.5s timeout, so the slowest of
+  // them caps total wall time at ~5.5s.
+  const radius = 400;
+  const [moves, finds, socials] = await Promise.all([
+    fetchOverpassPOIs(coords, radius, 'Move'),
+    fetchOverpassPOIs(coords, radius, 'Find'),
+    fetchOverpassPOIs(coords, radius, 'Social'),
+  ]);
+  // De-dup by id across category buckets so we don't show the same node
+  // twice (Overpass can return overlapping hits when a POI has multiple
+  // qualifying tags, e.g. a leisure=park that's also tagged tourism=*).
+  const seen = new Set();
+  const dedup = (list) => list.filter(p => seen.has(p.id) ? false : (seen.add(p.id), true));
+  return {
+    coords,
+    radius,
+    fetchedAt: Date.now(),
+    pois: {
+      Move:   dedup(moves   || []),
+      Find:   dedup(finds   || []),
+      Social: dedup(socials || []),
+    },
+  };
+}
+// Build a compact human-readable summary line for the AI prompt. Sends
+// names + counts, never raw coordinates — keeps the model honest about
+// location without leaking precise GPS. Capped to keep the prompt tight.
+function summarizeLocationContextForAI(lc) {
+  if (!lc || !lc.pois) return null;
+  const groups = ['Social', 'Move', 'Find'];
+  const parts = [];
+  for (const g of groups) {
+    const list = lc.pois[g] || [];
+    if (list.length === 0) continue;
+    const named = list.filter(p => p.name && !/^[A-Z][a-z]+$/.test(p.name) && p.name.length > 2);
+    const namesShown = named.slice(0, 6).map(p => p.name);
+    const moreNamed = Math.max(0, named.length - namesShown.length);
+    const unnamed = list.length - named.length;
+    const bits = [];
+    if (namesShown.length) bits.push(namesShown.join(', '));
+    if (moreNamed > 0)    bits.push(`+${moreNamed} more named`);
+    if (unnamed > 0)      bits.push(`${unnamed} unnamed`);
+    parts.push(`${g.toUpperCase()} (${list.length}): ${bits.join('; ')}`);
+  }
+  if (!parts.length) return null;
+  return parts.join(' · ');
+}
 function detachGeoWatcher() {
   if (_geoWatcherId != null) {
     try { navigator.geolocation.clearWatch(_geoWatcherId); } catch {}
@@ -19425,20 +19549,40 @@ async function startGeoGateForStep(r, i) {
           _geoActive.poiFetched = true;
           const stepRef = _geoActive.run.quest && _geoActive.run.quest[i];
           const sType = (stepRef && stepRef.type) || 'Find';
-          fetchOverpassPOIs(cur, Math.max(150, _geoActive.target * 2), sType)
-            .then(pois => {
-              if (!_geoActive || _geoActive.i !== i) return;
-              const pick = pickWalkPOI(pois, _geoActive.target, sType);
-              if (pick) {
-                _geoActive.poi = pick;
-                console.log('[poi] picked', pick.name, '@', Math.round(pick.distance), 'm',
-                            'open=', pick.openNow, pick.openHours ? `(${pick.openHours})` : '');
-                // Full render so the compass arrow + name line appear.
-                render();
-              } else {
-                console.log('[poi] no usable POI in range — compass stays hidden.');
-              }
-            });
+          // If quest-gen already ran the prefetch we can pick from that
+          // bundle without another network round-trip. Re-haversine each
+          // POI against the current start anchor (prefetch coords could
+          // be 10-50m off the walker's actual start position).
+          const lc = _geoActive.run.locationContext;
+          let preFromCache = null;
+          if (lc && lc.pois && Array.isArray(lc.pois[sType]) && lc.pois[sType].length) {
+            const recalibrated = lc.pois[sType].map(p => ({
+              ...p,
+              distance: haversineMeters(cur, { lat: p.lat, lng: p.lng }),
+            }));
+            preFromCache = pickWalkPOI(recalibrated, _geoActive.target, sType);
+          }
+          if (preFromCache) {
+            _geoActive.poi = preFromCache;
+            console.log('[poi] using prefetched —', preFromCache.name,
+                        '@', Math.round(preFromCache.distance), 'm');
+            render();
+          } else {
+            fetchOverpassPOIs(cur, Math.max(150, _geoActive.target * 2), sType)
+              .then(pois => {
+                if (!_geoActive || _geoActive.i !== i) return;
+                const pick = pickWalkPOI(pois, _geoActive.target, sType);
+                if (pick) {
+                  _geoActive.poi = pick;
+                  console.log('[poi] picked', pick.name, '@', Math.round(pick.distance), 'm',
+                              'open=', pick.openNow, pick.openHours ? `(${pick.openHours})` : '');
+                  // Full render so the compass arrow + name line appear.
+                  render();
+                } else {
+                  console.log('[poi] no usable POI in range — compass stays hidden.');
+                }
+              });
+          }
         }
       }
       _geoActive.lastCoords = cur;
@@ -26934,7 +27078,12 @@ LAYER 1 — GAMEMODE: ${mpModeNote}.${r.mode === 'party' ? ` Re-read the MULTIPL
 PLAYERS: ${playerCount}. ${r.mode === 'party' ? `Calibrate every group ritual to exactly this count. Re-read the PLAYER-COUNT SCALING section.` : 'Single player — solo framing only.'}
 PLAYER NAME: ${(profile && typeof profile.name === 'string' && profile.name.trim()) || 'Player'}${r.mode === 'party' ? ' (host name)' : ''}. You may reference the player by name 0-2 times across the 5 steps (in step.instr or boss.beat — not in step.title). Examples: "the couch goblin laughs at you, ${(profile && profile.name) || 'Player'}." in step 3, or "boss.beat: '${(profile && profile.name) || 'Player'} closes the loop. the hydra cannot follow.'" The name should appear at a CLIMACTIC moment (boss reveal, hard step, final attack) — NEVER in every step (creepy). NEVER in step 1's title or instruction (feels like a stalker greeting). If the player's name is "Player" or looks like a placeholder, skip name references entirely.
 
-LAYER 2 — LOCATION: ${ctxName}${r.contextChoice === 'custom' ? ' (player-typed CUSTOM location — parse this literally for place, objects, people, and constraints; do NOT collapse it to a similar canned location)' : (r.contextNote ? ` (extra note: ${r.contextNote})` : '')}. Re-read the LOCATION INTERPRETATION section. Every step's instruction AND every example in examples[] must reference real objects, zones, or behaviors that exist at THIS location — examples function as in-context hints. The boss must be entirely OF this location, not a generic boss placed there.
+LAYER 2 — LOCATION: ${ctxName}${r.contextChoice === 'custom' ? ' (player-typed CUSTOM location — parse this literally for place, objects, people, and constraints; do NOT collapse it to a similar canned location)' : (r.contextNote ? ` (extra note: ${r.contextNote})` : '')}. Re-read the LOCATION INTERPRETATION section. Every step's instruction AND every example in examples[] must reference real objects, zones, or behaviors that exist at THIS location — examples function as in-context hints. The boss must be entirely OF this location, not a generic boss placed there.${(() => {
+  const nearbyLine = summarizeLocationContextForAI(r.locationContext);
+  if (!nearbyLine) return '';
+  return `
+NEARBY (REAL OSM data, within ~${r.locationContext.radius}m of the player RIGHT NOW): ${nearbyLine}. You MAY reference 1-2 of these specific named places in step instructions when natural — especially for Move (walking destination), Find (object/landmark to photograph), or Social (cafe/shop interaction) steps. This is FLAVOR, not mandatory: do not force every step to name-drop, and do not invent new place names that aren't in this list. If nothing here fits the vibe, ignore this data entirely. When you do reference a place, weave it into step.instr (e.g. "Walk to Riverside Park and find the third bench from the entrance") — do not just append the name as a tag.`;
+})()}
 TIER: ${r.questType === 'investigation' ? 'investigation (environmental fact-hunting — each step asks for a specific real-world answer found in signs/menus/plaques/labels)' : 'comfort (story-arc themed around an everyday villain like laziness/indecision/awkwardness)'}.
 
 ${r.theme && THEME_BY_ID[r.theme] ? `STORY MODE — ${THEME_BY_ID[r.theme].name.toUpperCase()} ${THEME_BY_ID[r.theme].icon}: This run is set ENTIRELY inside the ${THEME_BY_ID[r.theme].name} fictional universe. ${THEME_BY_ID[r.theme].blurb} The boss MUST be one of these archetypes (pick exactly one): ${THEME_BY_ID[r.theme].bossArchetypes.join(' / ')}. STEP FRAMING: ${THEME_BY_ID[r.theme].stepFraming} HOST VOICE: ${THEME_BY_ID[r.theme].hostVoice} Every step's title, instruction, and example MUST be reframed inside the theme — NO references to "the boss" as a generic concept; use the theme-specific framing. At least 4 of 5 step instructions MUST contain a theme keyword (${THEME_BY_ID[r.theme].keywords.slice(0, 8).join(', ')}). The TIMEOUTPUNISH must also be in-theme.
